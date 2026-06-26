@@ -52,6 +52,9 @@ EXCLUDE = load_exclude()
 
 
 def is_excluded(pn):
+    low = pn.lower()
+    if "hammerspoon" in low and "polish" in low:   # EOD's own AI-polish scratch dir — never real work
+        return True
     return any(pn == e or pn.startswith(e + "-") for e in EXCLUDE)
 
 # ── noise filter ────────────────────────────────────────────────────────────
@@ -130,8 +133,8 @@ def human_text(o):
 HOME_ENC = re.sub(r"[^A-Za-z0-9]", "-", os.path.expanduser("~"))
 
 
-def proj_name(path):
-    d = os.path.basename(os.path.dirname(path))
+def _proj_key(enc):
+    d = enc
     if d.startswith(HOME_ENC):
         d = d[len(HOME_ENC):]
     # fold agent git-worktree dirs back into their parent project
@@ -141,6 +144,15 @@ def proj_name(path):
     return d.strip("-") or "(root)"
 
 
+def proj_name(path):
+    return _proj_key(os.path.basename(os.path.dirname(path)))
+
+
+def _cwd_key(cwd):
+    """Project key from a real cwd path (Codex), matching Claude's encoded keys."""
+    return _proj_key(re.sub(r"[^A-Za-z0-9]", "-", cwd or ""))
+
+
 def local_date_of(ts):
     """ISO ts (UTC, ...Z) -> local 'YYYY-MM-DD' and 'HH:MM'."""
     try:
@@ -148,6 +160,71 @@ def local_date_of(ts):
     except Exception:
         return None, None
     return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
+
+
+CODEX_ROOT = os.path.expanduser("~/.codex/sessions")
+
+
+def add_codex(projects, target):
+    """Merge OpenAI Codex sessions for `target` into the projects dict (same shape as Claude)."""
+    for f in glob.glob(os.path.join(CODEX_ROOT, "*", "*", "*", "rollout-*.jsonl")):
+        cwd, title, rows = None, None, []
+        try:
+            for line in open(f, errors="replace"):
+                try:
+                    o = json.loads(line)
+                except Exception:
+                    continue
+                p = o.get("payload") or {}
+                if o.get("type") == "session_meta":
+                    cwd = p.get("cwd") or (o.get("payload") or {}).get("cwd")
+                    continue
+                pt = p.get("type")
+                if pt == "thread_name_updated" and p.get("thread_name"):
+                    title = p["thread_name"]
+                    continue
+                if pt != "user_message":
+                    continue
+                ts = o.get("timestamp")
+                if not ts:
+                    continue
+                day, hm = local_date_of(ts)
+                if day != target:
+                    continue
+                msg = p.get("message")
+                if not isinstance(msg, str):
+                    continue
+                if "<environment_context>" in msg or msg.lstrip().startswith("# Files mentioned by the user"):
+                    # keep the actual ask in the "Files mentioned" wrapper, drop the env block
+                    m = re.search(r"My request for Codex:\s*(.+)", msg, re.S)
+                    msg = m.group(1) if m else ("" if "<environment_context>" in msg else msg)
+                msg = oneline(msg, 200) if 'oneline' in globals() else " ".join(msg.split())[:200]
+                if msg and not is_noise(msg):
+                    rows.append((hm, msg))
+        except Exception:
+            continue
+        if not rows:
+            continue
+        pn = _cwd_key(cwd) if cwd else "(root)"
+        if is_excluded(pn):
+            continue
+        seen, prompts = set(), []
+        for hm, txt in rows:
+            k = txt[:64].lower()
+            if k in seen:
+                continue
+            seen.add(k)
+            prompts.append((hm, txt))
+        if not title:
+            title = prompts[0][1][:70]
+        projects.setdefault(pn, []).append({
+            "sid": "cx" + os.path.basename(f)[8:14],
+            "title": title,
+            "prompts": prompts,
+            "start": prompts[0][0],
+            "end": prompts[-1][0],
+            "source": "codex",
+        })
 
 
 def build(target):
@@ -201,6 +278,8 @@ def build(target):
             "end": prompts[-1][0],
         })
 
+    add_codex(projects, target)   # merge Codex sessions into the same project buckets
+
     # shape output, ordered by busiest project
     out_projects = []
     for pn, sessions in projects.items():
@@ -210,6 +289,7 @@ def build(target):
             "name": pretty_project(pn), "total": total,
             "sessions": [{
                 "title": s["title"], "start": s["start"], "end": s["end"],
+                "source": s.get("source", "claude"),
                 "prompts": [{"t": t, "text": x} for t, x in s["prompts"]],
             } for s in sessions],
         })
