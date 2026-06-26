@@ -1,0 +1,12 @@
+# Generated at runtime by extract.py / eod.lua
+cache/
+
+# Local project-hiding list (keep the .example in git)
+exclude.txt
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc

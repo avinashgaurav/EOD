@@ -1,0 +1,7 @@
+# Copy this file to "exclude.txt" to hide projects from the receipt.
+# One project name per line. Matches the name exactly or any sub-folder of it.
+# Lines starting with # are comments.
+#
+# example:
+# my-private-client
+# job-application
