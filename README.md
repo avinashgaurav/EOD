@@ -11,6 +11,15 @@ A macOS desktop widget — styled as a **printed bill/receipt** — that shows
 copy-paste ready for a task sheet / standup / timesheet. It rebuilds itself from
 the session transcripts under `~/.claude/projects` — fully local, no network, no API.
 
+<p align="center">
+  <img src="screenshots/brief.png" alt="The EOD daily work receipt" width="340">
+</p>
+
+<sub>↑ Sample data. EOD builds this from your own activity, fully on your Mac.</sub>
+
+<details>
+<summary>Text version of the receipt</summary>
+
 ```
         ✂ ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
                  E O D
@@ -36,6 +45,37 @@ the session transcripts under `~/.claude/projects` — fully local, no network, 
 
 Each line is the **work** done — Claude Code's own AI-generated session title, a
 clean one-line summary. No raw prompts.
+
+</details>
+
+## Screenshots
+
+> All screenshots use fabricated sample data.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Daily receipt** — the curated, copy-ready update.
+
+<img src="screenshots/brief.png" alt="EOD daily receipt" width="100%">
+
+</td>
+<td width="50%" valign="top">
+
+**Weekly recap** — `▤ → This week's summary`.
+
+<img src="screenshots/weekly.png" alt="EOD weekly recap" width="100%">
+
+</td>
+</tr>
+</table>
+
+**Full bill** — `⊞ See full bill`: detailed work, shipped commits/PRs, meetings, documents, screen time, and web — all rewritten readable.
+
+<p align="center">
+  <img src="screenshots/full.png" alt="EOD full bill" width="420">
+</p>
 
 ## Features
 
