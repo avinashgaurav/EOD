@@ -6,20 +6,25 @@
 ![runs on: Hammerspoon](https://img.shields.io/badge/runs%20on-Hammerspoon-3a86ff)
 ![license: MIT](https://img.shields.io/badge/license-MIT-green)
 
-A macOS desktop widget — styled as a **printed bill/receipt** — that shows
-**everything you did in Claude Code on a given day**, grouped by project and
-copy-paste ready for a task sheet / standup / timesheet. It rebuilds itself from
-the session transcripts under `~/.claude/projects` — local-first, no API keys
+A tiny macOS desktop widget, styled as a **printed receipt**, that shows
+**everything you did in Claude Code that day** — grouped by project and
+copy-paste ready for a standup, timesheet, or task sheet. It rebuilds itself
+from your session transcripts in `~/.claude/projects`. Local-first, no API keys
 (see [Requirements & permissions](#requirements--permissions)).
 
 <p align="center">
-  <img src="screenshots/brief.png" alt="The EOD daily work receipt" width="340">
+  <img src="screenshots/brief.png" alt="EOD daily work receipt" width="220">
+  &nbsp;&nbsp;
+  <img src="screenshots/weekly.png" alt="EOD weekly recap" width="220">
 </p>
 
-<sub>↑ Sample data. EOD builds this from your own activity, fully on your Mac.</sub>
+<p align="center"><sub><b>Daily receipt</b> &nbsp;·&nbsp; <b>Weekly recap</b> &nbsp;—&nbsp; sample data; EOD builds these from your own activity, on your Mac.</sub></p>
+
+Each line is the **work** done — Claude Code's own AI-generated session title, a
+clean one-liner. No raw prompts.
 
 <details>
-<summary>Text version of the receipt</summary>
+<summary>Prefer text? Here's what the receipt looks like.</summary>
 
 ```
         ✂ ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -44,81 +49,45 @@ the session transcripts under `~/.claude/projects` — local-first, no API keys
         ✂ ____________________
 ```
 
-Each line is the **work** done — Claude Code's own AI-generated session title, a
-clean one-line summary. No raw prompts.
-
 </details>
-
-## Screenshots
-
-> All screenshots use fabricated sample data.
-
-<table>
-<tr>
-<td width="50%" valign="top">
-
-**Daily receipt** — the curated, copy-ready update.
-
-<img src="screenshots/brief.png" alt="EOD daily receipt" width="100%">
-
-</td>
-<td width="50%" valign="top">
-
-**Weekly recap** — `▤ → This week's summary`.
-
-<img src="screenshots/weekly.png" alt="EOD weekly recap" width="100%">
-
-</td>
-</tr>
-</table>
-
-**Full bill** — `⊞ See full bill`: detailed work, shipped commits/PRs, meetings, documents, screen time, and web — all rewritten readable.
-
-<p align="center">
-  <img src="screenshots/full.png" alt="EOD full bill" width="420">
-</p>
 
 ## Features
 
-- **Auto-built daily** from `~/.claude` — rolls over to the new day at midnight,
-  refreshes through the day.
-- **Copy all** or per-project **copy** straight to the clipboard.
-- **◀ ▶** browse previous days (for back-filling a sheet).
-- **Frameless + transparent** — only the cream paper shows on your wallpaper;
-  drag it by the masthead. Floats over full-screen apps too.
-- **Prints down** when you open it, **rolls up** when you close it.
+- **Auto-built daily** from `~/.claude` — rolls over at midnight, refreshes through the day.
+- **Daily receipt + weekly recap** — one keystroke from the menu bar.
+- **Copy all** or per-project **copy**, straight to the clipboard.
+- **◀ ▶ browse previous days** for back-filling a sheet.
+- **Frameless + transparent** — only the cream paper shows on your wallpaper; drag it by the masthead. Floats over full-screen apps.
+- **Prints down** when opened, **rolls up** when closed.
 - **Hide private projects** via an `exclude.txt` file (NDA / job-hunt work).
 
 ## Requirements & permissions
 
-You need three things, all free and most likely already on your Mac:
+Three things, all free and most likely already on your Mac:
 
 | Integrate | Why | Permission to grant |
 |---|---|---|
-| **Claude Code** | EOD reads your local session transcripts in `~/.claude/projects` to build the receipt. You must actually use Claude Code. | None — it only **reads** files already on your Mac. |
-| **[Hammerspoon](https://www.hammerspoon.org/)** | The free automation app that hosts and draws the widget. | **Accessibility** — System Settings → Privacy & Security → Accessibility → enable Hammerspoon. Needed for dragging the receipt and the global hotkey. |
-| **`python3`** | Runs `extract.py`, the parser that turns transcripts into the receipt. Check with `python3 --version`. | None. Looked up in `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`. |
+| **Claude Code** | EOD reads your local transcripts in `~/.claude/projects` to build the receipt. | None — it only **reads** files already on your Mac. |
+| **[Hammerspoon](https://www.hammerspoon.org/)** | The free automation app that hosts and draws the widget. | **Accessibility** — System Settings → Privacy & Security → Accessibility → enable Hammerspoon (for dragging + the hotkey). |
+| **`python3`** | Runs `extract.py`, the parser behind the receipt. Check with `python3 --version`. | None. Looked up in `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`. |
 
 **Local-first, no API keys, no telemetry.** EOD reads local files and writes a
 receipt to its own `cache/` folder. The one exception is the **optional AI-polish**
 step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
-crisper, manager-ready bullets — that sends the day's activity to Claude through
-**your existing CLI login** (no API key). If the CLI is missing it silently falls
-back to fully-offline cleanup.
+crisper, manager-ready bullets — that goes through your **existing CLI login**
+(no API key). Missing CLI? It silently falls back to fully-offline cleanup.
 
 ## Install
 
-See **[INSTALL.md](INSTALL.md)**. Short version: needs
-[Hammerspoon](https://www.hammerspoon.org/) + `python3` + Claude Code; drop this
-folder in, point Hammerspoon at it, reload.
+~3 minutes. Full guide in **[INSTALL.md](INSTALL.md)** — short version:
 
-## How it works
+```sh
+# don't already use Hammerspoon? drop EOD straight into its config:
+mkdir -p ~/.hammerspoon && cp -R ./* ~/.hammerspoon/
+```
 
-- **`extract.py`** — parses every `*.jsonl` transcript for the target local day,
-  takes each session's `aiTitle`, de-dupes per project, filters noise, and writes
-  a self-contained receipt HTML to `cache/`.
-- **`eod.lua`** — a Hammerspoon module that renders that HTML in a frameless
-  `hs.webview`, runs the engine on a timer, handles copy/nav/drag, and animates.
+Then open Hammerspoon → **Reload Config** (⌥⌃⌘R). The receipt prints down in the
+top-right. (Already have an `init.lua`? Don't overwrite it — see INSTALL.md.)
 
 ## Controls
 
@@ -131,5 +100,15 @@ folder in, point Hammerspoon at it, reload.
 | Copy one project | the **⧉** on that project |
 | Previous / next day | **◀ ▶** |
 | Refresh | **↻** |
+
+## How it works
+
+- **`extract.py`** parses every `*.jsonl` transcript for the target day, takes each
+  session's AI title, de-dupes per project, filters noise, and writes a
+  self-contained receipt HTML to `cache/`.
+- **`eod.lua`** is a Hammerspoon module that renders that HTML in a frameless
+  `hs.webview`, runs the engine on a timer, and handles copy / nav / drag / animation.
+
+---
 
 MIT licensed.
