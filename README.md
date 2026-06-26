@@ -9,7 +9,8 @@
 A macOS desktop widget — styled as a **printed bill/receipt** — that shows
 **everything you did in Claude Code on a given day**, grouped by project and
 copy-paste ready for a task sheet / standup / timesheet. It rebuilds itself from
-the session transcripts under `~/.claude/projects` — fully local, no network, no API.
+the session transcripts under `~/.claude/projects` — local-first, no API keys
+(see [Requirements & permissions](#requirements--permissions)).
 
 <p align="center">
   <img src="screenshots/brief.png" alt="The EOD daily work receipt" width="340">
