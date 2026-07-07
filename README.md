@@ -69,6 +69,7 @@ or Codex, a clean one-liner. No raw prompts.
 - **Multi-source** — Claude Code + Codex sessions, git commits, documents, browsing, and screen time on one receipt.
 - **Daily receipt + weekly recap** — one keystroke from the menu bar.
 - **Copy all** or per-project **copy**, straight to the clipboard.
+- **Edit inline** — fix a line, **＋ add** one, or **✕ delete** one before you copy. On the **weekly recap** your hand-edits stick and survive a re-summarize (unless you force one with **⟳**).
 - **◀ ▶ browse previous days** for back-filling a sheet.
 - **Frameless + transparent** — only the cream paper shows on your wallpaper; drag it by the masthead. Floats over full-screen apps.
 - **Prints down** when opened, **rolls up** when closed.
@@ -113,6 +114,10 @@ top-right. (Already have an `init.lua`? Don't overwrite it — see INSTALL.md.)
 | Move it | drag the **EOD** masthead |
 | Copy the day | **⎙ Copy all** |
 | Copy one project | the **⧉** on that project |
+| Edit lines | **✎** on the WORK / weekly header — then **💾** to save |
+| Add a line | **＋** on the WORK / weekly header |
+| Delete a line | the **✕** beside a line (while editing) |
+| Re-summarize | **⟳** (on the weekly recap this re-polishes, discarding hand-edits) |
 | Previous / next day | **◀ ▶** |
 | Refresh | **↻** |
 
