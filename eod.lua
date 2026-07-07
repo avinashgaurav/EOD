@@ -44,6 +44,7 @@ local CFG  = {
 local wv, ucc, bar, refreshTimer, midnightTimer, hideTimer, reminderTimer
 local usageTimer, usageFlushTimer            -- app-usage (SCREEN TIME) tracking
 local wvFull, uccFull, fullShown             -- the detail card (2nd window: full bill / weekly)
+local fullMode, weekStart                     -- what the detail card is showing ("full"/"weekly")
 local makeFullWebview, onMessageFull          -- forward decls (used before defined)
 local dragTap, dragOff                        -- frameless-window dragging
 local loadN = 0                                -- cache-buster: a fragment-only (#in) change does NOT
@@ -143,6 +144,26 @@ local function saveEdits(items)
   rebuild(curDate, true, false)
 end
 
+-- persist edits to the WEEKLY recap (same idea, different cache file), then re-render it
+local function saveWeeklyEdits(items)
+  if type(items) ~= "table" or not weekStart then return end
+  local hl = {}
+  for _, v in ipairs(items) do if type(v) == "string" and v ~= "" then hl[#hl + 1] = v end end
+  local path = DIR .. "/cache/weekly-" .. weekStart .. ".json"
+  local detailed
+  local rf = io.open(path, "r")
+  if rf then
+    local prev = hs.json.decode(rf:read("*a")); rf:close()
+    if type(prev) == "table" then detailed = prev.detailed end
+  end
+  local ok, raw = pcall(hs.json.encode, { key = "edited", highlights = hl, detailed = detailed, edited = true })
+  if ok then
+    local f = io.open(path, "w")
+    if f then f:write(raw); f:close() end
+  end
+  M.showWeekly()   -- re-render (extract --weekly now honours the edited flag)
+end
+
 -- ── clipboard / nav bridge (messages posted from the page's JS) ──────────────────
 -- Drag a borderless window by following the mouse (no native title bar to grab).
 local function startDrag(win)
@@ -201,7 +222,7 @@ local function onMessage(msg)
   end
 end
 
--- messages from the full-bill card: just copy / drag / close (no nav)
+-- messages from the detail card (full bill / weekly): copy / drag / close, plus weekly edits
 onMessageFull = function(msg)
   local b = msg.body
   if type(b) ~= "table" then return end
@@ -209,6 +230,10 @@ onMessageFull = function(msg)
     hs.pasteboard.setContents(b.text or "")
   elseif b.action == "dragStart" then
     startDrag(wvFull)
+  elseif b.action == "saveEdits" then
+    if fullMode == "weekly" then saveWeeklyEdits(b.items) end
+  elseif b.action == "regen" then
+    if fullMode == "weekly" then M.showWeekly(true) end
   elseif b.action == "hide" then
     M.hideFull()
   end
@@ -293,6 +318,7 @@ function M.showFull()
   if not wvFull then makeFullWebview() end
   curDate = curDate or today()
   fullShown = true
+  fullMode = "full"
   local fp = DIR .. "/cache/" .. curDate .. "-full.html"
   if hs.fs.attributes(fp) then
     loadN = loadN + 1
@@ -315,18 +341,22 @@ function M.hideFull()
 end
 
 -- Weekly recap — built on demand (extract --weekly) and shown in the detail window.
-function M.showWeekly()
+function M.showWeekly(force)
   if not wvFull then makeFullWebview() end
   fullShown = true
+  fullMode = "weekly"
+  local args = { CFG.script, "--date", curDate or today(), "--weekly" }
+  if force then args[#args + 1] = "--repolish" end
   local t = hs.task.new(CFG.python, function(code, out)
     out = (out or ""):gsub("%s+$", "")
     local _, path = out:match("^(%S+)%s+(.+)$")
     if path and wvFull then
+      weekStart = path:match("weekly%-(%d%d%d%d%-%d%d%-%d%d)") or weekStart
       loadN = loadN + 1
       wvFull:url("file://" .. path .. "?n=" .. loadN .. "#in")
       wvFull:frame(fullFrame()); wvFull:show()
     end
-  end, { CFG.script, "--date", curDate or today(), "--weekly" })
+  end, args)
   if t then t:setEnvironment(CFG.env); t:start() end
 end
 
@@ -369,15 +399,21 @@ local function scheduleReminder()
   local n = os.date("*t", now); n.hour, n.min, n.sec = CFG.reminderHour, CFG.reminderMin, 0
   local fire = os.time(n)
   if fire <= now then fire = fire + 86400 end          -- already past → tomorrow
-  reminderTimer = hs.timer.doAt(os.date("%H:%M:%S", fire), "1d", function()
-    local wd = tonumber(os.date("%w"))                 -- 0=Sun … 6=Sat
-    if wd == 0 or wd == 6 then return end              -- weekdays only
-    rebuild(today(), true, false)                      -- make sure today's summary is fresh
-    hs.notify.new(function() M.show(true) end, {
-      title = "EOD", subTitle = "Your work update is ready — review & send",
-      hasActionButton = true, actionButtonTitle = "Open",
-    }):send()
-  end, true)
+  local secs = os.difftime(fire, now)
+  reminderTimer = hs.timer.doAfter(secs, function()
+    local function fire_and_rearm()
+      local wd = tonumber(os.date("%w"))               -- 0=Sun … 6=Sat
+      if wd ~= 0 and wd ~= 6 then                      -- weekdays only
+        rebuild(today(), true, false)
+        hs.notify.new(function() M.show(true) end, {
+          title = "EOD", subTitle = "Your work update is ready — review & send",
+          hasActionButton = true, actionButtonTitle = "Open",
+        }):send()
+      end
+    end
+    fire_and_rearm()
+    reminderTimer = hs.timer.doEvery(86400, fire_and_rearm)   -- then daily
+  end)
 end
 
 function M.start()
@@ -409,7 +445,7 @@ function M.start()
     if shown and curDate == today() then rebuild(curDate, false, false) end
   end)
   scheduleMidnight()
-  scheduleReminder()
+  pcall(scheduleReminder)   -- a reminder hiccup must never stop the widget loading
 
   -- begin app-usage tracking (runs whether or not the panel is visible)
   usage.date = today()

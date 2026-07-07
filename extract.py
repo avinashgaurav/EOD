@@ -1170,6 +1170,11 @@ button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
   border-radius:3px;padding:0 3px;margin-left:-3px}
 .edot{color:var(--accent);font-size:9px;margin-left:4px}
 .dim{color:var(--ink2);font-size:10px}
+.del{display:none;border:none!important;background:transparent!important;color:var(--ink2);
+  font-size:11px;line-height:1;padding:0 4px;cursor:pointer;align-self:flex-start;margin-top:2px}
+.del:hover{color:var(--accent)}
+#workList[data-edit='1'] .del{display:inline-block}
+#workList[data-edit='1'] .item{align-items:flex-start}
 .dpick{font-family:var(--mono);font-size:9.5px;color:var(--ink);background:transparent;
   border:1px dashed var(--line);border-radius:4px;padding:4px 6px;cursor:pointer}
 .dpick:hover{border-color:var(--ink)}
@@ -1224,19 +1229,45 @@ function nav(d){send({action:'nav',delta:d})}
 function goDate(v){if(v)send({action:'goDate',date:v})}
 function refresh(){send({action:'refresh'});toast('Refreshing…')}
 function regen(){send({action:'regen'});toast('Re-summarizing…')}
+function _enterEdit(){
+  var list=document.getElementById('workList'),b=document.getElementById('editBtn');
+  list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='true';s.classList.add('editing');});
+  list.setAttribute('data-edit','1');if(b)b.textContent='💾';
+}
+function _collect(){
+  var items=[];document.querySelectorAll('#workList .htext').forEach(function(s){
+    var t=s.textContent.replace(/\\s+/g,' ').trim();if(t)items.push(t);});
+  return items;
+}
 function toggleEdit(){
-  var list=document.getElementById('workList');var b=document.getElementById('editBtn');
-  if(!list)return;var spans=list.querySelectorAll('.htext');
+  var list=document.getElementById('workList'),b=document.getElementById('editBtn');
+  if(!list)return;
   if(list.getAttribute('data-edit')!=='1'){
-    spans.forEach(function(s){s.contentEditable='true';s.classList.add('editing');});
-    list.setAttribute('data-edit','1');if(b)b.textContent='💾';if(spans[0])spans[0].focus();
-    toast('Edit — click 💾 to save');
+    _enterEdit();var f=list.querySelector('.htext');if(f)f.focus();
+    toast('Edit / add — click 💾 to save');
   }else{
-    var items=[];spans.forEach(function(s){var t=s.textContent.replace(/\\s+/g,' ').trim();if(t)items.push(t);
-      s.contentEditable='false';s.classList.remove('editing');});
+    var items=_collect();
+    list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='false';s.classList.remove('editing');});
     list.setAttribute('data-edit','0');if(b)b.textContent='✎';
     send({action:'saveEdits',items:items});toast('Saved ✓');
   }
+}
+function addLine(){
+  var list=document.getElementById('workList');if(!list)return;
+  if(list.getAttribute('data-edit')!=='1')_enterEdit();
+  var d=document.createElement('div');d.className='item';
+  d.innerHTML="<span class='t'><b>•</b><span class='htext editing' contenteditable='true'></span></span>"+
+    "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button>";
+  list.appendChild(d);d.querySelector('.htext').focus();
+}
+function delLine(el){var it=el.closest('.item');if(it)it.remove();}
+function copyWork(){
+  var list=document.getElementById('workList');
+  if(list&&list.getAttribute('data-edit')==='1'){           // copy straight from your edits + persist
+    var items=_collect();
+    copyText(items.map(function(t){return '\\u2022 '+t}).join('\\n'),'Work update copied');
+    send({action:'saveEdits',items:items});
+  }else{copyEl('workText','Work update copied');}
 }
 function drag(e){if(e.button===0)send({action:'dragStart'})}
 window.playOut=function(){var h=document.documentElement;h.classList.remove('anim-in');h.classList.add('anim-out')};
@@ -1300,14 +1331,16 @@ def to_html(data):
             P.append("<div class='depthead'><span class='nm'>WORK" + edited_note + "</span>"
                      "<span class='dots'></span>"
                      f"<span class='qty'>×{len(data['highlights'])}</span>"
-                     "<button class='cp' onclick=\"copyEl('workText','Work update copied')\" title='Copy work update'>⧉</button>"
+                     "<button class='cp' onclick='copyWork()' title='Copy work update'>⧉</button>"
                      "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines'>✎</button>"
+                     "<button class='cp' onclick='addLine()' title='Add a line'>＋</button>"
                      "<button class='cp' onclick='regen()' title='Re-summarize with AI'>⟳</button>"
                      "</div>")
             P.append("<div class='dept' id='workList' data-edit='0'>")
             for h in data["highlights"]:
                 P.append("<div class='item'>"
-                         f"<span class='t'><b>•</b><span class='htext'>{esc(h)}</span></span></div>")
+                         f"<span class='t'><b>•</b><span class='htext'>{esc(h)}</span></span>"
+                         "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button></div>")
             P.append("</div>")
             P.append(f"<div id='workText' style='display:none'>{esc(highlights_text(data))}</div>")
         # ── Fallback: per-project view (only when AI polish unavailable) ──
@@ -1532,18 +1565,18 @@ def _day_highlights(date):
         return []
 
 
-def build_weekly(date):
+def build_weekly(date, force=False):
     ws, we, dates = _week_dates(date)
     days = [(d, _day_highlights(d)) for d in dates]
     days = [(d, h) for d, h in days if h]
     data = {"week_start": ws, "week_end": we, "days": days,
             "generated_at": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S"),
             "highlights": [], "detailed": []}
-    polish_weekly(data)
+    polish_weekly(data, force=force)
     return data
 
 
-def polish_weekly(data):
+def polish_weekly(data, force=False):
     if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "polish.off")):
         return
     cb = _claude_bin()
@@ -1555,7 +1588,12 @@ def polish_weekly(data):
     cache_path = os.path.join(CACHE, "weekly-" + data["week_start"] + ".json")
     try:
         c = json.load(open(cache_path))
-        if c.get("key") == key:
+        if c.get("edited") and not force:          # hand-edited weekly → keep
+            data["highlights"] = c.get("highlights", [])
+            data["detailed"] = c.get("detailed", [])
+            data["edited"] = True
+            return
+        if c.get("key") == key and not force:
             data["highlights"] = c.get("highlights", [])
             data["detailed"] = c.get("detailed", [])
             return
@@ -1621,13 +1659,20 @@ def to_html_weekly(data):
     if not data.get("highlights"):
         P.append("<div class='empty'>— NO ACTIVITY THIS WEEK —</div>")
     else:
-        P.append("<div class='depthead'><span class='nm'>THIS WEEK</span><span class='dots'></span>"
+        wk_edited = " <span class='edot' title='hand-edited'>✎</span>" if data.get("edited") else ""
+        P.append("<div class='depthead'><span class='nm'>THIS WEEK" + wk_edited + "</span><span class='dots'></span>"
                  f"<span class='qty'>×{len(data['highlights'])}</span>"
-                 "<button class='cp' onclick=\"copyEl('wkText','Weekly update copied')\">⧉</button></div>")
-        P.append("<div class='dept'>")
+                 "<button class='cp' onclick='copyWork()' title='Copy weekly update'>⧉</button>"
+                 "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines'>✎</button>"
+                 "<button class='cp' onclick='addLine()' title='Add a line'>＋</button>"
+                 "<button class='cp' onclick='regen()' title='Re-summarize the week'>⟳</button></div>")
+        P.append("<div class='dept' id='workList' data-edit='0'>")
         for h in data["highlights"]:
-            P.append(f"<div class='item'><span class='t'><b>•</b>{esc(h)}</span></div>")
+            P.append("<div class='item'><span class='t'><b>•</b>"
+                     f"<span class='htext'>{esc(h)}</span></span>"
+                     "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button></div>")
         P.append("</div>")
+        P.append(f"<div id='workText' style='display:none'>{esc(chr(10).join('• ' + h for h in data['highlights']))}</div>")
         if data.get("detailed"):
             P.append("<div class='rule'></div><div class='sect'>BY AREA</div>")
             for g in data["detailed"]:
@@ -1693,7 +1738,7 @@ def main():
     os.makedirs(CACHE, exist_ok=True)
 
     if weekly:                       # build the week's recap and print its html path
-        wd = build_weekly(date)
+        wd = build_weekly(date, force=repolish)
         wbase = os.path.join(CACHE, "weekly-" + wd["week_start"])
         with open(wbase + ".html", "w") as f:
             f.write(to_html_weekly(wd))
