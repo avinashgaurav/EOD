@@ -97,7 +97,9 @@ end
 
 -- ── engine runner ──────────────────────────────────────────────────────────────
 -- Runs extract.py for `date`; on success loads the produced HTML into the webview.
-local function rebuild(date, force, animate, repolish)
+-- cacheOnly: run extract.py to keep the cache warm but never touch the webview
+-- (used by the background timer when the panel is hidden or showing another day).
+local function rebuild(date, force, animate, repolish, cacheOnly)
   date = date or curDate or today()
   local args = { CFG.script, "--date", date }
   if repolish then args[#args + 1] = "--repolish" end   -- force a fresh AI summary (Regenerate)
@@ -110,7 +112,7 @@ local function rebuild(date, force, animate, repolish)
     local tag, path = out:match("^(%S+)%s+(.+)$")
     -- reload the page unless the engine said nothing changed (avoids scroll reset on the timer).
     -- ?n= forces a real reload (fragment-only changes don't); #in plays the print-down animation.
-    if wv and path and (force or tag ~= "UNCHANGED") then
+    if wv and path and not cacheOnly and (force or tag ~= "UNCHANGED") then
       loadN = loadN + 1
       wv:url("file://" .. path .. "?n=" .. loadN .. (animate and "#in" or ""))
       -- keep the full bill in sync if it's open (its file is built in the same run)
@@ -387,7 +389,8 @@ local function scheduleMidnight()
   local secs = os.difftime(os.time(n), now)
   midnightTimer = hs.timer.doAfter(secs, function()
     curDate = today()
-    if shown then rebuild(curDate, true, false) end  -- if hidden, next show rebuilds anyway
+    if shown then rebuild(curDate, true, false)      -- visible: roll onto the new day
+    else rebuild(curDate, true, false, false, true) end  -- hidden: build the new day's cache anyway
     scheduleMidnight()
   end)
 end
@@ -441,8 +444,14 @@ function M.start()
   end
 
   refreshTimer = hs.timer.doEvery(CFG.refreshEvery, function()
-    -- only auto-refresh while visible and viewing the live (today) page
-    if shown and curDate == today() then rebuild(curDate, false, false) end
+    -- keep TODAY's cache warm on every tick, even while the panel is hidden or
+    -- showing another day — otherwise the receipt goes stale until the next open.
+    local t = today()
+    if shown and curDate == t then
+      rebuild(t, false, false)                 -- visible + on today: refresh and reload the view
+    else
+      rebuild(t, false, false, false, true)    -- hidden / other day: rebuild cache only, no reload
+    end
   end)
   scheduleMidnight()
   pcall(scheduleReminder)   -- a reminder hiccup must never stop the widget loading
