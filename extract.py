@@ -243,8 +243,13 @@ def build(target):
                 except Exception:
                     continue
                 t = o.get("type")
-                if t == "ai-title" and o.get("aiTitle"):
-                    title = o["aiTitle"]
+                # The session's generated title. Claude Code renamed this record
+                # ai-title/aiTitle -> custom-title/customTitle; accept either, else
+                # every line degrades to the raw first prompt.
+                if t in ("ai-title", "custom-title"):
+                    ttl = o.get("aiTitle") or o.get("customTitle")
+                    if ttl:
+                        title = ttl
                     continue
                 ts = o.get("timestamp")
                 if not ts:
@@ -881,6 +886,16 @@ def _polish_input(data):
     return "\n".join(lines)
 
 
+def _polish_log(msg):
+    """Record why an AI-polish attempt fell back, so a silent no-summary day is diagnosable.
+    Best-effort: never let logging break the receipt."""
+    try:
+        with open(os.path.join(CACHE, "polish-error.log"), "a") as f:
+            f.write(datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S ") + oneline(msg, 600) + "\n")
+    except Exception:
+        pass
+
+
 def polish(data, force=False):
     """Curate the day into a short manager-ready highlights list via the local claude CLI.
     Honours user edits (won't overwrite) unless force=True (the Regenerate button)."""
@@ -912,6 +927,7 @@ def polish(data, force=False):
         pass
 
     if not cb:
+        _polish_log("no claude CLI found (looked in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin)")
         if cached:
             data["highlights"] = cached
             data["detailed"] = cached_detail
@@ -925,12 +941,15 @@ def polish(data, force=False):
         r = subprocess.run([cb, "-p", "--output-format", "text"],
                            input=POLISH_PROMPT + "\n\n" + raw,
                            capture_output=True, text=True, timeout=150, cwd=cwd, env=_full_env())
+        if r.returncode != 0:
+            raise ValueError("claude exit %s: %s" % (r.returncode, (r.stderr or r.stdout or "").strip()))
         obj = json.loads(_extract_json_obj(r.stdout.strip()))
         highlights = [oneline(x, 140) for x in obj.get("highlights", []) if isinstance(x, str) and x.strip()]
         detailed = _clean_detailed(obj.get("detailed"))
         if not highlights:
-            raise ValueError("no highlights")
-    except Exception:
+            raise ValueError("no highlights in output: " + r.stdout.strip()[:300])
+    except Exception as e:
+        _polish_log("%s: %s" % (type(e).__name__, e))
         if cached:                          # failure → keep the LAST GOOD summary, never the raw fallback
             data["highlights"] = cached
             data["detailed"] = cached_detail
