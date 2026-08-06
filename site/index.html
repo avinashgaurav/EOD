@@ -16,6 +16,16 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f3ecdd'/%3E%3Cg fill='%232a2620'%3E%3Crect x='7' y='9' width='18' height='2'/%3E%3Crect x='7' y='14' width='18' height='2'/%3E%3Crect x='7' y='19' width='12' height='2'/%3E%3C/g%3E%3Crect x='21' y='19' width='4' height='2' fill='%23bf3d1f'/%3E%3C/svg%3E">
 
 <style>
+/* ---------- self-hosted, latin subset, no third-party requests ---------- */
+@font-face{font-family:'Instrument Serif';src:url('/fonts/instrument-serif.woff2') format('woff2');
+  font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Instrument Serif';src:url('/fonts/instrument-serif-italic.woff2') format('woff2');
+  font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:'Inter';src:url('/fonts/inter-var.woff2') format('woff2');
+  font-weight:400 600;font-style:normal;font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('/fonts/jetbrains-mono-var.woff2') format('woff2');
+  font-weight:400 600;font-style:normal;font-display:swap}
+
 /* ============================================================
    EOD
    Skeleton, spacing, shape and elevation: Ollama DESIGN.md.
@@ -42,7 +52,11 @@
   --hairline-strong:#d8cfc4;
 
   --accent:#bf3d1f;          /* EOD stamp red, Claude coral family */
-  --accent-soft:#f6e7e1;
+  --accent-soft:#f7e8e2;
+  /* Claude's secondary accents, darkened to hold contrast on a cream ground.
+     One hue per source category so the card grid stops reading as monotone. */
+  --amber:#a8701c;  --amber-soft:#f7ecd9;
+  --teal:#2f7a6b;   --teal-soft:#e2f0ec;
 
   --paper:#f3ecdd;
 
@@ -55,8 +69,12 @@
 
   --r-sm:6px; --r-lg:12px; --r-full:9999px;
 
-  --sans:ui-sans-serif,system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
+  /* Ollama bans a custom display face. Overridden: stock system type is what
+     made the page read as unfinished. Claude's rule takes over instead, a serif
+     display at weight 400 with negative tracking against a humanist sans body. */
+  --serif:'Instrument Serif',ui-serif,Georgia,"Times New Roman",serif;
+  --sans:'Inter',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
 
   --col:720px;      /* Ollama reading column, for prose */
   --col-wide:1060px;/* Claude hero width, for the two figure sections */
@@ -74,7 +92,9 @@
     --hairline:#302d29;
     --hairline-strong:#3d3a35;
     --accent:#cc785c;        /* Claude coral: #bf3d1f goes muddy on dark */
-    --accent-soft:#2e2320;
+    --accent-soft:#31241f;
+    --amber:#e8a55a;  --amber-soft:#2e2617;
+    --teal:#5db8a6;   --teal-soft:#172a26;
   }
 }
 
@@ -92,9 +112,10 @@ section{padding-block:var(--section)}
 section + section{padding-top:0}
 
 h1,h2,h3{color:var(--ink);margin:0;text-wrap:balance}
-h1{font-size:40px;font-weight:500;line-height:1.1;letter-spacing:-.8px}
-h2{font-size:30px;font-weight:500;line-height:1.2;letter-spacing:-.3px}
-h3{font-size:17px;font-weight:500;line-height:1.4}
+h1,h2{font-family:var(--serif);font-weight:400}
+h1{font-size:56px;line-height:1.03;letter-spacing:-1.2px}
+h2{font-size:40px;line-height:1.1;letter-spacing:-.8px}
+h3{font-size:16px;font-weight:600;line-height:1.4;letter-spacing:-.1px}
 p{margin:0 0 var(--lg)}
 p:last-child{margin-bottom:0}
 a{color:var(--ink);text-underline-offset:3px;text-decoration-thickness:1px}
@@ -155,7 +176,20 @@ nav{
 .snippet button:hover{color:var(--accent)}
 
 /* ---------- hero: product visible on arrival ---------- */
-.hero{padding-top:var(--lg)}
+/* A warm wash off the accent plus the receipt's own fine paper ruling. Ollama
+   bans atmospheric backgrounds; at these opacities it reads as paper stock
+   rather than decoration, which is the point of the product. */
+.hero{
+  padding-top:var(--lg);
+  background:
+    linear-gradient(180deg,rgba(191,61,31,.045),rgba(191,61,31,0) 460px),
+    repeating-linear-gradient(180deg,transparent 0 3px,rgba(20,20,19,.014) 3px 4px);
+}
+@media (prefers-color-scheme:dark){
+  .hero{background:
+    linear-gradient(180deg,rgba(204,120,92,.07),rgba(204,120,92,0) 460px),
+    repeating-linear-gradient(180deg,transparent 0 3px,rgba(255,255,255,.012) 3px 4px)}
+}
 /* Top-aligned, not centred: the receipt is ~2.8x taller than it is wide, and
    centring it against short copy opens a dead gap above the headline. */
 .hero-grid{display:grid;grid-template-columns:1fr 260px;gap:48px;align-items:start}
@@ -167,6 +201,12 @@ nav{
 .hero-shot img{
   display:block;width:100%;height:452px;object-fit:cover;object-position:top center;
   border-radius:var(--r-sm);
+  animation:printdown 1.15s cubic-bezier(.16,1,.3,1) .1s both;
+}
+/* The widget prints down when it opens. The page opens the same way. */
+@keyframes printdown{
+  from{clip-path:inset(0 0 100% 0)}
+  to{clip-path:inset(0 0 0 0)}
 }
 .hero-shot figcaption{
   font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
@@ -191,6 +231,11 @@ figure{margin:0}
 /* var() is not substituted inside SVG presentation attributes, so the accent
    reaches the drawing by re-pointing currentColor on a group instead. */
 .diagram .ac{color:var(--accent)}
+/* Dashes travel along the read paths, because the parser re-reads on a timer
+   rather than once. The motion is the claim, not decoration. */
+@keyframes flow{to{stroke-dashoffset:-32}}
+.diagram .flow{stroke-dasharray:3 5;animation:flow 2.4s linear infinite}
+.diagram .ac line{animation:flow 3s linear infinite}
 .diagram marker.m-accent path{fill:var(--accent)}
 figcaption.cap{
   margin-top:var(--lg);font-size:14px;line-height:1.5;color:var(--charcoal);
@@ -206,13 +251,18 @@ figcaption.cap{
 .card{
   border:1px solid var(--hairline);border-radius:var(--r-lg);
   padding:var(--lg);background:transparent;
+  transition:border-color .2s ease,transform .2s cubic-bezier(.16,1,.3,1);
 }
+/* Border and a 2px lift, no shadow: Ollama's no-drop-shadow rule still stands. */
+.card:hover{border-color:var(--hairline-strong);transform:translateY(-2px)}
 .card .tag{
-  display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:2px;
-  text-transform:uppercase;color:var(--accent);
+  display:inline-block;font-family:var(--mono);font-size:10px;font-weight:500;
+  letter-spacing:2px;text-transform:uppercase;color:var(--accent);
   background:var(--accent-soft);border-radius:var(--r-full);
   padding:3px 10px;margin-bottom:var(--md);
 }
+.card .tag.amber{color:var(--amber);background:var(--amber-soft)}
+.card .tag.teal{color:var(--teal);background:var(--teal-soft)}
 .card h3{margin-bottom:var(--sm)}
 .card p{font-size:14px;line-height:1.5;color:var(--charcoal);margin:0}
 .card code{font-size:12px}
@@ -283,6 +333,17 @@ kbd{
 }
 .steps p{margin-bottom:var(--md)}
 
+/* Applied by script, so a no-JS visitor never gets stuck with hidden content. */
+.rv{opacity:0;transform:translateY(16px)}
+.rv.in{opacity:1;transform:none;
+  transition:opacity .55s ease,transform .55s cubic-bezier(.16,1,.3,1)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .rv{opacity:1!important;transform:none!important}
+  html{scroll-behavior:auto}
+}
+
 code{font-family:var(--mono);font-size:.92em}
 :not(pre):not(.snippet) > code{
   background:var(--surface-soft);border-radius:var(--r-sm);padding:2px 6px;color:var(--ink);
@@ -318,8 +379,8 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 }
 @media (max-width:640px){
   :root{--section:48px}
-  h1{font-size:30px}
-  h2{font-size:24px}
+  h1{font-size:38px;letter-spacing:-.6px}
+  h2{font-size:30px;letter-spacing:-.5px}
   .grid-3{grid-template-columns:1fr}
   .wrap,.wrap-wide,nav,footer{padding-inline:var(--lg)}
   .navlinks{gap:var(--lg)}
@@ -415,11 +476,11 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 
         <!-- convergence bus -->
         <g stroke="currentColor" stroke-opacity=".5" fill="none">
-          <line x1="204" y1="71"  x2="234" y2="71"/>
-          <line x1="204" y1="111" x2="234" y2="111"/>
-          <line x1="204" y1="151" x2="234" y2="151"/>
-          <line x1="204" y1="191" x2="234" y2="191"/>
-          <line x1="204" y1="231" x2="234" y2="231"/>
+          <line class="flow" x1="204" y1="71"  x2="234" y2="71"/>
+          <line class="flow" x1="204" y1="111" x2="234" y2="111"/>
+          <line class="flow" x1="204" y1="151" x2="234" y2="151"/>
+          <line class="flow" x1="204" y1="191" x2="234" y2="191"/>
+          <line class="flow" x1="204" y1="231" x2="234" y2="231"/>
           <line x1="234" y1="71"  x2="234" y2="231"/>
         </g>
         <line x1="234" y1="151" x2="276" y2="151" stroke="currentColor" fill="none" marker-end="url(#ar)"/>
@@ -498,22 +559,22 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
         <p>Your coding sessions, grouped per project, read from their local JSONL transcripts.</p>
       </div>
       <div class="card">
-        <span class="tag">Shipped</span>
+        <span class="tag teal">Shipped</span>
         <h3>Git</h3>
         <p>Commits and PRs, read from repos in your work folders.</p>
       </div>
       <div class="card">
-        <span class="tag">Docs</span>
+        <span class="tag amber">Docs</span>
         <h3>Documents</h3>
         <p>Decks, docs, sheets and PDFs you created or edited in your work folders.</p>
       </div>
       <div class="card">
-        <span class="tag">Web</span>
+        <span class="tag teal">Web</span>
         <h3>Browsing</h3>
         <p>The sites you spent time on, read from Chrome, Brave or Safari history.</p>
       </div>
       <div class="card">
-        <span class="tag">Screen time</span>
+        <span class="tag amber">Screen time</span>
         <h3>Apps</h3>
         <p>Where the hours actually went, read from local app-usage.</p>
       </div>
@@ -702,6 +763,25 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 </footer>
 
 <script>
+/* Reveal is added by script, never in the markup, so a visitor without JS is
+   never left staring at content that opacity:0 hid and nothing ever restored. */
+(function(){
+  if (!('IntersectionObserver' in window)) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var sel = 'section:not(.hero) .eyebrow, section:not(.hero) h2, section:not(.hero) .deck,'
+          + '.diagram, .grid-3, .grid-2, .rows, .keys, .steps, .statement, .shots';
+  var els = Array.prototype.slice.call(document.querySelectorAll(sel));
+  els.forEach(function(el){ el.classList.add('rv'); });
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    });
+  }, {rootMargin:'0px 0px -6% 0px', threshold:0.04});
+  els.forEach(function(el){ io.observe(el); });
+})();
+
 document.querySelectorAll('[data-copy]').forEach(function(btn){
   btn.addEventListener('click', function(){
     var el = document.querySelector(btn.dataset.copy);
