@@ -11,3 +11,5 @@ exclude.txt
 __pycache__/
 *.pyc
 .gstack/
+.vercel
+.env*

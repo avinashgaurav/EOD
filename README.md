@@ -6,6 +6,8 @@
 ![runs on: Hammerspoon](https://img.shields.io/badge/runs%20on-Hammerspoon-3a86ff)
 ![license: MIT](https://img.shields.io/badge/license-MIT-green)
 
+**[eod-avinashgauravs-projects.vercel.app](https://eod-avinashgauravs-projects.vercel.app)** — what it looks like, what it reads, and how to install it.
+
 A tiny macOS desktop widget, styled as a **printed receipt**, that shows
 **everything you got done that day** — your AI coding sessions, the sites and
 docs you worked in, the commits you shipped — grouped and copy-paste ready for a
