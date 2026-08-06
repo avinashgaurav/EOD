@@ -47,7 +47,11 @@
   --paper:#f3ecdd;
 
   --xxs:2px; --xs:4px; --sm:8px; --md:12px; --lg:16px; --xl:24px; --xxl:32px;
-  --section:88px;
+  /* Ollama specifies 88px between blocks. That reads as luxurious on a page of
+     short marketing prose and as dead air on a page this dense, so the scale is
+     pulled in. The rule it protects (air separates sections, never a divider)
+     still holds. */
+  --section:56px;
 
   --r-sm:6px; --r-lg:12px; --r-full:9999px;
 
@@ -151,22 +155,25 @@ nav{
 .snippet button:hover{color:var(--accent)}
 
 /* ---------- hero: product visible on arrival ---------- */
-.hero{padding-top:var(--xxl)}
+.hero{padding-top:var(--lg)}
 /* Top-aligned, not centred: the receipt is ~2.8x taller than it is wide, and
    centring it against short copy opens a dead gap above the headline. */
-.hero-grid{display:grid;grid-template-columns:1fr 250px;gap:64px;align-items:start}
-.hero-copy{padding-top:var(--xl)}
+.hero-grid{display:grid;grid-template-columns:1fr 260px;gap:48px;align-items:start}
 .hero-copy .cta-row{display:flex;flex-wrap:wrap;gap:var(--md);margin-top:var(--xl)}
 .hero-shot{position:relative}
+/* Cropped to roughly the height of the copy beside it. A receipt running off the
+   bottom edge still reads as a receipt, and the complete item, barcode and all,
+   is in the specimen band below. */
 .hero-shot img{
-  display:block;width:100%;height:auto;border-radius:var(--r-sm);
+  display:block;width:100%;height:452px;object-fit:cover;object-position:top center;
+  border-radius:var(--r-sm);
 }
 .hero-shot figcaption{
   font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
   color:var(--mute);text-align:center;margin-top:var(--md);
 }
 .hero-meta{
-  margin-top:var(--xxl);padding-top:var(--lg);
+  margin-top:var(--xl);padding-top:var(--md);
   border-top:1px solid var(--hairline);
   font-family:var(--mono);font-size:11px;letter-spacing:1.5px;
   text-transform:uppercase;color:var(--mute);
@@ -176,7 +183,7 @@ nav{
 /* ---------- figure / diagram ---------- */
 figure{margin:0}
 .diagram{
-  margin-top:var(--xl);padding:var(--xl);
+  margin-top:var(--lg);padding:var(--lg);
   border:1px solid var(--hairline);border-radius:var(--r-lg);
   background:var(--surface-soft);
 }
@@ -195,10 +202,10 @@ figcaption.cap{
 }
 
 /* ---------- source grid (replaces the old 5-row table) ---------- */
-.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--lg);margin-top:var(--xl)}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--md);margin-top:var(--lg)}
 .card{
   border:1px solid var(--hairline);border-radius:var(--r-lg);
-  padding:var(--xl);background:transparent;
+  padding:var(--lg);background:transparent;
 }
 .card .tag{
   display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:2px;
@@ -211,7 +218,7 @@ figcaption.cap{
 .card code{font-size:12px}
 
 /* ---------- feature grid ---------- */
-.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--xl) var(--xxl);margin-top:var(--xl)}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--lg) var(--xxl);margin-top:var(--lg)}
 .feat h3{margin-bottom:var(--xs)}
 .feat p{font-size:14px;line-height:1.5;color:var(--charcoal);margin:0}
 .feat .n{
@@ -220,11 +227,13 @@ figcaption.cap{
 }
 
 /* ---------- dark specimen band: Ollama's single inverted moment ---------- */
-.specimen{background:var(--surface-dark);padding-block:var(--section);margin-block:var(--section)}
-.specimen + section{padding-top:0}
+/* No margin-block here: the neighbouring sections already contribute their own
+   padding, and adding margin on top of it doubled the gap around the band. */
+.specimen{background:var(--surface-dark);padding-block:var(--section)}
+.specimen + section{padding-top:var(--section)}
 .specimen h2{color:var(--on-dark)}
 .specimen .note{color:var(--on-dark-mute)}
-.shots{display:flex;gap:var(--xxl);align-items:flex-end;justify-content:center;margin-top:var(--xxl)}
+.shots{display:flex;gap:var(--xl);align-items:flex-end;justify-content:center;margin-top:var(--xl)}
 .shots img{display:block;max-width:100%;height:auto;border-radius:var(--r-sm)}
 .shot-brief{width:230px;flex:none}
 .shot-weekly{width:400px;flex:none}
@@ -234,7 +243,7 @@ figcaption.cap{
 }
 
 /* ---------- controls: compact glyph grid, not an 11-row wall ---------- */
-.keys{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sm) var(--xxl);margin-top:var(--xl)}
+.keys{display:grid;grid-template-columns:repeat(2,1fr);gap:0 var(--xxl);margin-top:var(--lg)}
 .keyrow{
   display:flex;align-items:center;gap:var(--lg);
   padding:10px 0;border-bottom:1px solid var(--hairline);
@@ -248,10 +257,10 @@ kbd{
 .keyrow span{font-size:14px;color:var(--charcoal)}
 
 /* ---------- spec rows: for the one section that is genuinely tabular ---------- */
-.rows{border-top:1px solid var(--hairline);margin-top:var(--xl)}
+.rows{border-top:1px solid var(--hairline);margin-top:var(--lg)}
 .row{
   display:grid;grid-template-columns:180px 1fr;gap:var(--lg);
-  padding:var(--lg) 0;border-bottom:1px solid var(--hairline);align-items:baseline;
+  padding:var(--md) 0;border-bottom:1px solid var(--hairline);align-items:baseline;
 }
 .row dt{
   font-family:var(--mono);font-size:12px;font-weight:500;
@@ -262,12 +271,12 @@ kbd{
 .row .req{color:var(--accent)}
 
 /* ---------- statement ---------- */
-.statement{border-left:2px solid var(--accent);padding:var(--xs) 0 var(--xs) var(--xl);margin-top:var(--xl)}
+.statement{border-left:2px solid var(--accent);padding:var(--xs) 0 var(--xs) var(--lg);margin-top:var(--lg)}
 .statement strong{color:var(--ink);font-weight:500}
 
 /* ---------- steps ---------- */
-.steps{counter-reset:s;list-style:none;margin:var(--xl) 0 0;padding:0}
-.steps li{counter-increment:s;position:relative;padding-left:var(--xxl);margin-bottom:var(--xl)}
+.steps{counter-reset:s;list-style:none;margin:var(--lg) 0 0;padding:0}
+.steps li{counter-increment:s;position:relative;padding-left:var(--xl);margin-bottom:var(--lg)}
 .steps li::before{
   content:counter(s);position:absolute;left:0;top:1px;
   font-family:var(--mono);font-size:12px;color:var(--accent);
@@ -280,7 +289,7 @@ code{font-family:var(--mono);font-size:.92em}
 }
 
 /* ---------- footer ---------- */
-footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:var(--xxl) var(--xl);text-align:center}
+footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:var(--xl) var(--xl);text-align:center}
 .footlinks{display:flex;flex-wrap:wrap;gap:var(--lg);justify-content:center;margin-bottom:var(--md)}
 .footlinks a{font-size:14px;color:var(--charcoal);text-decoration:none}
 .footlinks a:hover{color:var(--ink)}
@@ -294,8 +303,9 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
   .shot-weekly{width:340px}
 }
 @media (max-width:768px){
-  .hero-grid{grid-template-columns:1fr;gap:var(--xxl)}
-  .hero-shot{max-width:260px;margin:0 auto}
+  .hero-grid{grid-template-columns:1fr;gap:var(--xl)}
+  .hero-shot{max-width:240px;margin:0 auto}
+  .hero-shot img{height:380px}
   .grid-2,.keys{grid-template-columns:1fr}
   .shots{flex-direction:column;align-items:center}
   .shot-brief,.shot-weekly{width:min(100%,300px)}
@@ -370,7 +380,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
     </p>
 
     <figure class="diagram">
-      <svg viewBox="0 0 980 392" role="img"
+      <svg viewBox="0 4 980 348" role="img"
            aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. The only step that leaves the machine is the optional AI polish, which crosses the boundary through your existing Claude CLI login.">
         <defs>
           <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
@@ -447,17 +457,17 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 
         <!-- the one hop that leaves the machine -->
         <g class="ac">
-          <line x1="354" y1="181" x2="354" y2="316" stroke="currentColor" stroke-dasharray="5 4"
+          <line x1="354" y1="181" x2="354" y2="288" stroke="currentColor" stroke-dasharray="5 4"
                 fill="none" marker-end="url(#ar-a)"/>
-          <rect x="278" y="318" width="152" height="46" fill="none" stroke="currentColor"/>
-          <text x="354" y="337" font-family="ui-monospace,monospace" font-size="12" font-weight="600"
+          <rect x="278" y="290" width="152" height="46" fill="none" stroke="currentColor"/>
+          <text x="354" y="309" font-family="ui-monospace,monospace" font-size="12" font-weight="600"
                 fill="currentColor" text-anchor="middle">claude CLI</text>
-          <text x="354" y="353" font-family="ui-monospace,monospace" font-size="10"
+          <text x="354" y="325" font-family="ui-monospace,monospace" font-size="10"
                 fill="currentColor" fill-opacity=".8" text-anchor="middle">AI polish</text>
-          <text x="448" y="292" font-family="ui-monospace,monospace" font-size="10"
+          <text x="448" y="305" font-family="ui-monospace,monospace" font-size="10"
                 letter-spacing="1" fill="currentColor">OPTIONAL · your existing CLI login</text>
         </g>
-        <text x="448" y="308" font-family="ui-monospace,monospace" font-size="10"
+        <text x="448" y="321" font-family="ui-monospace,monospace" font-size="10"
               fill="currentColor" fill-opacity=".55">skipped entirely if the CLI is missing</text>
       </svg>
       <figcaption class="cap">
@@ -536,7 +546,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
         <figcaption>Weekly recap</figcaption>
       </figure>
     </div>
-    <p class="note" style="margin-top:24px;text-align:center">
+    <p class="note" style="margin-top:20px;text-align:center">
       Sample data. EOD builds these from your own activity, on your Mac.
     </p>
   </div>
@@ -632,7 +642,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
       for the two lines to add instead.
     </p>
 
-    <h3 style="margin-top:48px">What you need</h3>
+    <h3 style="margin-top:32px">What you need</h3>
     <dl class="rows">
       <div class="row">
         <dt>Hammerspoon <span class="req">required</span></dt>
