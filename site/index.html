@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EOD — Your whole work day, printed as a receipt.</title>
-<meta name="description" content="A tiny macOS desktop widget, styled as a printed receipt, that shows everything you got done that day. Local-first, no API keys.">
+<meta name="description" content="A macOS desktop widget, styled as a printed receipt, that rebuilds everything you got done today from files already on your Mac. Local-first, no API keys.">
 <meta name="color-scheme" content="light dark">
 
 <meta property="og:title" content="EOD — Your whole work day, printed as a receipt.">
@@ -17,51 +17,45 @@
 
 <style>
 /* ============================================================
-   EOD site
-   Structure, spacing, type scale, shape and elevation: Ollama.
-   Surfaces, ink and text ramp: Claude (replaces Ollama's pure
-   white / pure black / cool grays, which clash with the cream
-   receipt and forbid the product's own accent).
-   Accent, paper and mono micro-labels: EOD's own tokens.
+   EOD
+   Skeleton, spacing, shape and elevation: Ollama DESIGN.md.
+   Surfaces, ink and text ramp: Claude DESIGN.md, which replaces
+   Ollama's pure white / pure black / cool grays. Those clash with
+   the cream receipt and forbid the product's own accent.
+   Accent, paper and mono micro-labels: EOD's own tokens, lifted
+   from extract.py.
    ============================================================ */
 
 :root{
-  /* --- surfaces: Claude, in place of Ollama #ffffff / #fafafa --- */
   --canvas:#faf9f5;
   --surface-soft:#efe9de;
   --surface-dark:#181715;
-  --surface-dark-el:#252320;
   --on-dark:#faf9f5;
+  --on-dark-mute:#a9a49b;
 
-  /* --- text ramp: Claude warm, in place of Ollama #000 / #737373 / #525252 --- */
   --ink:#141413;
   --body:#3d3d3a;
   --charcoal:#6c6a64;
   --mute:#8f8b83;
 
-  /* --- rules: Claude hairline, in place of Ollama #e5e5e5 --- */
   --hairline:#e6dfd8;
   --hairline-strong:#d8cfc4;
 
-  /* --- the one permitted brand colour: EOD's stamp red (Claude coral family) --- */
-  --accent:#bf3d1f;
+  --accent:#bf3d1f;          /* EOD stamp red, Claude coral family */
+  --accent-soft:#f6e7e1;
 
-  /* --- the product's own paper, used only where a receipt is depicted --- */
   --paper:#f3ecdd;
-  --paper-line:#cdc2aa;
-  --paper-ink:#2a2620;
 
-  /* --- Ollama spacing scale, 8px base --- */
   --xxs:2px; --xs:4px; --sm:8px; --md:12px; --lg:16px; --xl:24px; --xxl:32px;
   --section:88px;
 
-  /* --- Ollama radius scale --- */
   --r-sm:6px; --r-lg:12px; --r-full:9999px;
 
   --sans:ui-sans-serif,system-ui,-apple-system,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Courier New",monospace;
 
-  --col:720px;
+  --col:720px;      /* Ollama reading column, for prose */
+  --col-wide:1060px;/* Claude hero width, for the two figure sections */
 }
 
 @media (prefers-color-scheme:dark){
@@ -69,148 +63,195 @@
     --canvas:#181715;
     --surface-soft:#252320;
     --surface-dark:#0f0e0d;
-    --surface-dark-el:#1c1b19;
     --ink:#faf9f5;
     --body:#c9c5bd;
     --charcoal:#a9a49b;
     --mute:#7d786f;
     --hairline:#302d29;
     --hairline-strong:#3d3a35;
-    --accent:#cc785c; /* Claude coral: #bf3d1f goes muddy on a dark surface */
+    --accent:#cc785c;        /* Claude coral: #bf3d1f goes muddy on dark */
+    --accent-soft:#2e2320;
   }
 }
 
 *,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{
-  margin:0;
-  background:var(--canvas);
-  color:var(--body);
-  font-family:var(--sans);
-  font-size:16px;
-  line-height:1.5;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
+  margin:0;background:var(--canvas);color:var(--body);
+  font-family:var(--sans);font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
 }
 
-/* Ollama: sections are separated by air, never by decorative dividers
-   and never by coloured bands. No shadows anywhere in the system. */
 .wrap{max-width:var(--col);margin:0 auto;padding:0 var(--xl)}
+.wrap-wide{max-width:var(--col-wide);margin:0 auto;padding:0 var(--xl)}
 section{padding-block:var(--section)}
 section + section{padding-top:0}
 
 h1,h2,h3{color:var(--ink);margin:0;text-wrap:balance}
-h1{font-size:36px;font-weight:500;line-height:1.11;letter-spacing:-.4px}
-h2{font-size:30px;font-weight:500;line-height:1.2;letter-spacing:-.2px}
-h3{font-size:20px;font-weight:500;line-height:1.4}
+h1{font-size:40px;font-weight:500;line-height:1.1;letter-spacing:-.8px}
+h2{font-size:30px;font-weight:500;line-height:1.2;letter-spacing:-.3px}
+h3{font-size:17px;font-weight:500;line-height:1.4}
 p{margin:0 0 var(--lg)}
 p:last-child{margin-bottom:0}
 a{color:var(--ink);text-underline-offset:3px;text-decoration-thickness:1px}
 a:hover{color:var(--accent)}
 
-/* The widget's own signature: uppercase mono micro-label on wide tracking.
-   This is the accent's main job on the page. */
 .eyebrow{
-  font-family:var(--mono);
-  font-size:11px;
-  font-weight:400;
-  letter-spacing:3px;
-  text-transform:uppercase;
-  color:var(--accent);
+  font-family:var(--mono);font-size:11px;font-weight:400;
+  letter-spacing:3px;text-transform:uppercase;color:var(--accent);
   margin:0 0 var(--md);
 }
-.lede{font-size:18px;line-height:1.56;color:var(--body);max-width:60ch}
-.note{font-size:14px;line-height:1.43;color:var(--charcoal)}
+.lede{font-size:18px;line-height:1.56;color:var(--body)}
+.note{font-size:14px;line-height:1.5;color:var(--charcoal)}
+.deck{margin-top:var(--md);max-width:58ch}
 
-/* ---------- nav: 56px, zero radius ---------- */
+/* ---------- nav ---------- */
 nav{
-  height:56px;
-  display:flex;
-  align-items:center;
-  gap:var(--xl);
-  max-width:var(--col);
-  margin:0 auto;
-  padding:0 var(--xl);
+  height:56px;display:flex;align-items:center;gap:var(--xl);
+  max-width:var(--col-wide);margin:0 auto;padding:0 var(--xl);
 }
 .mark{
-  font-family:var(--mono);
-  font-size:15px;
-  font-weight:600;
-  letter-spacing:4px;
-  color:var(--ink);
-  text-decoration:none;
-  margin-right:auto;
+  font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:4px;
+  color:var(--ink);text-decoration:none;margin-right:auto;
 }
 .mark b{color:var(--accent);font-weight:600}
 .navlinks{display:flex;gap:var(--xl);align-items:center}
 .navlinks a{font-size:14px;color:var(--charcoal);text-decoration:none}
 .navlinks a:hover{color:var(--ink)}
 
-/* ---------- buttons: every interactive element is a pill ---------- */
+/* ---------- buttons ---------- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:var(--sm);
   height:36px;padding:8px 20px;border-radius:var(--r-full);
-  font-family:var(--sans);font-size:14px;font-weight:500;line-height:1;
-  text-decoration:none;border:1px solid transparent;cursor:pointer;
-  transition:background-color .12s ease,border-color .12s ease;
+  font-size:14px;font-weight:500;line-height:1;text-decoration:none;
+  border:1px solid transparent;cursor:pointer;
+  transition:background-color .12s ease,border-color .12s ease,color .12s ease;
 }
-/* Ollama keeps the primary CTA a plain ink pill. The accent stays off it,
-   so introducing one brand colour does not become a licence to spend it. */
+/* Ollama keeps the primary CTA a plain ink pill. Keeping the accent off it is
+   what stops one brand colour from becoming a licence to spend it. */
 .btn-primary{background:var(--ink);color:var(--canvas)}
 .btn-primary:hover{background:var(--body);color:var(--canvas)}
 .btn-secondary{background:transparent;border-color:var(--hairline-strong);color:var(--ink)}
-.btn-secondary:hover{border-color:var(--ink);color:var(--ink)}
+.btn-secondary:hover{border-color:var(--ink)}
 
-/* ---------- install snippet: 48px pill, mono ---------- */
+/* ---------- install snippet ---------- */
 .snippet{
   display:flex;align-items:center;gap:var(--md);
   min-height:48px;padding:12px 20px;
   background:var(--surface-soft);border-radius:var(--r-full);
-  font-family:var(--mono);font-size:15px;line-height:1.5;color:var(--ink);
+  font-family:var(--mono);font-size:14px;line-height:1.5;color:var(--ink);
   overflow-x:auto;
 }
 .snippet code{white-space:pre;flex:1}
 .snippet button{
-  flex:none;background:none;border:0;padding:4px 6px;cursor:pointer;
+  flex:none;background:none;border:0;padding:4px 8px;cursor:pointer;
   font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
   color:var(--charcoal);border-radius:var(--r-full);
 }
 .snippet button:hover{color:var(--accent)}
 
-.cta-row{display:flex;flex-wrap:wrap;gap:var(--md);align-items:center;margin-top:var(--xl)}
+/* ---------- hero: product visible on arrival ---------- */
+.hero{padding-top:var(--xxl)}
+/* Top-aligned, not centred: the receipt is ~2.8x taller than it is wide, and
+   centring it against short copy opens a dead gap above the headline. */
+.hero-grid{display:grid;grid-template-columns:1fr 250px;gap:64px;align-items:start}
+.hero-copy{padding-top:var(--xl)}
+.hero-copy .cta-row{display:flex;flex-wrap:wrap;gap:var(--md);margin-top:var(--xl)}
+.hero-shot{position:relative}
+.hero-shot img{
+  display:block;width:100%;height:auto;border-radius:var(--r-sm);
+}
+.hero-shot figcaption{
+  font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--mute);text-align:center;margin-top:var(--md);
+}
+.hero-meta{
+  margin-top:var(--xxl);padding-top:var(--lg);
+  border-top:1px solid var(--hairline);
+  font-family:var(--mono);font-size:11px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--mute);
+}
+.hero-meta i{font-style:normal;color:var(--hairline-strong);padding:0 var(--sm)}
 
-/* ---------- the single inverted "look here" moment ---------- */
-/* Ollama reserves exactly one dark surface per page. Spent here, because the
-   widget genuinely sits on a dark desk (--surface #14151a in extract.py). */
+/* ---------- figure / diagram ---------- */
+figure{margin:0}
+.diagram{
+  margin-top:var(--xl);padding:var(--xl);
+  border:1px solid var(--hairline);border-radius:var(--r-lg);
+  background:var(--surface-soft);
+}
+.diagram svg{display:block;width:100%;height:auto;color:var(--ink)}
+/* var() is not substituted inside SVG presentation attributes, so the accent
+   reaches the drawing by re-pointing currentColor on a group instead. */
+.diagram .ac{color:var(--accent)}
+.diagram marker.m-accent path{fill:var(--accent)}
+figcaption.cap{
+  margin-top:var(--lg);font-size:14px;line-height:1.5;color:var(--charcoal);
+  max-width:64ch;
+}
+.scroll-hint{
+  display:none;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--mute);margin-top:var(--md);
+}
+
+/* ---------- source grid (replaces the old 5-row table) ---------- */
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--lg);margin-top:var(--xl)}
+.card{
+  border:1px solid var(--hairline);border-radius:var(--r-lg);
+  padding:var(--xl);background:transparent;
+}
+.card .tag{
+  display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--accent);
+  background:var(--accent-soft);border-radius:var(--r-full);
+  padding:3px 10px;margin-bottom:var(--md);
+}
+.card h3{margin-bottom:var(--sm)}
+.card p{font-size:14px;line-height:1.5;color:var(--charcoal);margin:0}
+.card code{font-size:12px}
+
+/* ---------- feature grid ---------- */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--xl) var(--xxl);margin-top:var(--xl)}
+.feat h3{margin-bottom:var(--xs)}
+.feat p{font-size:14px;line-height:1.5;color:var(--charcoal);margin:0}
+.feat .n{
+  font-family:var(--mono);font-size:11px;color:var(--accent);
+  letter-spacing:1px;display:block;margin-bottom:var(--sm);
+}
+
+/* ---------- dark specimen band: Ollama's single inverted moment ---------- */
 .specimen{background:var(--surface-dark);padding-block:var(--section);margin-block:var(--section)}
 .specimen + section{padding-top:0}
-.specimen .eyebrow{color:var(--accent)}
-.specimen h2,.specimen p{color:var(--on-dark)}
-.specimen .note{color:#a9a49b}
-/* Bottom-aligned so the two captions land on one line despite the
-   receipts having very different aspect ratios. */
-.shots{
-  display:flex;gap:var(--xxl);align-items:flex-end;justify-content:center;
-  margin-top:var(--xxl);
-}
-.shots img{
-  display:block;max-width:100%;height:auto;
-  border-radius:var(--r-sm);
-}
-.shot-brief{width:236px;flex:none}
-.shot-weekly{width:396px;flex:none}
-.shots figure{margin:0}
+.specimen h2{color:var(--on-dark)}
+.specimen .note{color:var(--on-dark-mute)}
+.shots{display:flex;gap:var(--xxl);align-items:flex-end;justify-content:center;margin-top:var(--xxl)}
+.shots img{display:block;max-width:100%;height:auto;border-radius:var(--r-sm)}
+.shot-brief{width:230px;flex:none}
+.shot-weekly{width:400px;flex:none}
 .shots figcaption{
-  font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;
-  color:#7d786f;margin-top:var(--md);text-align:center;
+  font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--on-dark-mute);margin-top:var(--md);text-align:center;
 }
 
-/* ---------- spec rows: hairline only, no vertical rules ---------- */
+/* ---------- controls: compact glyph grid, not an 11-row wall ---------- */
+.keys{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sm) var(--xxl);margin-top:var(--xl)}
+.keyrow{
+  display:flex;align-items:center;gap:var(--lg);
+  padding:10px 0;border-bottom:1px solid var(--hairline);
+}
+kbd{
+  flex:none;min-width:74px;text-align:center;
+  font-family:var(--mono);font-size:12px;color:var(--ink);
+  background:var(--surface-soft);border-radius:var(--r-sm);
+  padding:5px 8px;
+}
+.keyrow span{font-size:14px;color:var(--charcoal)}
+
+/* ---------- spec rows: for the one section that is genuinely tabular ---------- */
 .rows{border-top:1px solid var(--hairline);margin-top:var(--xl)}
 .row{
-  display:grid;grid-template-columns:170px 1fr;gap:var(--lg);
-  padding:var(--lg) 0;border-bottom:1px solid var(--hairline);
-  align-items:baseline;
+  display:grid;grid-template-columns:180px 1fr;gap:var(--lg);
+  padding:var(--lg) 0;border-bottom:1px solid var(--hairline);align-items:baseline;
 }
 .row dt{
   font-family:var(--mono);font-size:12px;font-weight:500;
@@ -220,88 +261,59 @@ nav{
 .row dd em{font-style:normal;color:var(--charcoal)}
 .row .req{color:var(--accent)}
 
-/* ---------- feature list: checkless bullets, 8px rhythm ---------- */
-.bullets{list-style:none;margin:var(--xl) 0 0;padding:0}
-.bullets li{
-  position:relative;padding-left:var(--xl);margin-bottom:var(--md);
-  font-size:15px;line-height:1.5;color:var(--body);
-}
-.bullets li::before{
-  content:"";position:absolute;left:2px;top:.6em;
-  width:5px;height:5px;background:var(--accent);
-}
-.bullets b{color:var(--ink);font-weight:500}
-
-/* ---------- terminal card: 12px radius, hairline, traffic lights ---------- */
-.terminal{
-  border:1px solid var(--hairline);border-radius:var(--r-lg);
-  background:var(--surface-soft);padding:var(--lg);margin-top:var(--xl);
-}
-.dots{display:flex;gap:var(--sm);margin-bottom:var(--md)}
-.dots i{width:12px;height:12px;border-radius:var(--r-full);display:block}
-.dots i:nth-child(1){background:#ff5f56}
-.dots i:nth-child(2){background:#ffbd2e}
-.dots i:nth-child(3){background:#27c93f}
-.terminal pre{
-  margin:0;font-family:var(--mono);font-size:13px;line-height:1.43;
-  color:var(--paper-ink);overflow-x:auto;
-}
-@media (prefers-color-scheme:dark){.terminal pre{color:var(--body)}}
-
-/* Inline code chips: 6px radius per the scale. */
-code{font-family:var(--mono);font-size:.92em}
-:not(pre):not(.snippet) > code{
-  background:var(--surface-soft);border-radius:var(--r-sm);padding:2px 6px;color:var(--ink);
-}
+/* ---------- statement ---------- */
+.statement{border-left:2px solid var(--accent);padding:var(--xs) 0 var(--xs) var(--xl);margin-top:var(--xl)}
+.statement strong{color:var(--ink);font-weight:500}
 
 /* ---------- steps ---------- */
 .steps{counter-reset:s;list-style:none;margin:var(--xl) 0 0;padding:0}
 .steps li{counter-increment:s;position:relative;padding-left:var(--xxl);margin-bottom:var(--xl)}
 .steps li::before{
-  content:counter(s);position:absolute;left:0;top:0;
-  font-family:var(--mono);font-size:12px;color:var(--mute);
+  content:counter(s);position:absolute;left:0;top:1px;
+  font-family:var(--mono);font-size:12px;color:var(--accent);
 }
 .steps p{margin-bottom:var(--md)}
 
-/* ---------- the local-first statement ---------- */
-.statement{
-  border-left:2px solid var(--accent);
-  padding:var(--xs) 0 var(--xs) var(--xl);
-  margin-top:var(--xl);
+code{font-family:var(--mono);font-size:.92em}
+:not(pre):not(.snippet) > code{
+  background:var(--surface-soft);border-radius:var(--r-sm);padding:2px 6px;color:var(--ink);
 }
-.statement strong{color:var(--ink);font-weight:500}
 
-/* ---------- footer: zero radius, centred 12px links ---------- */
-footer{
-  border-top:1px solid var(--hairline);
-  margin-top:var(--section);
-  padding:var(--xxl) var(--xl);
-  text-align:center;
-}
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:var(--xxl) var(--xl);text-align:center}
 .footlinks{display:flex;flex-wrap:wrap;gap:var(--lg);justify-content:center;margin-bottom:var(--md)}
 .footlinks a{font-size:14px;color:var(--charcoal);text-decoration:none}
 .footlinks a:hover{color:var(--ink)}
 .copy{font-size:12px;line-height:1.33;color:var(--mute);margin:0}
 
 /* ---------- responsive: 88 -> 64 -> 48 ---------- */
-@media (max-width:850px){
+@media (max-width:960px){
   :root{--section:64px}
-  .shots{gap:var(--xl)}
+  .hero-grid{grid-template-columns:1fr 250px;gap:40px}
+  .grid-3{grid-template-columns:1fr 1fr}
   .shot-weekly{width:340px}
 }
 @media (max-width:768px){
+  .hero-grid{grid-template-columns:1fr;gap:var(--xxl)}
+  .hero-shot{max-width:260px;margin:0 auto}
+  .grid-2,.keys{grid-template-columns:1fr}
   .shots{flex-direction:column;align-items:center}
-  .shot-brief,.shot-weekly{width:min(100%,320px)}
+  .shot-brief,.shot-weekly{width:min(100%,300px)}
   .row{grid-template-columns:1fr;gap:var(--xs)}
+  /* The five-stage flow cannot compress to phone width without the labels
+     going unreadable, so the figure scrolls inside its own box instead. */
+  .diagram{padding:var(--lg);overflow-x:auto}
+  .diagram svg{min-width:800px}
+  .scroll-hint{display:block}
 }
 @media (max-width:640px){
   :root{--section:48px}
-  h1{font-size:28px}
+  h1{font-size:30px}
   h2{font-size:24px}
-  .wrap,nav,footer{padding-inline:var(--lg)}
+  .grid-3{grid-template-columns:1fr}
+  .wrap,.wrap-wide,nav,footer{padding-inline:var(--lg)}
   .navlinks{gap:var(--lg)}
   .navlinks .hide-sm{display:none}
-  .snippet{font-size:13px}
 }
 </style>
 </head>
@@ -310,54 +322,217 @@ footer{
 <nav>
   <a class="mark" href="/">E<b>O</b>D</a>
   <div class="navlinks">
+    <a href="#how" class="hide-sm">How it works</a>
     <a href="#sources" class="hide-sm">Sources</a>
     <a href="#install">Install</a>
-    <a href="#controls" class="hide-sm">Controls</a>
     <a href="https://github.com/avinashgaurav/EOD">GitHub</a>
   </div>
 </nav>
 
-<section>
-  <div class="wrap">
-    <p class="eyebrow">Daily work receipt</p>
-    <h1>Your whole work day, printed as a receipt.</h1>
-    <p class="lede" style="margin-top:16px">
-      A tiny macOS desktop widget that shows everything you got done that day: your AI
-      coding sessions, the sites and docs you worked in, the commits you shipped. Grouped
-      and copy-paste ready for a standup, timesheet, or task sheet. It rebuilds itself
-      from files already on your Mac.
-    </p>
-
-    <div class="cta-row">
-      <a class="btn btn-primary" href="#install">Install</a>
-      <a class="btn btn-secondary" href="https://github.com/avinashgaurav/EOD">View source</a>
-    </div>
-
-    <div class="statement">
-      <p class="note"><strong>Local-first, no API keys, no telemetry.</strong>
-      EOD reads local files and writes a receipt to its own <code>cache/</code> folder.
-      One optional exception is described under <a href="#requirements">requirements</a>.</p>
+<!-- ============ HERO: the product is visible on arrival ============ -->
+<section class="hero">
+  <div class="wrap-wide">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">macOS desktop widget</p>
+        <h1>Your whole work day, printed as a receipt.</h1>
+        <p class="lede deck">
+          Everything you got done today: your AI coding sessions, the sites and docs
+          you worked in, the commits you shipped. Grouped and copy-paste ready for a
+          standup, timesheet, or task sheet. It rebuilds itself from files already on
+          your Mac.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#install">Install</a>
+          <a class="btn btn-secondary" href="https://github.com/avinashgaurav/EOD">View source</a>
+        </div>
+        <p class="hero-meta">
+          Local-first <i>·</i> No API keys <i>·</i> No telemetry <i>·</i> MIT <i>·</i> ~3 min setup
+        </p>
+      </div>
+      <figure class="hero-shot">
+        <img src="/screenshots/brief.png" width="720" height="2000" fetchpriority="high"
+             alt="The EOD daily receipt: a cream thermal-paper widget listing the day's work items, screen time and visited sites.">
+        <figcaption>Sample data</figcaption>
+      </figure>
     </div>
   </div>
 </section>
 
+<!-- ============ HOW IT WORKS: the actual mechanism ============ -->
+<section id="how">
+  <div class="wrap-wide">
+    <p class="eyebrow">How it works</p>
+    <h2>Five local sources in, one receipt out.</h2>
+    <p class="note deck">
+      Nothing is uploaded and nothing is indexed in advance. On a timer, the parser
+      re-reads files that already exist on your disk and rewrites the receipt.
+    </p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 980 392" role="img"
+           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. The only step that leaves the machine is the optional AI polish, which crosses the boundary through your existing Claude CLI login.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="ar-a" class="m-accent" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z"/>
+          </marker>
+        </defs>
+
+        <!-- the machine boundary: everything inside stays on disk -->
+        <rect x="8" y="30" width="944" height="234" fill="none"
+              stroke="currentColor" stroke-opacity=".28" stroke-dasharray="5 5"/>
+        <text x="20" y="22" font-family="ui-monospace,monospace" font-size="11"
+              letter-spacing="2" fill="currentColor" fill-opacity=".55">YOUR MAC</text>
+
+        <!-- five sources -->
+        <g font-family="ui-monospace,monospace" font-size="11" fill="currentColor">
+          <rect x="28" y="56" width="176" height="30" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="40" y="75">~/.claude/projects</text>
+          <rect x="28" y="96" width="176" height="30" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="40" y="115">~/.codex</text>
+          <rect x="28" y="136" width="176" height="30" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="40" y="155">git repos</text>
+          <rect x="28" y="176" width="176" height="30" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="40" y="195">work folders</text>
+          <rect x="28" y="216" width="176" height="30" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="40" y="235">browser + app usage</text>
+        </g>
+
+        <!-- convergence bus -->
+        <g stroke="currentColor" stroke-opacity=".5" fill="none">
+          <line x1="204" y1="71"  x2="234" y2="71"/>
+          <line x1="204" y1="111" x2="234" y2="111"/>
+          <line x1="204" y1="151" x2="234" y2="151"/>
+          <line x1="204" y1="191" x2="234" y2="191"/>
+          <line x1="204" y1="231" x2="234" y2="231"/>
+          <line x1="234" y1="71"  x2="234" y2="231"/>
+        </g>
+        <line x1="234" y1="151" x2="276" y2="151" stroke="currentColor" fill="none" marker-end="url(#ar)"/>
+        <text x="255" y="143" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">reads</text>
+
+        <!-- extract.py -->
+        <rect x="278" y="121" width="152" height="60" fill="none" stroke="currentColor"/>
+        <text x="354" y="146" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
+              fill="currentColor" text-anchor="middle">extract.py</text>
+        <text x="354" y="164" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">parse · dedupe · filter</text>
+
+        <line x1="430" y1="151" x2="496" y2="151" stroke="currentColor" fill="none" marker-end="url(#ar)"/>
+        <text x="463" y="143" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">writes</text>
+
+        <!-- cache -->
+        <rect x="498" y="121" width="172" height="60" fill="none" stroke="currentColor"/>
+        <text x="584" y="146" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
+              fill="currentColor" text-anchor="middle">cache/receipt.html</text>
+        <text x="584" y="164" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">self-contained</text>
+
+        <line x1="670" y1="151" x2="736" y2="151" stroke="currentColor" fill="none" marker-end="url(#ar)"/>
+        <text x="703" y="143" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">renders</text>
+
+        <!-- eod.lua -->
+        <rect x="738" y="121" width="176" height="60" fill="none" stroke="currentColor"/>
+        <text x="826" y="146" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
+              fill="currentColor" text-anchor="middle">eod.lua</text>
+        <text x="826" y="164" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">hs.webview overlay</text>
+
+        <!-- the one hop that leaves the machine -->
+        <g class="ac">
+          <line x1="354" y1="181" x2="354" y2="316" stroke="currentColor" stroke-dasharray="5 4"
+                fill="none" marker-end="url(#ar-a)"/>
+          <rect x="278" y="318" width="152" height="46" fill="none" stroke="currentColor"/>
+          <text x="354" y="337" font-family="ui-monospace,monospace" font-size="12" font-weight="600"
+                fill="currentColor" text-anchor="middle">claude CLI</text>
+          <text x="354" y="353" font-family="ui-monospace,monospace" font-size="10"
+                fill="currentColor" fill-opacity=".8" text-anchor="middle">AI polish</text>
+          <text x="448" y="292" font-family="ui-monospace,monospace" font-size="10"
+                letter-spacing="1" fill="currentColor">OPTIONAL · your existing CLI login</text>
+        </g>
+        <text x="448" y="308" font-family="ui-monospace,monospace" font-size="10"
+              fill="currentColor" fill-opacity=".55">skipped entirely if the CLI is missing</text>
+      </svg>
+      <figcaption class="cap">
+        <span class="scroll-hint">Scroll the diagram sideways to see all five stages</span>
+        Everything inside the dashed boundary is a local file read and a local file
+        write. The one highlighted path leaving the box is the only step that leaves your
+        Mac, it is optional, and when the CLI is not logged in the parser falls back to
+        fully offline cleanup.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ SOURCES ============ -->
+<section id="sources">
+  <div class="wrap-wide">
+    <p class="eyebrow">Where it pulls from</p>
+    <h2>Five places you already work.</h2>
+    <p class="note deck">
+      Each line is the work done: the AI-generated session title from Claude Code or
+      Codex, a clean one-liner. No raw prompts.
+    </p>
+
+    <div class="grid-3">
+      <div class="card">
+        <span class="tag">Work</span>
+        <h3>Claude Code + Codex</h3>
+        <p>Your coding sessions, grouped per project, read from their local JSONL transcripts.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Shipped</span>
+        <h3>Git</h3>
+        <p>Commits and PRs, read from repos in your work folders.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Docs</span>
+        <h3>Documents</h3>
+        <p>Decks, docs, sheets and PDFs you created or edited in your work folders.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Web</span>
+        <h3>Browsing</h3>
+        <p>The sites you spent time on, read from Chrome, Brave or Safari history.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Screen time</span>
+        <h3>Apps</h3>
+        <p>Where the hours actually went, read from local app-usage.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Private</span>
+        <h3>Except what you exclude</h3>
+        <p>Add a project name to <code>exclude.txt</code> and it never reaches the receipt.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SPECIMEN: the single dark moment ============ -->
 <div class="specimen">
-  <div class="wrap">
-    <p class="eyebrow">Specimen</p>
+  <div class="wrap-wide">
     <h2>Frameless, transparent, and it prints down.</h2>
-    <p class="note" style="margin-top:12px;max-width:60ch">
+    <p class="note deck">
       Only the cream paper shows on your wallpaper. Drag it by the masthead; it floats
       over full-screen apps, prints down when opened and rolls up when closed.
     </p>
     <div class="shots">
       <figure>
         <img class="shot-brief" src="/screenshots/brief.png" width="720" height="2000"
-             alt="The EOD daily receipt: a cream thermal-paper widget listing work items, screen time and visited sites for a single day.">
+             alt="The daily receipt, listing work items, screen time and visited sites for one day.">
         <figcaption>Daily receipt</figcaption>
       </figure>
       <figure>
         <img class="shot-weekly" src="/screenshots/weekly.png" width="1120" height="1073"
-             alt="The EOD weekly recap: the same paper styling, summarising a week of work grouped by area.">
+             alt="The weekly recap, summarising a week of work grouped by area.">
         <figcaption>Weekly recap</figcaption>
       </figure>
     </div>
@@ -367,107 +542,78 @@ footer{
   </div>
 </div>
 
-<section id="sources">
-  <div class="wrap">
-    <p class="eyebrow">Where it pulls from</p>
-    <h2>Five local sources, one receipt.</h2>
-    <dl class="rows">
-      <div class="row">
-        <dt>Claude Code<br>+ Codex</dt>
-        <dd>Your coding sessions, per project, under <b>WORK</b>.
-          <em>Read from their local JSONL transcripts.</em></dd>
-      </div>
-      <div class="row">
-        <dt>Git</dt>
-        <dd>Shipped commits and PRs. <em>Read from repos in your work folders.</em></dd>
-      </div>
-      <div class="row">
-        <dt>Documents</dt>
-        <dd>Decks, docs, sheets and PDFs you created or edited.
-          <em>Read from your work folders.</em></dd>
-      </div>
-      <div class="row">
-        <dt>Browsing</dt>
-        <dd>The sites you spent time on, under <b>WEB</b>.
-          <em>Read from Chrome, Brave or Safari history.</em></dd>
-      </div>
-      <div class="row">
-        <dt>Apps</dt>
-        <dd><b>SCREEN TIME</b>. <em>Read from local app-usage.</em></dd>
-      </div>
-    </dl>
-    <p class="note" style="margin-top:24px">
-      Each line is the work done: the AI-generated session title from Claude Code or
-      Codex, a clean one-liner. No raw prompts.
-    </p>
-  </div>
-</section>
-
+<!-- ============ FEATURES ============ -->
 <section>
   <div class="wrap">
     <p class="eyebrow">Features</p>
     <h2>Built for the ten minutes before standup.</h2>
-    <ul class="bullets">
-      <li><b>Auto-built daily</b> from your local activity. Rolls over at midnight, refreshes through the day.</li>
-      <li><b>Multi-source.</b> Claude Code and Codex sessions, git commits, documents, browsing and screen time on one receipt.</li>
-      <li><b>Daily receipt and weekly recap</b>, one keystroke from the menu bar.</li>
-      <li><b>Copy all</b>, or copy a single project, straight to the clipboard.</li>
-      <li><b>Edit inline.</b> Fix a line, add one, or delete one before you copy. On the weekly recap your hand-edits stick and survive a re-summarize, unless you force one.</li>
-      <li><b>Browse previous days</b> with the arrows, for back-filling a sheet.</li>
-      <li><b>Hide private projects</b> via an <code>exclude.txt</code> file, for NDA or job-hunt work.</li>
-    </ul>
+    <div class="grid-2">
+      <div class="feat">
+        <span class="n">01</span>
+        <h3>Auto-built daily</h3>
+        <p>Rolls over at midnight and refreshes through the day, from your local activity.</p>
+      </div>
+      <div class="feat">
+        <span class="n">02</span>
+        <h3>Multi-source</h3>
+        <p>Sessions, commits, documents, browsing and screen time on one receipt.</p>
+      </div>
+      <div class="feat">
+        <span class="n">03</span>
+        <h3>Daily and weekly</h3>
+        <p>The recap is one keystroke away from the menu bar.</p>
+      </div>
+      <div class="feat">
+        <span class="n">04</span>
+        <h3>Copy all, or one project</h3>
+        <p>Straight to the clipboard, already formatted for a standup or a sheet.</p>
+      </div>
+      <div class="feat">
+        <span class="n">05</span>
+        <h3>Edit inline</h3>
+        <p>Fix, add or delete a line before you copy. On the weekly recap your hand-edits
+           survive a re-summarize unless you force one.</p>
+      </div>
+      <div class="feat">
+        <span class="n">06</span>
+        <h3>Browse previous days</h3>
+        <p>Step back through the week when you are back-filling a timesheet.</p>
+      </div>
+    </div>
   </div>
 </section>
 
-<section id="requirements">
+<!-- ============ PRIVACY ============ -->
+<section>
   <div class="wrap">
-    <p class="eyebrow">Requirements &amp; permissions</p>
-    <h2>Two required pieces, both free.</h2>
-    <p class="lede" style="margin-top:16px;font-size:16px">
-      Both are most likely already on your Mac. The rest just determines what shows up
-      on the receipt.
+    <p class="eyebrow">Privacy</p>
+    <h2>It reads. It does not send.</h2>
+    <p class="lede deck" style="font-size:16px">
+      EOD reads local files and writes a receipt to its own <code>cache/</code> folder.
+      There are no API keys and no telemetry.
     </p>
-    <dl class="rows">
-      <div class="row">
-        <dt>Hammerspoon <span class="req">required</span></dt>
-        <dd>The free automation app that hosts and draws the widget.
-          <em>Grant Accessibility in System Settings, Privacy &amp; Security, Accessibility.
-          Needed for dragging and the hotkey.</em></dd>
-      </div>
-      <div class="row">
-        <dt>python3 <span class="req">required</span></dt>
-        <dd>Runs <code>extract.py</code>, the parser behind the receipt. Check with
-          <code>python3 --version</code>.
-          <em>No permission needed. Looked up in /opt/homebrew/bin, /usr/local/bin, /usr/bin.</em></dd>
-      </div>
-      <div class="row">
-        <dt>Claude Code / Codex</dt>
-        <dd>EOD reads their local JSONL transcripts for the WORK section. Use at least one.
-          <em>No permission needed. It only reads files already on your Mac.</em></dd>
-      </div>
-      <div class="row">
-        <dt>Browser history</dt>
-        <dd>Powers the WEB section. Chrome and Brave are automatic.
-          <em>Safari history may need Full Disk Access for the Hammerspoon process.</em></dd>
-      </div>
-    </dl>
-
     <div class="statement">
       <p class="note">
-        The one exception to local-only is the <strong>optional AI-polish</strong> step.
+        <strong>The one exception is the optional AI-polish step.</strong>
         If your <code>claude</code> CLI is logged in, EOD asks it to rewrite the day into
         crisper, manager-ready bullets. That goes through your existing CLI login, not an
-        API key. Missing CLI? It silently falls back to fully-offline cleanup.
+        API key. Missing CLI? It silently falls back to fully-offline cleanup. This is the
+        one path that crosses the boundary in the diagram above.
       </p>
     </div>
   </div>
 </section>
 
+<!-- ============ INSTALL ============ -->
 <section id="install">
   <div class="wrap">
     <p class="eyebrow">Install</p>
     <h2>About three minutes.</h2>
     <ol class="steps">
+      <li>
+        <p>Install <a href="https://www.hammerspoon.org/">Hammerspoon</a>, the free
+        automation app that hosts the widget, and grant it Accessibility when it asks.</p>
+      </li>
       <li>
         <p>Don't already use Hammerspoon? Drop EOD straight into its config.</p>
         <div class="snippet">
@@ -480,72 +626,58 @@ footer{
         The receipt prints down in the top-right.</p>
       </li>
     </ol>
-    <p class="note" style="margin-top:8px">
+    <p class="note">
       Already have an <code>init.lua</code>? Don't overwrite it. See
       <a href="https://github.com/avinashgaurav/EOD/blob/main/INSTALL.md">INSTALL.md</a>
       for the two lines to add instead.
     </p>
-  </div>
-</section>
 
-<section id="controls">
-  <div class="wrap">
-    <p class="eyebrow">Controls</p>
-    <h2>Everything is on the paper.</h2>
+    <h3 style="margin-top:48px">What you need</h3>
     <dl class="rows">
-      <div class="row"><dt>Show / hide</dt><dd>Menu-bar <b>▤</b>, or <code>⌥⌃⌘W</code></dd></div>
-      <div class="row"><dt>Hide</dt><dd>The <b>✕</b> on the receipt</dd></div>
-      <div class="row"><dt>Move it</dt><dd>Drag the <b>EOD</b> masthead</dd></div>
-      <div class="row"><dt>Copy the day</dt><dd><b>⎙ Copy all</b></dd></div>
-      <div class="row"><dt>Copy one project</dt><dd>The <b>⧉</b> on that project</dd></div>
-      <div class="row"><dt>Edit lines</dt><dd><b>✎</b> on the WORK or weekly header, then <b>💾</b> to save</dd></div>
-      <div class="row"><dt>Add a line</dt><dd><b>＋</b> on the WORK or weekly header</dd></div>
-      <div class="row"><dt>Delete a line</dt><dd>The <b>✕</b> beside a line, while editing</dd></div>
-      <div class="row"><dt>Re-summarize</dt><dd><b>⟳</b>. On the weekly recap this re-polishes, discarding hand-edits</dd></div>
-      <div class="row"><dt>Previous / next day</dt><dd><b>◀ ▶</b></dd></div>
-      <div class="row"><dt>Refresh</dt><dd><b>↻</b></dd></div>
+      <div class="row">
+        <dt>Hammerspoon <span class="req">required</span></dt>
+        <dd>Hosts and draws the widget.
+          <em>Grant Accessibility in System Settings, Privacy &amp; Security, Accessibility.
+          Needed for dragging and the hotkey.</em></dd>
+      </div>
+      <div class="row">
+        <dt>python3 <span class="req">required</span></dt>
+        <dd>Runs <code>extract.py</code>. Check with <code>python3 --version</code>.
+          <em>Looked up in /opt/homebrew/bin, /usr/local/bin, /usr/bin.</em></dd>
+      </div>
+      <div class="row">
+        <dt>Claude Code / Codex</dt>
+        <dd>Use at least one, for the WORK section.
+          <em>No permission needed. It only reads files already on your Mac.</em></dd>
+      </div>
+      <div class="row">
+        <dt>Browser history</dt>
+        <dd>Powers the WEB section. Chrome and Brave are automatic.
+          <em>Safari may need Full Disk Access for the Hammerspoon process.</em></dd>
+      </div>
     </dl>
   </div>
 </section>
 
-<section>
+<!-- ============ CONTROLS ============ -->
+<section id="controls">
   <div class="wrap">
-    <p class="eyebrow">How it works</p>
-    <h2>Two files.</h2>
-    <ul class="bullets">
-      <li><b>extract.py</b> parses every Claude Code and Codex <code>*.jsonl</code>
-        transcript for the target day, takes each session's AI title, de-dupes per
-        project, folds in git commits, documents, browser history and app usage, filters
-        noise, and writes a self-contained receipt HTML to <code>cache/</code>.</li>
-      <li><b>eod.lua</b> is a Hammerspoon module that renders that HTML in a frameless
-        <code>hs.webview</code>, runs the engine on a timer, and handles copy, navigation,
-        dragging and animation.</li>
-    </ul>
-
-    <div class="terminal">
-      <div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
-      <pre>✂ ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-         E O D
-    DAILY WORK RECEIPT
-────────────────────────
-DATE ......... Wed, Jun 24 2026
-◀ PREV  NEXT ▶  ↻
-════════════════════════
-EOD ................. ×2
-  • Build the daily EOD widget     09:12
-  • Add the print/roll animation   15:30
-GIT-CITY ............ ×1
-  • Repo → 3D city skyline         11:55
-────────────────────────
-PROJECTS ............ 2
-WORK ITEMS .......... 3
-════════════════════════
-     *** END OF DAY ***
-     ▌▏▌▎▌▌▏▎▌▏▌▎▌
-      [ ⎙ COPY ALL ]
-✂ ________________________</pre>
+    <p class="eyebrow">Controls</p>
+    <h2>Everything is on the paper.</h2>
+    <div class="keys">
+      <div class="keyrow"><kbd>⌥⌃⌘W</kbd><span>Show / hide</span></div>
+      <div class="keyrow"><kbd>▤</kbd><span>Menu-bar toggle</span></div>
+      <div class="keyrow"><kbd>✕</kbd><span>Hide the receipt</span></div>
+      <div class="keyrow"><kbd>drag</kbd><span>Move it by the masthead</span></div>
+      <div class="keyrow"><kbd>⎙</kbd><span>Copy the whole day</span></div>
+      <div class="keyrow"><kbd>⧉</kbd><span>Copy one project</span></div>
+      <div class="keyrow"><kbd>✎</kbd><span>Edit lines, then 💾 to save</span></div>
+      <div class="keyrow"><kbd>＋</kbd><span>Add a line</span></div>
+      <div class="keyrow"><kbd>⟳</kbd><span>Re-summarize</span></div>
+      <div class="keyrow"><kbd>◀ ▶</kbd><span>Previous / next day</span></div>
+      <div class="keyrow"><kbd>↻</kbd><span>Refresh</span></div>
+      <div class="keyrow"><kbd>✕</kbd><span>Delete a line, while editing</span></div>
     </div>
-    <p class="note" style="margin-top:16px">The same receipt, as plain text.</p>
   </div>
 </section>
 
