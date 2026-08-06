@@ -50,10 +50,29 @@ Then Reload Config.
 It starts automatically at login (Hammerspoon launches at login by default —
 Hammerspoon Preferences → "Launch Hammerspoon at login").
 
-## Hide private projects (optional)
+## Optional configuration
 
-To keep certain projects off the receipt (client / NDA / job-hunt work), copy
-`exclude.txt.example` to `exclude.txt` and add one project name per line.
+All three files live next to `extract.py` and none exist by default.
+
+**Hide private projects.** To keep certain projects off the receipt (client /
+NDA / job-hunt work), copy `exclude.txt.example` to `exclude.txt` and add one
+project name per line.
+
+**Add git repos outside the default folders.** EOD looks for repos in
+`~/Desktop`, `~/Documents`, `~/code`, `~/dev`, `~/projects`, `~/work` and
+`~/repos`. To include one somewhere else, add its path to `repos.txt`, one per
+line. Lines starting with `#` are ignored.
+
+**Turn the AI polish off entirely.** By default, if your `claude` CLI is logged
+in, EOD asks it to rewrite the day into crisper bullets. To disable that for
+good and keep EOD fully offline, create an empty `polish.off` file:
+
+```sh
+touch ~/.hammerspoon/polish.off
+```
+
+Its contents don't matter; only its presence. With it there, EOD never shells
+out to the CLI and always uses the offline cleanup path.
 
 ## Notes / troubleshooting
 

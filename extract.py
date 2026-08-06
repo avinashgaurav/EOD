@@ -164,10 +164,36 @@ def local_date_of(ts):
 
 CODEX_ROOT = os.path.expanduser("~/.codex/sessions")
 
+# A transcript whose mtime predates the target day cannot hold a row for that day,
+# because mtime only moves forward. Skipping those files whole means we stop
+# re-reading the entire history on every run: once you have a few months of
+# sessions that is the overwhelming majority of the corpus, and it grows weekly.
+SCAN_MARGIN = 3600        # absorbs clock skew and coarse mtime, costs ~nothing
+
+
+def _scan_floor(target):
+    """Earliest mtime a file can have and still contain rows for `target`."""
+    try:
+        return time.mktime(time.strptime(target, "%Y-%m-%d")) - SCAN_MARGIN
+    except Exception:
+        return 0.0        # unparseable date -> fall back to scanning everything
+
+
+def _predates(path, floor):
+    if not floor:
+        return False
+    try:
+        return os.path.getmtime(path) < floor
+    except OSError:
+        return False      # cannot stat -> let the reader try, same as before
+
 
 def add_codex(projects, target):
     """Merge OpenAI Codex sessions for `target` into the projects dict (same shape as Claude)."""
+    floor = _scan_floor(target)
     for f in glob.glob(os.path.join(CODEX_ROOT, "*", "*", "*", "rollout-*.jsonl")):
+        if _predates(f, floor):
+            continue
         cwd, title, rows = None, None, []
         try:
             for line in open(f, errors="replace"):
@@ -230,7 +256,10 @@ def add_codex(projects, target):
 def build(target):
     # project -> session_id -> {title, file, prompts:[(hm,text)], start, end}
     projects = {}
+    floor = _scan_floor(target)
     for f in glob.glob(os.path.join(ROOT, "*", "*.jsonl")):
+        if _predates(f, floor):
+            continue
         pn = proj_name(f)
         if is_excluded(pn):
             continue
