@@ -39,7 +39,12 @@ class TestSnapshot(TranscriptCase):
             user_line("trace why the webhook retries twice", DAY, "15:30"),
         ], mtime_date=DAY)
         data = self.ex.build(DAY)
-        data["generated_at"] = "2026-08-06 17:00:00"   # the only wall-clock field
+        # Everything that would otherwise make this snapshot depend on the machine
+        # or the calendar. CI has no global git user.name, so SIG differs there;
+        # the date picker's max is today, so it would drift every midnight.
+        data["generated_at"] = "2026-08-06 17:00:00"
+        data["_today"] = "2026-08-07"
+        self.ex.SIG = "XY"
         return data
 
     def _check(self, name, actual):
