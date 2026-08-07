@@ -1,8 +1,7 @@
 """WEB: what you read, from local browser history."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import os, glob, sqlite3, shutil, tempfile
+from datetime import datetime
 
 from ..util import _day_epoch, _is_personal, host_of, oneline
 from ..config import CHROME_EPOCH, SAFARI_EPOCH, WEB_MAX_DOMAINS, WEB_TITLES_PER

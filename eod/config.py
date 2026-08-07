@@ -1,9 +1,7 @@
 """Paths, user config files and display limits. Everything tunable in one place."""
 
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import os, html, re, time, subprocess
 # The project root, i.e. the directory holding extract.py. Config files and the
 # cache live beside it, NOT beside this module: eod.lua and every existing
 # install address them by that path, so resolving them relative to the package

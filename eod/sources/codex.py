@@ -1,8 +1,6 @@
 """WORK: OpenAI Codex rollouts, merged into the same project buckets."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import json, os, glob, re
 
 from ..util import _cwd_key, _predates, _scan_floor, is_noise, local_date_of, oneline
 from ..config import CODEX_ROOT, is_excluded

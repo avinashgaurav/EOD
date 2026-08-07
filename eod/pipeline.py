@@ -1,8 +1,7 @@
 """Assembles one day from every source. The only module that knows them all."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import os
+from datetime import datetime
 
 from .util import pretty_project
 from .sources.claude import read_sessions
