@@ -184,3 +184,27 @@ def to_text_weekly(data):
             for it in g["items"]:
                 L.append("  - " + it)
     return "\n".join(L).rstrip() + "\n"
+
+
+def to_markdown(data):
+    """The day as markdown, for pasting into a PR description, doc or issue.
+
+    Deliberately plain: headings and bullets only, no tables, so it survives
+    wherever it is pasted.
+    """
+    L = ["## %s" % pretty_date(data["date"]), ""]
+    if data.get("highlights"):
+        L += ["- %s" % h for h in data["highlights"]] + [""]
+    elif data.get("projects"):
+        for p in data["projects"]:
+            L.append("### %s" % p["name"])
+            L += ["- %s" % it["text"] for it in display_items(p)]
+            L.append("")
+    else:
+        w = parse_warning(data)
+        L += ["_%s_" % (w or "No activity recorded for this day."), ""]
+    if data.get("commits"):
+        L.append("### Shipped")
+        L += ["- `%s` %s" % (c["repo"], c["subject"]) for c in data["commits"]]
+        L.append("")
+    return "\n".join(L).rstrip() + "\n"

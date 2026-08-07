@@ -180,6 +180,61 @@ top-right. (Already have an `init.lua`? Don't overwrite it — see INSTALL.md.)
 - **`eod.lua`** is a Hammerspoon module that renders that HTML in a frameless
   `hs.webview`, runs the engine on a timer, and handles copy / nav / drag / animation.
 
+## Command line
+
+The receipt without the widget, for piping into a standup bot, a timesheet or a
+cron job.
+
+```sh
+bin/eod today              # today's receipt as text
+bin/eod today --md         # markdown, for a PR description or doc
+bin/eod today --json       # the whole day
+bin/eod day 2026-08-01     # any past day
+bin/eod week               # the weekly recap
+bin/eod sources            # what is set up on this machine, and what is not
+bin/eod payload            # what AI-polish would send, without sending it
+```
+
+`--raw` skips the AI-polish step even when it is configured.
+
+## Adding a source
+
+Sources are discovered, not hardcoded, so adding Linear, Jira, Toggl or anything
+else means writing one file. Drop it in `~/.eod/sources/` and it is picked up:
+no fork, no edit to this repo.
+
+```python
+# ~/.eod/sources/linear.py
+from eod.sources.base import Source, register
+
+class LinearSource(Source):
+    name    = "linear"
+    section = "SHIPPED"          # where it shows: WORK, SHIPPED, WEB, SCREEN, DOCS, MEETINGS
+    key     = "linear_issues"    # which field of the day it fills
+    summary = "Issues you moved today"
+    requires = "a LINEAR_API_KEY"
+
+    def available(self):
+        """Is this set up? Must never raise. False means stay quiet."""
+        return bool(os.environ.get("LINEAR_API_KEY"))
+
+    def read(self, date):
+        """Items for the local day. Raise on real failure; the caller reports it."""
+        return [{"id": "ENG-1", "title": "closed the flaky test"}]
+
+register(LinearSource())
+```
+
+The split between `available()` and `read()` is the whole point. A source that
+is not configured says nothing. A source that **is** configured and then fails is
+reported on the receipt, because those two used to look identical from the
+outside, and that is how a broken section can sit there for days looking like a
+quiet one.
+
+Items under a `key` the renderers do not know are kept in `data["extra"]` rather
+than dropped. A plugin that blows up on import is reported and skipped: a
+third-party file cannot stop your receipt building.
+
 ## Tests
 
 No dependencies, same as the tool. Stdlib `unittest`, fixtures written to a temp

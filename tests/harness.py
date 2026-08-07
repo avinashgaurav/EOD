@@ -29,6 +29,7 @@ MODULES = [
     "eod.sources.claude", "eod.sources.codex", "eod.sources.git",
     "eod.sources.web", "eod.sources.apps", "eod.sources.docs",
     "eod.sources.meetings",
+    "eod.sources.base", "eod.sources.builtin",
     "eod.pipeline", "eod.polish", "eod.render.text", "eod.render.html",
     "eod.weekly", "eod.cli",
 ]

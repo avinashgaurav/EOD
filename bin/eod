@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""EOD on the command line, with the widget out of the picture.
+
+The renderers already existed, they just were not reachable without Hammerspoon.
+This makes the day scriptable: pipe it into a standup bot, a timesheet, a cron
+job, anything.
+
+    eod today                 today's receipt as text
+    eod today --json          the whole day as JSON
+    eod today --md            markdown, for pasting into a doc or PR
+    eod day 2026-08-01        any past day
+    eod week                  the weekly recap
+    eod sources               what is set up, what is not, what broke
+    eod payload               exactly what AI-polish would send, sending nothing
+
+extract.py keeps its own flag interface untouched, because eod.lua calls it by
+path and changing that would break every install.
+"""
+
+import argparse
+import json
+import os
+import sys
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, HERE)
+
+from eod.config import CACHE, app_path                      # noqa: E402
+from eod.pipeline import build                              # noqa: E402
+from eod.polish import polish, _polish_input                # noqa: E402
+from eod.render.text import to_text, to_text_full, to_markdown, to_text_weekly  # noqa: E402
+from eod.sources import base as registry                    # noqa: E402
+from eod.weekly import build_weekly                          # noqa: E402
+from datetime import datetime                                # noqa: E402
+
+
+def today_iso():
+    return datetime.now().astimezone().strftime("%Y-%m-%d")
+
+
+def emit_day(date, args):
+    data = build(date)
+    if not args.raw:
+        polish(data)
+    if args.json:
+        json.dump(data, sys.stdout, indent=1, default=str)
+        sys.stdout.write("\n")
+    elif args.md:
+        sys.stdout.write(to_markdown(data) + "\n")
+    elif args.full:
+        sys.stdout.write(to_text_full(data) + "\n")
+    else:
+        sys.stdout.write(to_text(data) + "\n")
+    for p in data.get("source_problems") or []:
+        sys.stderr.write("warning: %s\n" % p)
+    return 0
+
+
+def cmd_sources(args):
+    """What can this machine actually see? The answer used to be unknowable."""
+    rows = []
+    for s in registry.registry():
+        ok = s.safe_available()
+        rows.append((s.name, s.section or "", "yes" if ok else "no",
+                     s.summary if ok else (s.requires or s.summary)))
+    w = max(len(r[0]) for r in rows) if rows else 4
+    print("%-*s  %-9s %-9s %s" % (w, "SOURCE", "SECTION", "AVAILABLE", "NOTE"))
+    for name, section, ok, note in rows:
+        print("%-*s  %-9s %-9s %s" % (w, name, section, ok, note))
+    missing = [r[0] for r in rows if r[2] == "no"]
+    if missing:
+        print("\nnot set up: %s" % ", ".join(missing))
+        print("that is fine; those sections stay empty rather than failing.")
+    plugin_dir = os.environ.get("EOD_SOURCE_DIR") or os.path.expanduser("~/.eod/sources")
+    print("\nplugin directory: %s%s" % (
+        plugin_dir, "" if os.path.isdir(plugin_dir) else "  (does not exist yet)"))
+    return 0
+
+
+def cmd_payload(args):
+    data = build(args.date or today_iso())
+    payload = _polish_input(data)
+    off = os.path.exists(app_path("polish.off"))
+    sys.stderr.write(
+        "# Everything AI-polish would send for %s, via your own claude CLI login.\n"
+        "# Nothing is being sent now. %s\n"
+        "# %d characters. Disable the step for good with: touch polish.off\n\n"
+        % (data["date"],
+           "polish.off is present, so the step is already disabled." if off
+           else "The step is currently ENABLED.", len(payload)))
+    print(payload)
+    return 0
+
+
+def cmd_week(args):
+    data = build_weekly(args.date or today_iso())
+    if args.json:
+        json.dump(data, sys.stdout, indent=1, default=str)
+        sys.stdout.write("\n")
+    else:
+        sys.stdout.write(to_text_weekly(data) + "\n")
+    return 0
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="eod", description=__doc__.split("\n")[0])
+    sub = p.add_subparsers(dest="cmd")
+
+    def day_flags(sp):
+        sp.add_argument("--json", action="store_true", help="the whole day as JSON")
+        sp.add_argument("--md", action="store_true", help="markdown bullets")
+        sp.add_argument("--full", action="store_true", help="the full bill, not the brief")
+        sp.add_argument("--raw", action="store_true",
+                        help="skip AI-polish entirely, even if it is configured")
+
+    t = sub.add_parser("today", help="today's receipt")
+    day_flags(t)
+
+    d = sub.add_parser("day", help="a specific day")
+    d.add_argument("date", help="YYYY-MM-DD")
+    day_flags(d)
+
+    w = sub.add_parser("week", help="the weekly recap")
+    w.add_argument("--date", help="any day in the week (default: today)")
+    w.add_argument("--json", action="store_true")
+
+    sub.add_parser("sources", help="what is set up on this machine")
+
+    pl = sub.add_parser("payload", help="what AI-polish would send, without sending it")
+    pl.add_argument("--date", help="YYYY-MM-DD (default: today)")
+
+    args = p.parse_args(argv)
+    if not args.cmd:
+        p.print_help()
+        return 1
+    if args.cmd == "today":
+        return emit_day(today_iso(), args)
+    if args.cmd == "day":
+        return emit_day(args.date, args)
+    if args.cmd == "week":
+        return cmd_week(args)
+    if args.cmd == "sources":
+        return cmd_sources(args)
+    if args.cmd == "payload":
+        return cmd_payload(args)
+    p.print_help()
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
