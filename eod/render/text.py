@@ -1,8 +1,6 @@
 """Plain-text receipts: what lands on the clipboard."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import time
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB

@@ -1,8 +1,7 @@
 """The receipt itself, as a self-contained document for hs.webview."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import html, time
+from datetime import datetime
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB, SIG, _sig_html

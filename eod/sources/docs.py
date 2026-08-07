@@ -1,8 +1,7 @@
 """DOCUMENTS: decks, docs, sheets and PDFs you touched."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import os
+from datetime import datetime
 
 from ..config import DOC_EXTS, DOC_ROOTS, _DOC_SKIP_DIRS
 

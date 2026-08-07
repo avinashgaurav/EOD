@@ -1,8 +1,6 @@
 """WORK: Claude Code transcripts."""
 
-import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subprocess, hashlib
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse
+import json, os, glob
 
 from ..util import _day_window, _predates, _scan_floor, _written_during, human_text, local_date_of, proj_name
 from ..config import ROOT, is_excluded
