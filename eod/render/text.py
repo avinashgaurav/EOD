@@ -132,9 +132,13 @@ def to_text(data):
 def to_text_full(data):
     """Everything, verbose: titles + the actual prompts, all apps, all sites + pages."""
     L = [f"Full work log — {pretty_date(data['date'])}", ""]
+    warns = source_warnings(data)
+    extras = extra_lines(data)
     if not (data["projects"] or data.get("apps") or data.get("web")
-            or data.get("commits") or data.get("meetings")):
-        L.append("No activity recorded for this day.")
+            or data.get("commits") or data.get("meetings") or warns or extras):
+        w = parse_warning(data)
+        L.append("Warning: %s. No activity recorded for this day." % w if w
+                 else "No activity recorded for this day.")
         return "\n".join(L)
     if data.get("detailed"):
         L.append("WORK — DETAILED")
@@ -186,6 +190,10 @@ def to_text_full(data):
             for t in d["titles"]:
                 L.append(f"    - {t['t']}  {t['title']}")
         L.append("")
+    for label, txt in extras:
+        L.append("%s: %s" % (label.title(), txt))
+    for w in warns:
+        L.append("! " + w)
     return "\n".join(L).rstrip() + "\n"
 
 

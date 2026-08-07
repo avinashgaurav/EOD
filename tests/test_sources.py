@@ -286,5 +286,52 @@ class TestFailuresReachTheReceipt(TranscriptCase, PluginCase):
         self.assertNotIn("class='warn'", html)
 
 
+    # --- the two paths the first fix missed -------------------------------
+    # to_text_full is a real artifact: cli.py writes it to cache/<date>-full.txt
+    # and `eod --full` prints it. It was blind to both signals.
+
+    def test_full_text_reports_a_failed_source(self):
+        ex, data = self._day_with(FAILING_SOURCE)
+        self.assertIn("exploding", ex.to_text_full(data))
+
+    def test_full_text_shows_plugin_items(self):
+        ex, data = self._day_with(PLUGIN)
+        self.assertIn("closed the flaky test", ex.to_text_full(data))
+
+    def test_full_text_warns_even_on_an_otherwise_empty_day(self):
+        """The worst case: nothing else to show, so the early return fires and
+        the only signal is the one being swallowed."""
+        self._write("p.py", FAILING_SOURCE)
+        ex = load_extract()
+        ex.ROOT = self.claude
+        ex.CODEX_ROOT = self.codex
+        out = ex.to_text_full(ex.build(DAY))
+        self.assertIn("exploding", out)
+        self.assertNotIn("No activity recorded", out)
+
+    def _visible(self, html, hidden_id):
+        """The card as a person sees it, minus the hidden copy-all block."""
+        return html.split(hidden_id)[0]
+
+    def test_plugin_items_are_visible_on_the_card_not_just_copyable(self):
+        """They reached the document inside a display:none div, which is not the
+        same as appearing on the receipt."""
+        ex, data = self._day_with(PLUGIN)
+        self.assertIn("closed the flaky test",
+                      self._visible(ex.to_html(data), "id='allText'"))
+
+    def test_plugin_items_are_visible_on_the_full_bill(self):
+        ex, data = self._day_with(PLUGIN)
+        self.assertIn("closed the flaky test",
+                      self._visible(ex.to_html_full(data), "id='fullText'"))
+
+    def test_a_quiet_day_with_no_plugins_draws_no_extra_section(self):
+        ex = load_extract()
+        ex.ROOT = self.claude
+        ex.CODEX_ROOT = self.codex
+        html = ex.to_html(ex.build(DAY))
+        self.assertNotIn("LINEAR", html)
+
+
 if __name__ == "__main__":
     unittest.main()
