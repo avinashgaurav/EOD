@@ -331,6 +331,17 @@ def to_html(data):
             P.append(f"<div id='webText' style='display:none'>{esc(web_text(data))}</div>")
 
     # totals
+    # A plugin's own items. Without this they reached the document only inside the
+    # hidden copy block, i.e. invisible on the card unless you pasted it somewhere,
+    # which is not what "it shows on the receipt" means.
+    _extra = extra_lines(data)
+    if _extra:
+        _seen = None
+        for _label, _txt in _extra:
+            if _label != _seen:
+                P.append("<div class='rule'></div><div class='sect'>" + esc(_label) + "</div>")
+                _seen = _label
+            P.append("<div class='item'><span class='t'><b>&bull;</b>" + esc(_txt) + "</span></div>")
     P.append("<div class='rule'></div>")
     P.append(f"<div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>{pcount}</span></div>")
     P.append(f"<div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>{icount}</span></div>")
@@ -473,6 +484,17 @@ def to_html_full(data):
                              f"<span class='t'>{esc(t['title'])}</span>"
                              f"<span class='tm'>{t['t']}</span></div>")
 
+    # A plugin's own items. Without this they reached the document only inside the
+    # hidden copy block, i.e. invisible on the card unless you pasted it somewhere,
+    # which is not what "it shows on the receipt" means.
+    _extra = extra_lines(data)
+    if _extra:
+        _seen = None
+        for _label, _txt in _extra:
+            if _label != _seen:
+                P.append("<div class='rule'></div><div class='sect'>" + esc(_label) + "</div>")
+                _seen = _label
+            P.append("<div class='item'><span class='t'><b>&bull;</b>" + esc(_txt) + "</span></div>")
     P.append("<div class='rule double'></div>")
     P.append("<div class='actions'><button class='copyall' onclick=\"copyEl('fullText','Full bill copied')\">⎙ Copy full bill</button></div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude + browser + apps{_sig_html()}</div>")
