@@ -359,9 +359,12 @@ function M.showWeekly(force)
       return
     end
     out = (out or ""):gsub("%s+$", "")
-    local _, path = out:match("^(%S+)%s+(.+)$")
-    if not path then
-      log("weekly build returned no path: " .. tostring(out))
+    -- The engine answers "WEEKLY <path>". Matching only "<word> <rest>" would
+    -- accept an error message with a space in it and then try to load it as a
+    -- file, so the tag is checked rather than discarded.
+    local tag, path = out:match("^(%S+)%s+(.+)$")
+    if tag ~= "WEEKLY" or not path then
+      log("weekly build returned no usable path: " .. tostring(out))
       fullShown = false
       return
     end

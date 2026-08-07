@@ -20,6 +20,14 @@ else
   echo "  lua not installed, skipping eod.lua (CI installs it)"
 fi
 
+if command -v lua >/dev/null 2>&1; then
+  echo
+  echo "── eod.lua behaviour ───────────────────────────────"
+  lua tests/test_eod_lua.lua
+else
+  echo "  no lua interpreter, skipping eod.lua behaviour tests"
+fi
+
 echo
 echo "── tests ───────────────────────────────────────────"
 # -W error::ResourceWarning turns a leaked file handle into a failure. The
