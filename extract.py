@@ -22,21 +22,38 @@ import sys
 # for a symlinked script; relying on that is luck, not design.
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
-from eod.util import *              # noqa: F401,F403  text, dates, paths, noise filter
-from eod.config import *            # noqa: F401,F403  paths, user config, display limits
-from eod.sources.claude import *    # noqa: F401,F403
-from eod.sources.codex import *     # noqa: F401,F403
-from eod.sources.git import *       # noqa: F401,F403
-from eod.sources.web import *       # noqa: F401,F403
-from eod.sources.apps import *      # noqa: F401,F403
-from eod.sources.docs import *      # noqa: F401,F403
-from eod.sources.meetings import *  # noqa: F401,F403
-from eod.pipeline import *          # noqa: F401,F403  build()
-from eod.polish import *            # noqa: F401,F403
-from eod.render.text import *       # noqa: F401,F403
-from eod.render.html import *       # noqa: F401,F403
-from eod.weekly import *            # noqa: F401,F403
-from eod.cli import main            # noqa: F401
+try:
+    from eod.util import *              # noqa: F401,F403  text, dates, paths, noise filter
+    from eod.config import *            # noqa: F401,F403  paths, user config, display limits
+    from eod.sources.claude import *    # noqa: F401,F403
+    from eod.sources.codex import *     # noqa: F401,F403
+    from eod.sources.git import *       # noqa: F401,F403
+    from eod.sources.web import *       # noqa: F401,F403
+    from eod.sources.apps import *      # noqa: F401,F403
+    from eod.sources.docs import *      # noqa: F401,F403
+    from eod.sources.meetings import *  # noqa: F401,F403
+    from eod.pipeline import *          # noqa: F401,F403  build()
+    from eod.polish import *            # noqa: F401,F403
+    from eod.render.text import *       # noqa: F401,F403
+    from eod.render.html import *       # noqa: F401,F403
+    from eod.weekly import *            # noqa: F401,F403
+    from eod.cli import main            # noqa: F401
+except ImportError as e:                      # pragma: no cover - exercised as a subprocess
+    # A partial install: extract.py copied without the eod/ package beside it,
+    # typically an upgrade script written when this was a single file. A raw
+    # ModuleNotFoundError tells the user nothing they can act on.
+    sys.stderr.write(
+        "EOD: cannot import its own engine (%s).\n"
+        "\n"
+        "extract.py is the entry point, but the code lives in an eod/ package that\n"
+        "must sit beside it. Expected: %s\n"
+        "\n"
+        "If you are upgrading from the older single-file version, copy the whole\n"
+        "folder rather than just this script:\n"
+        "\n"
+        "    cp -R ./* ~/.hammerspoon/\n"
+        % (e, os.path.join(os.path.dirname(os.path.realpath(__file__)), "eod")))
+    raise SystemExit(2)
 
 if __name__ == "__main__":
     main()
