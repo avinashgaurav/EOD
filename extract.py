@@ -23,10 +23,36 @@ import json, os, glob, sys, html, re, time, sqlite3, shutil, tempfile, subproces
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-# Author's mark — printed on every receipt. Stored as char codes (not the literal
-# text) so it doesn't turn up in a search, and re-inserted at render time if the
-# footer line is ever edited out.
-_SIG = "".join(map(chr, (65, 71)))
+def _load_signature():
+    """The small mark at the foot of the receipt: YOUR initials, not anyone else's.
+
+    `signature.txt` next to this script wins if it exists, and an empty one means
+    no mark at all. Otherwise the initials of your git user.name. Otherwise
+    nothing, which renders cleanly rather than leaving a stray separator.
+    """
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "signature.txt")
+    try:
+        with open(p) as fh:
+            return fh.read().strip()[:6]          # explicit override; "" disables the mark
+    except FileNotFoundError:
+        pass
+    except OSError:
+        return ""
+    try:
+        name = subprocess.run(["git", "config", "--global", "user.name"],
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return ""
+    words = [w for w in re.split(r"[^A-Za-z]+", name) if w]
+    return "".join(w[0].upper() for w in words[:3])
+
+
+SIG = _load_signature()
+
+
+def _sig_html():
+    """Footer mark, separator included, or nothing at all when there is no mark."""
+    return (" · <span class='sig'>%s</span>" % html.escape(SIG)) if SIG else ""
 
 ROOT      = os.path.expanduser("~/.claude/projects")
 CACHE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
@@ -898,13 +924,15 @@ def _polish_input(data):
     if data.get("meetings"):
         lines.append("## MEETINGS — calendar")
         for m in data["meetings"]:
-            lines.append(f"- {m['time']} {m['title']}" + (f" (with {m['attendees']})" if m.get("attendees") else ""))
+            # Attendee names are other people's data and they never agreed to this,
+            # so the title goes and the names stay. They still show on the receipt,
+            # which never leaves the machine.
+            lines.append(f"- {m['time']} {m['title']}")
     if data.get("docs"):
         lines.append("## DOCUMENTS — files created/edited today")
         for d in data["docs"]:
             lines.append(f"- {d['name']} (in {d['folder']})")
-    if data.get("people"):
-        lines.append("## PEOPLE you collaborated with today: " + ", ".join(data["people"]))
+    # data["people"] is deliberately omitted: same reason as meeting attendees.
     if data.get("web"):
         lines.append("## DOCS & RESEARCH VIEWED (include only genuinely work-relevant ones)")
         for d in data["web"][:15]:
@@ -1450,20 +1478,18 @@ def to_html(data):
 
     P.append("<div class='end'>END OF DAY</div>")
     P.append("<div class='barcode'></div>")
-    P.append(f"<div class='bcnum'>{data['date'].replace('-','')} · AG</div>")
+    P.append(f"<div class='bcnum'>{data['date'].replace('-','')}{' · ' + esc(SIG) if SIG else ''}</div>")
     P.append("<div class='actions'>"
              "<button class='copyall' onclick=\"copyEl('allText','Summary copied')\">⎙ Copy</button>"
              "<button class='copyall seeall' onclick=\"send({action:'full'})\">⊞ See full bill</button>"
              "</div>")
-    P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude · <span class='sig'>{esc(_SIG)}</span></div>")
+    P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude{_sig_html()}</div>")
 
     P.append(f"<div id='allText' style='display:none'>{esc(to_text(data))}</div>")
     P.append("</div></div></div>")  # receipt, roll, surface
     P.append("<div class='toast' id='toast'></div>")
     P.append(f"<script>{JS}</script></body></html>")
     out = "".join(P)
-    if _SIG not in out:   # tamper-guard: restore the mark even if the line above is removed
-        out = out.replace("</body>", "<div class='ts'><span class='sig'>" + _SIG + "</span></div></body>")
     return out
 
 
@@ -1568,14 +1594,12 @@ def to_html_full(data):
 
     P.append("<div class='rule double'></div>")
     P.append("<div class='actions'><button class='copyall' onclick=\"copyEl('fullText','Full bill copied')\">⎙ Copy full bill</button></div>")
-    P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude + browser + apps · <span class='sig'>{esc(_SIG)}</span></div>")
+    P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude + browser + apps{_sig_html()}</div>")
     P.append(f"<div id='fullText' style='display:none'>{esc(to_text_full(data))}</div>")
     P.append("</div></div></div>")
     P.append("<div class='toast' id='toast'></div>")
     P.append(f"<script>{JS}</script></body></html>")
     out = "".join(P)
-    if _SIG not in out:
-        out = out.replace("</body>", "<div class='ts'><span class='sig'>" + _SIG + "</span></div></body>")
     return out
 
 
@@ -1733,12 +1757,10 @@ def to_html_weekly(data):
     P.append("<div class='rule double'></div>")
     P.append("<div class='end'>END OF WEEK</div>")
     P.append(f"<div id='wkText' style='display:none'>{esc(to_text_weekly(data))}</div>")
-    P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · <span class='sig'>{esc(_SIG)}</span></div>")
+    P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])}{_sig_html()}</div>")
     P.append("</div></div></div><div class='toast' id='toast'></div>")
     P.append(f"<script>{JS}</script></body></html>")
     out = "".join(P)
-    if _SIG not in out:
-        out = out.replace("</body>", "<div class='ts'><span class='sig'>" + _SIG + "</span></div></body>")
     return out
 
 
@@ -1770,6 +1792,7 @@ def main():
     do_print = False
     repolish = False
     weekly = False
+    show_payload = False
     args = sys.argv[1:]
     for i, a in enumerate(args):
         if a == "--date" and i + 1 < len(args):
@@ -1780,6 +1803,8 @@ def main():
             repolish = True
         elif a == "--weekly":
             weekly = True
+        elif a == "--show-polish-payload":
+            show_payload = True
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
@@ -1796,6 +1821,21 @@ def main():
         return
 
     data = build(date)
+
+    if show_payload:
+        # Print the exact text the polish step would send, and send nothing.
+        # The privacy claim in the README should be checkable, not taken on trust.
+        payload = _polish_input(data)
+        off = os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "polish.off"))
+        sys.stderr.write(
+            "# This is everything AI-polish would send for %s, via your own claude CLI login.\n"
+            "# Nothing is being sent now. %s\n"
+            "# %d characters. Disable the step for good with: touch polish.off\n\n"
+            % (date, "polish.off is present, so the step is already disabled." if off
+               else "The step is currently ENABLED.", len(payload)))
+        print(payload)
+        return
+
     polish(data, force=repolish)    # AI-rewrite items into manager bullets (cached; force = Regenerate)
     write_history()                 # keep worklog-history.md current
     base = os.path.join(CACHE, date)
