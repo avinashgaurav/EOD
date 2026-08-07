@@ -349,17 +349,36 @@ function M.showWeekly(force)
   fullMode = "weekly"
   local args = { CFG.script, "--date", curDate or today(), "--weekly" }
   if force then args[#args + 1] = "--repolish" end
-  local t = hs.task.new(CFG.python, function(code, out)
+  local t = hs.task.new(CFG.python, function(code, out, err)
+    -- Both failure paths used to end in silence: a non-zero exit was ignored, and
+    -- output that didn't parse just skipped the branch. Either way the recap
+    -- button did nothing at all, with no clue why. Say so instead.
+    if code ~= 0 then
+      log("weekly build failed (" .. tostring(code) .. "): " .. tostring(err))
+      fullShown = false
+      return
+    end
     out = (out or ""):gsub("%s+$", "")
     local _, path = out:match("^(%S+)%s+(.+)$")
-    if path and wvFull then
+    if not path then
+      log("weekly build returned no path: " .. tostring(out))
+      fullShown = false
+      return
+    end
+    if wvFull then
       weekStart = path:match("weekly%-(%d%d%d%d%-%d%d%-%d%d)") or weekStart
       loadN = loadN + 1
       wvFull:url("file://" .. path .. "?n=" .. loadN .. "#in")
       wvFull:frame(fullFrame()); wvFull:show()
     end
   end, args)
-  if t then t:setEnvironment(CFG.env); t:start() end
+  if t then
+    t:setEnvironment(CFG.env)
+    t:start()
+  else
+    log("could not spawn python for the weekly recap")
+    fullShown = false
+  end
 end
 
 function M.hide()
