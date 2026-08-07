@@ -233,7 +233,9 @@ def to_html(data):
     P.append("<div class='rule'></div>")
     P.append(f"<div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>{esc(pretty_date(data['date']))}</span></div>")
     P.append(f"<div class='kv'><span class='k'>Ref</span><span class='dots'></span><span class='v'>{ref}</span></div>")
-    today_iso = datetime.now().astimezone().strftime("%Y-%m-%d")
+    # Injectable so a snapshot is not hostage to the calendar. Production never
+    # passes it; the tests always do.
+    today_iso = data.get("_today") or datetime.now().astimezone().strftime("%Y-%m-%d")
     P.append("<div class='nav'>"
              "<button onclick='nav(-1)' title='Previous day'>◀</button>"
              f"<input type='date' class='dpick' value='{data['date']}' max='{today_iso}' "
