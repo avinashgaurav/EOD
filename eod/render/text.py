@@ -63,10 +63,47 @@ def parse_warning(data):
     return None
 
 
+def source_warnings(data):
+    """One short line per source that was set up and then failed.
+
+    A source that is merely absent contributes nothing here; that is the whole
+    point of the available()/read() split. Only genuine failures reach this.
+    """
+    out = []
+    for p in data.get("source_problems") or []:
+        name, _, detail = str(p).partition(": ")
+        out.append("%s unavailable: %s" % (name, oneline(detail or "failed", 70)))
+    return out
+
+
+def extra_lines(data):
+    """Items from a plugin whose key no renderer knows about.
+
+    Shown generically rather than dropped, so a plugin author gets something on
+    the receipt without every renderer having to learn about their field.
+    """
+    lines = []
+    for key, items in sorted((data.get("extra") or {}).items()):
+        if not items:
+            continue
+        label = key.replace("_", " ").upper()
+        for it in items[:6]:
+            if isinstance(it, dict):
+                txt = it.get("title") or it.get("subject") or it.get("name") or str(it)
+            else:
+                txt = str(it)
+            lines.append((label, oneline(txt, 90)))
+    return lines
+
+
 def to_text(data):
     """Brief, paste-when-asked summary: the important items, lightly grouped."""
     L = [f"Daily update — {pretty_date(data['date'])}", ""]
-    if not (data["projects"] or data.get("apps") or data.get("web")):
+    warns = source_warnings(data)
+    extras = extra_lines(data)
+    # A quiet day is not the same as a day where something broke or a plugin
+    # produced items. Returning early on all three lost both.
+    if not (data["projects"] or data.get("apps") or data.get("web") or warns or extras):
         w = parse_warning(data)
         L.append("Warning: %s. No activity recorded for this day." % w if w
                  else "No activity recorded for this day.")
@@ -87,6 +124,10 @@ def to_text(data):
     if data.get("web"):
         sites = ", ".join(d["host"] for d in data["web"][:BRIEF_WEB])
         L.append("Browsed: " + sites)
+    for label, txt in extras:
+        L.append("%s: %s" % (label.title(), txt))
+    for w in warns:
+        L.append("! " + w)
     return "\n".join(L).rstrip() + "\n"
 
 

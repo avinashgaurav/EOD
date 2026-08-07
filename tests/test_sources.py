@@ -230,5 +230,61 @@ class TestPluginsInTheDay(TranscriptCase, PluginCase):
                          "not being set up is not a problem to report")
 
 
+
+class TestFailuresReachTheReceipt(TranscriptCase, PluginCase):
+    """The contract's whole promise. Recording a failure in the JSON and never
+    drawing it would recreate the bug the contract exists to prevent, which is
+    precisely what the first version of this did."""
+
+    def setUp(self):
+        PluginCase.setUp(self)
+        TranscriptCase.setUp(self)
+
+    def tearDown(self):
+        TranscriptCase.tearDown(self)
+        PluginCase.tearDown(self)
+
+    def _day_with(self, plugin):
+        self._write("p.py", plugin)
+        ex = load_extract()
+        ex.ROOT = self.claude
+        ex.CODEX_ROOT = self.codex
+        return ex, ex.build(DAY)
+
+    def test_a_failed_source_is_drawn_on_the_widget(self):
+        ex, data = self._day_with(FAILING_SOURCE)
+        html = ex.to_html(data)
+        self.assertIn("exploding", html)
+        self.assertIn("credential expired", html)
+
+    def test_a_failed_source_is_in_the_full_bill_too(self):
+        ex, data = self._day_with(FAILING_SOURCE)
+        self.assertIn("exploding", ex.to_html_full(data))
+
+    def test_a_failed_source_is_in_the_copied_text(self):
+        ex, data = self._day_with(FAILING_SOURCE)
+        self.assertIn("exploding", ex.to_text(data))
+
+    def test_an_unavailable_source_is_drawn_nowhere(self):
+        """Absence must stay silent, or the warning becomes noise people ignore."""
+        ex, data = self._day_with(UNAVAILABLE_SOURCE)
+        self.assertNotIn("notsetup", ex.to_html(data))
+        self.assertNotIn("notsetup", ex.to_text(data))
+
+    def test_plugin_items_are_drawn_not_just_stored(self):
+        ex, data = self._day_with(PLUGIN)
+        self.assertIn("closed the flaky test", ex.to_text(data))
+
+    def test_a_healthy_day_draws_no_warning(self):
+        ex = load_extract()
+        ex.ROOT = self.claude
+        ex.CODEX_ROOT = self.codex
+        self.write_session("-Users-me-work-alpha", "s.jsonl",
+                           [title_line("Did a thing"), user_line("do a real thing here", DAY)],
+                           mtime_date=DAY)
+        html = ex.to_html(ex.build(DAY))
+        self.assertNotIn("class='warn'", html)
+
+
 if __name__ == "__main__":
     unittest.main()

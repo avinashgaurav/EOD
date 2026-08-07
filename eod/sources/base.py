@@ -109,7 +109,14 @@ def load_plugins(directory):
     if not directory or not os.path.isdir(directory):
         return errors
     import importlib.util
-    for fn in sorted(os.listdir(directory)):
+    try:
+        entries = sorted(os.listdir(directory))
+    except OSError as e:
+        # An unreadable plugin directory is a problem to report, not a reason the
+        # engine cannot start. This ran at import time, so it took down
+        # extract.py and the CLI with a raw traceback.
+        return ["%s: %s" % (directory, e)]
+    for fn in entries:
         if not fn.endswith(".py") or fn.startswith("_"):
             continue
         path = os.path.join(directory, fn)
