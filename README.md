@@ -6,7 +6,7 @@
 ![runs on: Hammerspoon](https://img.shields.io/badge/runs%20on-Hammerspoon-3a86ff)
 ![license: MIT](https://img.shields.io/badge/license-MIT-green)
 
-**[eod-avinashgauravs-projects.vercel.app](https://eod-avinashgauravs-projects.vercel.app)** — what it looks like, what it reads, and how to install it.
+**[eodreceipt.vercel.app](https://eodreceipt.vercel.app)** — what it looks like, what it reads, and how to install it.
 
 A tiny macOS desktop widget, styled as a **printed receipt**, that shows
 **everything you got done that day** — your AI coding sessions, the sites and
@@ -179,6 +179,26 @@ top-right. (Already have an `init.lua`? Don't overwrite it — see INSTALL.md.)
   self-contained receipt HTML to `cache/`.
 - **`eod.lua`** is a Hammerspoon module that renders that HTML in a frameless
   `hs.webview`, runs the engine on a timer, and handles copy / nav / drag / animation.
+
+## Tests
+
+No dependencies, same as the tool. Stdlib `unittest`, fixtures written to a temp
+directory so the suite never reads or disturbs your real `~/.claude`.
+
+```sh
+./run_tests.sh              # everything
+./run_tests.sh -v           # one line per test
+./run_tests.sh test_dates   # a single module
+```
+
+The suite runs on 3.9 and 3.12 in CI, plus a `luac -p` check on `eod.lua`. It is
+run with `-W error::ResourceWarning`, so a leaked file handle fails the build:
+the transcript readers leaked one per file before these tests existed.
+
+Two guards worth knowing about, because they are about intent rather than
+correctness. CI fails if any of the four config files stops being read by
+`extract.py` or disappears from this README, and it fails if the hardcoded author
+signature or its self-restoring guard ever come back.
 
 ---
 
