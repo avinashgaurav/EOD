@@ -74,6 +74,14 @@ touch ~/.hammerspoon/polish.off
 Its contents don't matter; only its presence. With it there, EOD never shells
 out to the CLI and always uses the offline cleanup path.
 
+**Change the mark on the receipt.** The initials at the foot of the receipt come
+from your `git config --global user.name`. To set your own, write it to
+`signature.txt`; to print no mark at all, leave that file empty.
+
+```sh
+printf 'AG' > ~/.hammerspoon/signature.txt   # or: : > signature.txt for none
+```
+
 ## Notes / troubleshooting
 
 - **Nothing shows up?** Make sure Hammerspoon is running and you reloaded the

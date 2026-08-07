@@ -640,7 +640,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
     <h2>Five places you already work.</h2>
     <p class="note deck">
       Each line is the work done: the AI-generated session title from Claude Code or
-      Codex, a clean one-liner. No raw prompts.
+      Codex, a clean one-liner. The receipt itself never prints your raw prompts.
     </p>
 
     <div class="grid-3">
@@ -759,10 +759,39 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
         <strong>The one exception is the optional AI-polish step.</strong>
         If your <code>claude</code> CLI is logged in, EOD asks it to rewrite the day into
         crisper, manager-ready bullets. That goes through your existing CLI login, not an
-        API key. Missing CLI? It silently falls back to fully-offline cleanup. This is the
-        one path that crosses the boundary in the diagram above.
+        API key. Missing CLI? It falls back to fully-offline cleanup. This is the one path
+        that crosses the boundary in the diagram above.
       </p>
     </div>
+
+    <h3 style="margin-top:36px">Exactly what that step sends</h3>
+    <p class="note deck" style="margin-top:8px">
+      Worth being specific, because "local-first" is easy to claim and hard to check.
+      Nothing else in EOD leaves your Mac.
+    </p>
+    <dl class="rows">
+      <div class="row">
+        <dt>Sent</dt>
+        <dd>Session titles. Up to 8 prompts per session, 160 characters each. Commit
+          subjects and PR titles. Meeting titles. Document filenames and their folder.
+          Page titles from work browsing.
+          <em>Your prompts do go, and prompts sometimes carry paths, hostnames or pasted
+          snippets.</em></dd>
+      </div>
+      <div class="row">
+        <dt>Never sent</dt>
+        <dd>Anything from a project in <code>exclude.txt</code>. Personal browsing: job
+          boards, shopping, social. Mail, chat and calendar hosts. The names of people you
+          met or worked with. File contents. Screen-time data.
+          <em>Other people never agreed to this, so their names stay on your machine.</em></dd>
+      </div>
+      <div class="row">
+        <dt>Check it yourself</dt>
+        <dd><code>python3 extract.py --show-polish-payload</code> prints the exact text and
+          sends nothing. <code>touch polish.off</code> disables the step permanently.
+          <em>It is your own Claude account through your own CLI login, not a third party.</em></dd>
+      </div>
+    </dl>
   </div>
 </section>
 
@@ -850,7 +879,8 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
     <a href="https://www.hammerspoon.org/">Hammerspoon</a>
     <a href="https://github.com/avinashgaurav/EOD/blob/main/LICENSE">MIT License</a>
   </div>
-  <p class="copy">MIT licensed. Everything stays on your machine.</p>
+  <p class="copy">MIT licensed. Built by
+    <a href="https://github.com/avinashgaurav">@avinashgaurav</a>.</p>
 </footer>
 
 <script>

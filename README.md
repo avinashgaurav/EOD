@@ -34,8 +34,10 @@ All local — nothing leaves your Mac (one optional exception, [below](#requirem
 
 <p align="center"><sub><b>Daily receipt</b> &nbsp;·&nbsp; <b>Weekly recap</b> &nbsp;—&nbsp; sample data; EOD builds these from your own activity, on your Mac.</sub></p>
 
-Each line is the **work** done — the AI-generated session title from Claude Code
-or Codex, a clean one-liner. No raw prompts.
+Each line is the **work** done: the AI-generated session title from Claude Code
+or Codex, a clean one-liner. The receipt itself never prints your raw prompts.
+(The optional AI-polish step does read them; see
+[Requirements & permissions](#requirements--permissions) for exactly what it sends.)
 
 <details>
 <summary>Prefer text? Here's what the receipt looks like.</summary>
@@ -92,12 +94,39 @@ just determines what shows up on the receipt:
 **Local-first, no API keys, no telemetry.** EOD reads local files and writes a
 receipt to its own `cache/` folder. The one exception is the **optional AI-polish**
 step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
-crisper, manager-ready bullets — that goes through your **existing CLI login**
-(no API key). Missing CLI? It silently falls back to fully-offline cleanup.
+crisper, manager-ready bullets, through your **existing CLI login** (no API key).
+Missing CLI? It falls back to fully-offline cleanup.
+
+<details>
+<summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>
+
+Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
+
+| Sent | Not sent |
+|---|---|
+| Session titles | Anything from a project in `exclude.txt` |
+| Up to 8 prompts per session, 160 chars each | Personal browsing (job boards, shopping, social) |
+| Commit subjects and PR titles | Mail, chat and calendar hosts |
+| Meeting titles | Names of the people you met or collaborated with |
+| Document filenames and their folder | File contents, ever |
+| Page titles from work browsing | Screen-time app data |
+
+Two things worth knowing. Your prompts do go, and prompts sometimes contain
+paths, hostnames or pasted snippets. And this is your own Claude account via
+your own CLI login, not a third party.
+
+See it for yourself before trusting any of the above:
+
+```sh
+python3 extract.py --show-polish-payload      # prints the exact text, sends nothing
+touch polish.off                              # never run this step again
+```
+
+</details>
 
 ## Configuration
 
-Three optional files, all sitting next to `extract.py`. None of them exist by
+Four optional files, all sitting next to `extract.py`. None of them exist by
 default; create one only if you want the behaviour.
 
 | File | What it does |
@@ -105,11 +134,13 @@ default; create one only if you want the behaviour.
 | **`exclude.txt`** | One project name per line. Those projects never reach the receipt. For client, NDA or job-hunt work. Copy `exclude.txt.example` to start. |
 | **`repos.txt`** | One repo path per line. Adds repos that live outside the folders scanned by default (`~/Desktop`, `~/Documents`, `~/code`, `~/dev`, `~/projects`, `~/work`, `~/repos`). Lines starting with `#` are ignored. |
 | **`polish.off`** | Create this empty file to switch the optional AI-polish step off completely. EOD then never shells out to the `claude` CLI and stays fully offline. The file's contents are ignored; only its presence matters. |
+| **`signature.txt`** | The small mark at the foot of the receipt. Defaults to the initials of your `git config --global user.name`. Put anything you like in here to override it, or leave the file empty to print no mark at all. |
 
 ```sh
 cp exclude.txt.example exclude.txt   # then edit
 echo ~/src/some-repo > repos.txt     # extra git repo outside the default roots
 touch polish.off                     # fully offline, no claude CLI call ever
+printf 'AG' > signature.txt          # override the footer mark (empty file = none)
 ```
 
 ## Install
@@ -151,4 +182,4 @@ top-right. (Already have an `init.lua`? Don't overwrite it — see INSTALL.md.)
 
 ---
 
-MIT licensed.
+MIT licensed. Built by [@avinashgaurav](https://github.com/avinashgaurav).
