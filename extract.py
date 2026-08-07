@@ -214,6 +214,31 @@ def _predates(path, floor):
         return False      # cannot stat -> let the reader try, same as before
 
 
+def _day_window(target):
+    """(start, end) epoch bounds of the local target day, or (None, None)."""
+    try:
+        s = time.mktime(time.strptime(target, "%Y-%m-%d"))
+        return s, s + 86400
+    except Exception:
+        return None, None
+
+
+def _written_during(path, start, end):
+    """Was this file written *inside* the target day?
+
+    Deliberately narrower than _predates. That one asks "could this file hold the
+    day", which is also true of every file touched since; this asks "was this file
+    actually written that day", which is the only version that means anything when
+    you page back to an earlier date.
+    """
+    if start is None:
+        return False
+    try:
+        return start <= os.path.getmtime(path) < end
+    except OSError:
+        return False
+
+
 def add_codex(projects, target):
     """Merge OpenAI Codex sessions for `target` into the projects dict (same shape as Claude)."""
     floor = _scan_floor(target)
@@ -283,12 +308,19 @@ def build(target):
     # project -> session_id -> {title, file, prompts:[(hm,text)], start, end}
     projects = {}
     floor = _scan_floor(target)
+    win_start, win_end = _day_window(target)
+    touched = 0          # transcripts actually written during the target day
+    # Named n_* because `sessions` is rebound later by `for pn, sessions in
+    # projects.items()`, which silently turned this counter into a list.
+    n_sessions = n_untitled = 0
     for f in glob.glob(os.path.join(ROOT, "*", "*.jsonl")):
         if _predates(f, floor):
             continue
         pn = proj_name(f)
         if is_excluded(pn):
             continue
+        if _written_during(f, win_start, win_end):
+            touched += 1
         title = None
         rows = []  # (hm, text)
         try:
@@ -328,7 +360,9 @@ def build(target):
             seen.add(key)
             prompts.append((hm, txt))
         sid = os.path.basename(f)[:8]
+        n_sessions += 1
         if not title:
+            n_untitled += 1
             title = prompts[0][1][:70]
         projects.setdefault(pn, []).append({
             "sid": sid,
@@ -362,6 +396,12 @@ def build(target):
         "projects": out_projects,
         "session_count": sum(len(p["sessions"]) for p in out_projects),
         "project_count": len(out_projects),
+        # Transcripts written that day but yielding nothing is a contradiction, and
+        # the renderer says so rather than drawing a convincing empty section. An
+        # upstream schema rename once blanked WORK for four days without a whisper.
+        "transcripts_touched": touched,
+        "sessions_seen": n_sessions,
+        "sessions_untitled": n_untitled,
         "apps": read_usage(target),     # SCREEN TIME — written by eod.lua, today onward
         "web": read_web(target),        # WEB — parsed from local browser history
         "commits": commits,
@@ -943,6 +983,22 @@ def _polish_input(data):
     return "\n".join(lines)
 
 
+# eod.lua re-runs the engine every 10 minutes, all day, hidden or not. On an
+# active day the work genuinely changes on most of those ticks, so the input hash
+# misses and the CLI runs: a ~40s subprocess plus real tokens, six times an hour,
+# to move a few bullets. This is the floor between automatic re-summaries. The
+# Regenerate button passes force=True and ignores it.
+POLISH_MIN_INTERVAL = 1800   # seconds
+
+
+def _polished_recently(path):
+    """True if the cached summary is younger than the debounce floor."""
+    try:
+        return (time.time() - os.path.getmtime(path)) < POLISH_MIN_INTERVAL
+    except OSError:
+        return False          # no cache yet, or unreadable -> let it polish
+
+
 def _polish_log(msg):
     """Record why an AI-polish attempt fell back, so a silent no-summary day is diagnosable.
     Best-effort: never let logging break the receipt."""
@@ -982,6 +1038,14 @@ def polish(data, force=False):
                 return
     except Exception:
         pass
+
+    # Deliberately outside the try above: a failure here should surface, not be
+    # swallowed by that bare except. The work HAS changed at this point, we are
+    # only declining to re-summarise it quite so often.
+    if cached and not force and _polished_recently(cache_path):
+        data["highlights"] = cached
+        data["detailed"] = cached_detail
+        return
 
     if not cb:
         _polish_log("no claude CLI found (looked in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin)")
@@ -1053,11 +1117,32 @@ def highlights_text(data):
     return "\n".join("• " + h for h in data.get("highlights", []))
 
 
+def parse_warning(data):
+    """Text for the case that should never happen: transcripts written today, no work found.
+
+    Returns None when things are consistent, including the ordinary quiet day where
+    nothing was written and nothing was found.
+    """
+    n = data.get("transcripts_touched") or 0
+    if n and not data.get("projects"):
+        return "%d session%s written today, none parsed" % (n, "" if n == 1 else "s")
+    # The shape the ai-title -> custom-title rename actually took: sessions parse
+    # fine, but every one falls back to its raw first prompt because the title
+    # record is no longer where we look. A zero-work check would never see it.
+    seen = data.get("sessions_seen") or 0
+    un = data.get("sessions_untitled") or 0
+    if seen >= 3 and un == seen:
+        return "%d sessions, not one with a title" % seen
+    return None
+
+
 def to_text(data):
     """Brief, paste-when-asked summary: the important items, lightly grouped."""
     L = [f"Daily update — {pretty_date(data['date'])}", ""]
     if not (data["projects"] or data.get("apps") or data.get("web")):
-        L.append("No activity recorded for this day.")
+        w = parse_warning(data)
+        L.append("Warning: %s. No activity recorded for this day." % w if w
+                 else "No activity recorded for this day.")
         return "\n".join(L)
     if data.get("highlights"):
         for h in data["highlights"]:
@@ -1270,6 +1355,7 @@ button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
 .copyall.seeall:hover{background:var(--accent);color:var(--paper)}
 .ts{text-align:center;font-size:9px;letter-spacing:1px;color:var(--ink2);margin-top:8px}
 .sig{color:var(--ink);font-weight:700;letter-spacing:2px}
+.warn{color:var(--accent);border:1px dashed var(--accent);border-radius:3px;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:4px 6px;margin:6px 0}
 .empty{text-align:center;color:var(--ink2);font-size:11px;letter-spacing:2px;padding:34px 0}
 
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(16px);
@@ -1391,6 +1477,11 @@ def to_html(data):
              "<button onclick='nav(1)' title='Next day'>▶</button>"
              "<button onclick='refresh()' title='Refresh'>↻</button>"
              "</div>")
+    # A contradiction the reader can act on, printed where they cannot miss
+    # it, rather than an empty section that looks like a quiet day.
+    _w = parse_warning(data)
+    if _w:
+        P.append("<div class='warn'>! " + esc(_w) + "</div>")
     P.append("<div class='rule double'></div>")
 
     apps = data.get("apps", [])
@@ -1399,7 +1490,12 @@ def to_html(data):
     web_total = sum(d["count"] for d in web)
 
     if not (data["projects"] or apps or web):
-        P.append("<div class='empty'>— NO ACTIVITY LOGGED —</div>")
+        _warn = parse_warning(data)
+        if _warn:
+            P.append("<div class='empty'>! " + esc(_warn.upper()) +
+                     "<br><span style='font-size:9px'>SEE cache/polish-error.log</span></div>")
+        else:
+            P.append("<div class='empty'>— NO ACTIVITY LOGGED —</div>")
     else:
         # ── Work: curated AI highlights (the manager-ready update; editable) ──
         if data.get("highlights"):
@@ -1512,10 +1608,20 @@ def to_html_full(data):
     P.append("</div>")
     P.append("<div class='rule'></div>")
     P.append(f"<div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>{esc(pretty_date(data['date']))}</span></div>")
+    # A contradiction the reader can act on, printed where they cannot miss
+    # it, rather than an empty section that looks like a quiet day.
+    _w = parse_warning(data)
+    if _w:
+        P.append("<div class='warn'>! " + esc(_w) + "</div>")
     P.append("<div class='rule double'></div>")
 
     if not (data["projects"] or apps or web or data.get("commits") or data.get("meetings")):
-        P.append("<div class='empty'>— NO ACTIVITY LOGGED —</div>")
+        _warn = parse_warning(data)
+        if _warn:
+            P.append("<div class='empty'>! " + esc(_warn.upper()) +
+                     "<br><span style='font-size:9px'>SEE cache/polish-error.log</span></div>")
+        else:
+            P.append("<div class='empty'>— NO ACTIVITY LOGGED —</div>")
     else:
         # Curated, readable detailed breakdown (same voice as the brief, just more granular).
         if data.get("detailed"):
