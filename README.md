@@ -35,7 +35,9 @@ All local — nothing leaves your Mac (one optional exception, [below](#requirem
 <p align="center"><sub><b>Daily receipt</b> &nbsp;·&nbsp; <b>Weekly recap</b> &nbsp;—&nbsp; sample data; EOD builds these from your own activity, on your Mac.</sub></p>
 
 Each line is the **work** done: the AI-generated session title from Claude Code
-or Codex, a clean one-liner. The receipt itself never prints your raw prompts.
+or Codex, a clean one-liner. The receipt never prints your raw prompts. <!--claim:receipt-no-raw-prompts-->
+The **full bill** behind *See full bill* does show them, deliberately: it is the
+verbose view, and like everything else on the card it never leaves your Mac.
 (The optional AI-polish step does read them; see
 [Requirements & permissions](#requirements--permissions) for exactly what it sends.)
 
@@ -91,7 +93,7 @@ just determines what shows up on the receipt:
 | **Claude Code** / **Codex** | EOD reads their local JSONL transcripts (`~/.claude/projects`, `~/.codex`) for the WORK section. Use at least one. | None — it only **reads** files already on your Mac. |
 | Browser history | Powers the WEB section (Chrome / Brave automatic). | Safari history may need **Full Disk Access** for the Hammerspoon process. |
 
-**Local-first, no API keys, no telemetry.** EOD reads local files and writes a
+**Local-first, no API keys, no telemetry.** EOD reads local files and writes a <!--claim:no-network-->
 receipt to its own `cache/` folder. The one exception is the **optional AI-polish**
 step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
 crisper, manager-ready bullets, through your **existing CLI login** (no API key).
@@ -105,9 +107,9 @@ Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
 | Sent | Not sent |
 |---|---|
 | Session titles | Anything from a project in `exclude.txt` |
-| Up to 8 prompts per session, 160 chars each | Personal browsing (job boards, shopping, social) |
+| Up to 8 prompts per session, 160 chars each | Personal browsing (job boards, shopping, social) | <!--claim:polish-sends-prompts-->
 | Commit subjects and PR titles | Mail, chat and calendar hosts |
-| Meeting titles | Names of the people you met or collaborated with |
+| Meeting titles | Names of the people you met or collaborated with | <!--claim:polish-no-third-party-names-->
 | Document filenames and their folder | File contents, ever |
 | Page titles from work browsing | Screen-time app data |
 
@@ -131,10 +133,10 @@ default; create one only if you want the behaviour.
 
 | File | What it does |
 |---|---|
-| **`exclude.txt`** | One project name per line. Those projects never reach the receipt. For client, NDA or job-hunt work. Copy `exclude.txt.example` to start. |
-| **`repos.txt`** | One repo path per line. Adds repos that live outside the folders scanned by default (`~/Desktop`, `~/Documents`, `~/code`, `~/dev`, `~/projects`, `~/work`, `~/repos`). Lines starting with `#` are ignored. |
-| **`polish.off`** | Create this empty file to switch the optional AI-polish step off completely. EOD then never shells out to the `claude` CLI and stays fully offline. The file's contents are ignored; only its presence matters. |
-| **`signature.txt`** | The small mark at the foot of the receipt. Defaults to the initials of your `git config --global user.name`. Put anything you like in here to override it, or leave the file empty to print no mark at all. |
+| **`exclude.txt`** | One project name per line. Those projects never reach the receipt. For client, NDA or job-hunt work. Copy `exclude.txt.example` to start. | <!--claim:exclude-hides-projects-->
+| **`repos.txt`** | One repo path per line. Adds repos that live outside the folders scanned by default (`~/Desktop`, `~/Documents`, `~/code`, `~/dev`, `~/projects`, `~/work`, `~/repos`). Lines starting with `#` are ignored. | <!--claim:repos-txt-read-->
+| **`polish.off`** | Create this empty file to switch the optional AI-polish step off completely. EOD then never shells out to the `claude` CLI and stays fully offline. The file's contents are ignored; only its presence matters. | <!--claim:polish-off-disables-->
+| **`signature.txt`** | The small mark at the foot of the receipt. Defaults to the initials of your `git config --global user.name`. Put anything you like in here to override it, or leave the file empty to print no mark at all. | <!--claim:signature-is-yours-->
 
 ```sh
 cp exclude.txt.example exclude.txt   # then edit
@@ -226,13 +228,13 @@ register(LinearSource())
 ```
 
 The split between `available()` and `read()` is the whole point. A source that
-is not configured says nothing. A source that **is** configured and then fails is
-reported on the receipt, because those two used to look identical from the
+is not configured says nothing. A source that **is** configured and then fails is <!--claim:source-absent-silent-->
+reported on the receipt, because those two used to look identical from the <!--claim:source-failure-visible-->
 outside, and that is how a broken section can sit there for days looking like a
 quiet one.
 
-Items under a `key` the renderers do not know are kept in `data["extra"]` rather
-than dropped. A plugin that blows up on import is reported and skipped: a
+Items under a `key` the renderers do not know are kept in `data["extra"]` rather <!--claim:plugin-extra-kept-->
+than dropped. A plugin that blows up on import is reported and skipped: a <!--claim:broken-plugin-skipped-->
 third-party file cannot stop your receipt building.
 
 ## Tests
