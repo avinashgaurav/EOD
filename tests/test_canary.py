@@ -65,12 +65,12 @@ class TestWarns(unittest.TestCase):
         """The real one. Sessions parse, WORK is populated, and not one line is a
         real title because the record moved."""
         w = self.ex.parse_warning(day(projects=2, touched=6, seen=6, untitled=6))
-        self.assertIsNotNone(w)
-        self.assertIn("not one with a title", w)
+        self.assertEqual(w, "6 sessions, not one with a title")
 
     def test_threshold_is_three(self):
         self.assertIsNone(self.ex.parse_warning(day(projects=1, seen=2, untitled=2)))
-        self.assertIsNotNone(self.ex.parse_warning(day(projects=1, seen=3, untitled=3)))
+        self.assertEqual(self.ex.parse_warning(day(projects=1, seen=3, untitled=3)),
+                         "3 sessions, not one with a title")
 
 
 class TestEndToEnd(TranscriptCase):

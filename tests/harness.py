@@ -62,10 +62,20 @@ class Facade:
         return [m.__name__ for m in self._mods if hasattr(m, name)]
 
 
+_EMPTY_PLUGIN_DIR = os.path.join(tempfile.gettempdir(), "eod-tests-no-plugins")
+
+
 def load_extract():
     """A freshly imported eod package with everything that touches the machine stubbed."""
     if ROOT_DIR not in sys.path:
         sys.path.insert(0, ROOT_DIR)
+    # Point the plugin loader at a guaranteed-empty directory unless a test has
+    # deliberately set its own. Otherwise every test in every module imports and
+    # EXECUTES whatever real plugins the developer has in ~/.eod/sources, which
+    # is exactly where this tool tells people to put them.
+    if not os.environ.get("EOD_SOURCE_DIR"):
+        os.makedirs(_EMPTY_PLUGIN_DIR, exist_ok=True)
+        os.environ["EOD_SOURCE_DIR"] = _EMPTY_PLUGIN_DIR
     for name in [m for m in list(sys.modules) if m == "eod" or m.startswith("eod.")]:
         del sys.modules[name]
 

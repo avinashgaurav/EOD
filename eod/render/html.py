@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB, SIG, _sig_html
-from .text import apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
+from .text import extra_lines, source_warnings, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
 
 
 CSS = """
@@ -248,6 +248,11 @@ def to_html(data):
     _w = parse_warning(data)
     if _w:
         P.append("<div class='warn'>! " + esc(_w) + "</div>")
+    # A source that was configured and then failed. Printing this is the whole
+    # promise of the source contract; leaving it in the JSON only would recreate
+    # the exact bug the contract exists to prevent.
+    for _sw in source_warnings(data):
+        P.append("<div class='warn'>! " + esc(_sw) + "</div>")
     P.append("<div class='rule double'></div>")
 
     apps = data.get("apps", [])
@@ -379,6 +384,11 @@ def to_html_full(data):
     _w = parse_warning(data)
     if _w:
         P.append("<div class='warn'>! " + esc(_w) + "</div>")
+    # A source that was configured and then failed. Printing this is the whole
+    # promise of the source contract; leaving it in the JSON only would recreate
+    # the exact bug the contract exists to prevent.
+    for _sw in source_warnings(data):
+        P.append("<div class='warn'>! " + esc(_sw) + "</div>")
     P.append("<div class='rule double'></div>")
 
     if not (data["projects"] or apps or web or data.get("commits") or data.get("meetings")):
