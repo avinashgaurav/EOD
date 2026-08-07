@@ -13,3 +13,4 @@ __pycache__/
 .gstack/
 .vercel
 .env*
+tests/__pycache__/

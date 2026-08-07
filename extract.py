@@ -247,7 +247,8 @@ def add_codex(projects, target):
             continue
         cwd, title, rows = None, None, []
         try:
-            for line in open(f, errors="replace"):
+            with open(f, errors="replace") as fh:
+              for line in fh:
                 try:
                     o = json.loads(line)
                 except Exception:
@@ -324,7 +325,8 @@ def build(target):
         title = None
         rows = []  # (hm, text)
         try:
-            for line in open(f, errors="replace"):
+            with open(f, errors="replace") as fh:
+              for line in fh:
                 try:
                     o = json.loads(line)
                 except Exception:
@@ -600,7 +602,8 @@ def _git_repos():
     repos = set()
     cfg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "repos.txt")
     try:                                  # optional override/extra list, one path per line
-        for line in open(cfg):
+        with open(cfg) as fh:
+          for line in fh:
             s = line.strip()
             if s and not s.startswith("#") and os.path.isdir(os.path.join(os.path.expanduser(s), ".git")):
                 repos.add(os.path.expanduser(s))
@@ -1023,7 +1026,8 @@ def polish(data, force=False):
 
     cached = cached_detail = None
     try:
-        c = json.load(open(cache_path))
+        with open(cache_path) as fh:
+            c = json.load(fh)
         if isinstance(c.get("highlights"), list) and c["highlights"]:
             cached = c["highlights"]
             cached_detail = c.get("detailed")
@@ -1076,7 +1080,8 @@ def polish(data, force=False):
             data["detailed"] = cached_detail
         return
 
-    json.dump({"key": key, "highlights": highlights, "detailed": detailed}, open(cache_path, "w"))
+    with open(cache_path, "w") as fh:
+        json.dump({"key": key, "highlights": highlights, "detailed": detailed}, fh)
     data["highlights"] = highlights
     data["detailed"] = detailed
 
@@ -1765,7 +1770,8 @@ def polish_weekly(data, force=False):
     key = hashlib.sha1(raw.encode("utf-8")).hexdigest()
     cache_path = os.path.join(CACHE, "weekly-" + data["week_start"] + ".json")
     try:
-        c = json.load(open(cache_path))
+        with open(cache_path) as fh:
+            c = json.load(fh)
         if c.get("edited") and not force:          # hand-edited weekly → keep
             data["highlights"] = c.get("highlights", [])
             data["detailed"] = c.get("detailed", [])
@@ -1800,7 +1806,8 @@ def polish_weekly(data, force=False):
         data["detailed"] = [{"area": pretty_date(d), "items": h} for d, h in data["days"]]
         data["highlights"] = [x for _, h in data["days"] for x in h][:8]
         return
-    json.dump({"key": key, "highlights": hl, "detailed": det}, open(cache_path, "w"))
+    with open(cache_path, "w") as fh:
+        json.dump({"key": key, "highlights": hl, "detailed": det}, fh)
     data["highlights"] = hl
     data["detailed"] = det
 
