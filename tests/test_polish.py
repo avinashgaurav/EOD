@@ -16,7 +16,7 @@ import tempfile
 import time
 import unittest
 
-from harness import EXTRACT, load_extract
+from harness import EXTRACT, fake_subprocess, load_extract
 
 
 class FakeRun:
@@ -82,7 +82,7 @@ class TestDebounce(unittest.TestCase):
         self.ex.CACHE = self.tmp
         self.calls = []
         self.ex._claude_bin = lambda: "/fake/claude"
-        self.ex.subprocess.run = lambda *a, **k: (self.calls.append(1), FakeRun())[1]
+        self.ex.subprocess = fake_subprocess(self.calls, FakeRun())
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -153,7 +153,7 @@ class TestPolishOff(unittest.TestCase):
         self.ex = load_extract()
         self.calls = []
         self.ex._claude_bin = lambda: "/fake/claude"
-        self.ex.subprocess.run = lambda *a, **k: (self.calls.append(1), FakeRun())[1]
+        self.ex.subprocess = fake_subprocess(self.calls, FakeRun())
         self.flag = os.path.join(os.path.dirname(EXTRACT), "polish.off")
         self.created = not os.path.exists(self.flag)
 

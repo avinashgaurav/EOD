@@ -1,13 +1,16 @@
-"""Shared test scaffolding: load extract.py in isolation and fake a transcript tree.
+"""Shared test scaffolding: load the eod package in isolation and fake a transcript tree.
 
-extract.py is a script, not a package, and it reads real paths off the machine at
-import time. Every test therefore gets its own module instance with the outside
-world stubbed out, so a test can never depend on (or disturb) the developer's own
-~/.claude, git repos, browser history or calendar.
+The package binds names at import time (`from ..config import ROOT`), so setting
+`config.ROOT` after the fact would not reach `sources.claude`. Rather than make
+every test know which module holds which name, load_extract returns a facade that
+reads across all of them and, crucially, writes through to every module that
+already defines the name. Patch once, land everywhere it is actually used.
+
+Each call reloads the package from scratch, so no test can leak state into another.
 """
 
 import contextlib
-import importlib.util
+import importlib
 import io
 import json
 import os
@@ -15,36 +18,71 @@ import shutil
 import sys
 import tempfile
 import time
+import types
 import unittest
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXTRACT = os.path.join(ROOT_DIR, "extract.py")
 
+MODULES = [
+    "eod.util", "eod.config",
+    "eod.sources.claude", "eod.sources.codex", "eod.sources.git",
+    "eod.sources.web", "eod.sources.apps", "eod.sources.docs",
+    "eod.sources.meetings",
+    "eod.pipeline", "eod.polish", "eod.render.text", "eod.render.html",
+    "eod.weekly", "eod.cli",
+]
+
+
+class Facade:
+    """Flat view over the package. Reads find the first module defining a name;
+    writes land on every module that defines it, which is what makes patching a
+    from-imported name work at all."""
+
+    def __init__(self, mods):
+        object.__setattr__(self, "_mods", mods)
+
+    def __getattr__(self, name):
+        for m in self._mods:
+            if hasattr(m, name):
+                return getattr(m, name)
+        raise AttributeError("no module in the eod package defines %r" % name)
+
+    def __setattr__(self, name, value):
+        hit = [m for m in self._mods if hasattr(m, name)]
+        if not hit:
+            raise AttributeError(
+                "refusing to set %r: no eod module defines it, so the patch would "
+                "silently do nothing" % name)
+        for m in hit:
+            setattr(m, name, value)
+
+    def modules_defining(self, name):
+        return [m.__name__ for m in self._mods if hasattr(m, name)]
+
 
 def load_extract():
-    """A fresh, isolated extract module with all external readers neutered."""
-    spec = importlib.util.spec_from_file_location("extract_under_test", EXTRACT)
-    ex = importlib.util.module_from_spec(spec)
-    argv, sys.argv = sys.argv, ["extract.py"]
-    try:
-        with contextlib.redirect_stdout(io.StringIO()):
-            spec.loader.exec_module(ex)
-    finally:
-        sys.argv = argv
+    """A freshly imported eod package with everything that touches the machine stubbed."""
+    if ROOT_DIR not in sys.path:
+        sys.path.insert(0, ROOT_DIR)
+    for name in [m for m in list(sys.modules) if m == "eod" or m.startswith("eod.")]:
+        del sys.modules[name]
 
-    # Everything that would touch the machine. Tests that care about one of these
-    # re-stub it themselves; the default is "this source found nothing".
-    ex.read_git = lambda date: []
-    ex.read_github = lambda date: []
-    ex.read_web = lambda date: []
-    ex.read_usage = lambda date: []
-    ex.read_docs = lambda date: []
-    ex.read_meetings = lambda date: []
+    mods = []
+    with contextlib.redirect_stdout(io.StringIO()):
+        for name in MODULES:
+            mods.append(importlib.import_module(name))
+    ex = Facade(mods)
+
+    # Everything that would read the real machine. A test that cares about one of
+    # these re-stubs it; the default is "this source found nothing".
+    for fn in ("read_git", "read_github", "read_web", "read_usage",
+               "read_docs", "read_meetings"):
+        setattr(ex, fn, lambda date, _f=fn: [])
     ex.collect_people = lambda commits, meetings: []
     ex.write_history = lambda: None
-    # polish() itself is left real: build() never calls it, and the suites that do
-    # want it need the genuine article. What is neutered is its only route off the
-    # machine, so a test can never spawn the CLI or spend tokens by accident.
+    # polish() stays real; what is removed is its only route off the machine, so
+    # no test can spawn the CLI or spend a token by accident.
     ex._claude_bin = lambda: None
     return ex
 
@@ -70,6 +108,12 @@ def title_line(title, key="custom-title"):
     """The session-title record. `key` lets a test pin the old or new spelling."""
     field = "aiTitle" if key == "ai-title" else "customTitle"
     return json.dumps({"type": key, field: title})
+
+
+def fake_subprocess(recorder, result):
+    """Stand-in for the subprocess module. Rebinding the name per eod module keeps
+    the real stdlib module untouched, so nothing leaks into the next test."""
+    return types.SimpleNamespace(run=lambda *a, **k: (recorder.append(1), result)[1])
 
 
 class TranscriptCase(unittest.TestCase):

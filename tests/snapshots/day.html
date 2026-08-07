@@ -1,0 +1,197 @@
+<!doctype html><html><head><meta charset='utf-8'><script>if(location.hash.indexOf('in')>=0)document.documentElement.className='anim-in';</script><style>
+:root{
+  --surface:#14151a;          /* the dark desk the receipt sits on */
+  --paper:#f3ecdd;            /* warm thermal paper */
+  --ink:#2a2620;              /* warm near-black ink */
+  --ink2:#9a8f7c;             /* faded ink */
+  --line:#cdc2aa;             /* printed rule */
+  --accent:#bf3d1f;           /* stamp red-orange */
+  --mono:'SF Mono',ui-monospace,Menlo,'Courier New',monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:transparent;font-family:var(--mono);-webkit-font-smoothing:antialiased}
+/* transparent so only the paper shows on the desktop; padding leaves room for the shadow */
+.surface{min-height:100vh;display:flex;justify-content:center;padding:16px 0 30px;background:transparent}
+.grip{cursor:grab}
+.grip:active{cursor:grabbing}
+.hide{position:absolute;top:9px;right:11px;border:none!important;background:transparent!important;
+  color:var(--ink2);font-size:13px;line-height:1;letter-spacing:0;padding:3px 5px}
+.hide:hover{color:var(--accent)}
+
+/* ── the paper ───────────────────────────────────────────────── */
+.receipt{
+  width:340px;background:var(--paper);color:var(--ink);
+  padding:22px 22px 20px;position:relative;
+  clip-path:polygon(0px 0px, 10px 6px, 20px 0px, 30px 6px, 40px 0px, 50px 6px, 60px 0px, 70px 6px, 80px 0px, 90px 6px, 100px 0px, 110px 6px, 120px 0px, 130px 6px, 140px 0px, 150px 6px, 160px 0px, 170px 6px, 180px 0px, 190px 6px, 200px 0px, 210px 6px, 220px 0px, 230px 6px, 240px 0px, 250px 6px, 260px 0px, 270px 6px, 280px 0px, 290px 6px, 300px 0px, 310px 6px, 320px 0px, 330px 6px, 340px 0px, 340px 100%, 330px calc(100% - 6px), 320px 100%, 310px calc(100% - 6px), 300px 100%, 290px calc(100% - 6px), 280px 100%, 270px calc(100% - 6px), 260px 100%, 250px calc(100% - 6px), 240px 100%, 230px calc(100% - 6px), 220px 100%, 210px calc(100% - 6px), 200px 100%, 190px calc(100% - 6px), 180px 100%, 170px calc(100% - 6px), 160px 100%, 150px calc(100% - 6px), 140px 100%, 130px calc(100% - 6px), 120px 100%, 110px calc(100% - 6px), 100px 100%, 90px calc(100% - 6px), 80px 100%, 70px calc(100% - 6px), 60px 100%, 50px calc(100% - 6px), 40px 100%, 30px calc(100% - 6px), 20px 100%, 10px calc(100% - 6px), 0px 100%);
+  filter:drop-shadow(0 10px 22px rgba(0,0,0,.55));
+  background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.022) 0 1px, transparent 1px 3px);
+  letter-spacing:.2px;
+}
+.receipt::after{ /* faint print fade / vignette */
+  content:"";position:absolute;inset:0;pointer-events:none;clip-path:inherit;
+  background:radial-gradient(120% 80% at 50% 50%, transparent 60%, rgba(120,100,60,.08));}
+
+/* ── masthead ────────────────────────────────────────────────── */
+.brand{text-align:center;font-size:20px;font-weight:700;letter-spacing:5px}
+.brand b{color:var(--accent)}
+.tag{text-align:center;font-size:9.5px;letter-spacing:3px;color:var(--ink2);margin-top:3px}
+.stamp{display:block;width:max-content;margin:9px auto 2px;border:1.5px solid var(--accent);
+  color:var(--accent);font-size:9px;letter-spacing:2px;padding:2px 8px;border-radius:3px;
+  transform:rotate(-3deg);opacity:.9}
+
+.rule{border-top:1px dashed var(--line);margin:11px 0}
+.rule.solid{border-top:1.5px solid var(--ink)}
+.rule.double{border-top:1.5px double var(--ink)}
+
+/* key/value rows with dotted leaders */
+.kv{display:flex;align-items:flex-end;font-size:11px;line-height:1.7}
+.kv .k{color:var(--ink2);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.kv .dots{flex:1;border-bottom:1px dotted var(--line);margin:0 5px 4px}
+.kv .v{white-space:nowrap}
+.kv.tot{font-size:11.5px}
+.kv.tot .k{color:var(--ink)}
+.kv.tot .v{font-weight:700}
+
+/* nav row */
+.nav{display:flex;gap:6px;justify-content:center;margin:10px 0 2px}
+button{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--ink);background:transparent;border:1px dashed var(--line);border-radius:4px;
+  padding:5px 9px;cursor:pointer;transition:.12s}
+button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
+
+/* section label (CLAUDE CODE / SCREEN TIME / WEB) */
+.sect{font-size:9.5px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;
+  font-weight:700;margin:4px 0 2px;text-align:center}
+
+/* departments (= projects) */
+.dept{margin:9px 0}
+.depthead{display:flex;align-items:flex-end;font-weight:700;font-size:12px;
+  text-transform:uppercase;letter-spacing:1px}
+.depthead .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:215px}
+.depthead .dots{flex:1;border-bottom:1px dotted var(--line);margin:0 6px 4px}
+.depthead .qty{color:var(--ink2);font-weight:700;white-space:nowrap}
+.depthead .cp{margin-left:7px;padding:1px 5px;font-size:9px;border-style:solid;opacity:.55}
+.depthead .cp:hover{opacity:1}
+.item{display:flex;gap:8px;font-size:11.5px;line-height:1.45;margin:3px 0 0 2px}
+.item .t{flex:1}
+.item .t b{color:var(--accent);font-weight:700;margin-right:5px}
+.item .tm{color:var(--ink2);font-size:10px;white-space:nowrap;padding-top:1px}
+.item.subt{margin-left:14px}
+.item.subt .t{color:var(--ink2);font-size:10.5px}
+.htext.editing{outline:1px dashed var(--accent);background:rgba(191,61,31,.06);
+  border-radius:3px;padding:0 3px;margin-left:-3px}
+.edot{color:var(--accent);font-size:9px;margin-left:4px}
+.dim{color:var(--ink2);font-size:10px}
+.del{display:none;border:none!important;background:transparent!important;color:var(--ink2);
+  font-size:11px;line-height:1;padding:0 4px;cursor:pointer;align-self:flex-start;margin-top:2px}
+.del:hover{color:var(--accent)}
+#workList[data-edit='1'] .del{display:inline-block}
+#workList[data-edit='1'] .item{align-items:flex-start}
+.dpick{font-family:var(--mono);font-size:9.5px;color:var(--ink);background:transparent;
+  border:1px dashed var(--line);border-radius:4px;padding:4px 6px;cursor:pointer}
+.dpick:hover{border-color:var(--ink)}
+
+/* footer */
+.end{text-align:center;font-size:11px;letter-spacing:3px;color:var(--ink);margin:6px 0 2px}
+.barcode{height:46px;width:78%;margin:10px auto 4px;
+  background-repeat:repeat-x;background-size:21px 100%;
+  background-image:repeating-linear-gradient(90deg,
+    var(--ink) 0 2px, transparent 2px 5px, var(--ink) 5px 6px, transparent 6px 11px,
+    var(--ink) 11px 14px, transparent 14px 16px, var(--ink) 16px 17px, transparent 17px 21px);}
+.bcnum{text-align:center;font-size:10px;letter-spacing:3px;color:var(--ink)}
+.actions{display:flex;gap:7px;justify-content:center;margin:12px 0 4px}
+.copyall{border-style:solid;border-color:var(--ink);font-weight:700;padding:7px 14px}
+.copyall:hover{background:var(--ink);color:var(--paper)}
+.copyall.seeall{border-style:dashed;border-color:var(--accent);color:var(--accent);font-weight:700}
+.copyall.seeall:hover{background:var(--accent);color:var(--paper)}
+.ts{text-align:center;font-size:9px;letter-spacing:1px;color:var(--ink2);margin-top:8px}
+.sig{color:var(--ink);font-weight:700;letter-spacing:2px}
+.warn{color:var(--accent);border:1px dashed var(--accent);border-radius:3px;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:4px 6px;margin:6px 0}
+.empty{text-align:center;color:var(--ink2);font-size:11px;letter-spacing:2px;padding:34px 0}
+
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(16px);
+  background:var(--ink);color:var(--paper);font-size:10px;letter-spacing:2px;text-transform:uppercase;
+  padding:8px 16px;border-radius:3px;opacity:0;transition:.22s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── print / unroll animation (paper fed from a slot at the top) ── */
+.roll{transform-origin:top center}
+html.anim-in  .roll{animation:printDown .85s cubic-bezier(.18,.86,.24,1) both}
+html.anim-out .roll{animation:rollUp   .42s cubic-bezier(.45,0,.7,.25) both}
+@keyframes printDown{
+  0%{clip-path:inset(0 0 100% 0);transform:translateY(-4px)}
+  100%{clip-path:inset(0 0 0 0);transform:translateY(0)}}
+@keyframes rollUp{
+  0%{clip-path:inset(0 0 0 0)}
+  100%{clip-path:inset(0 0 100% 0);transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){
+  html.anim-in .roll,html.anim-out .roll{animation-duration:.001s}}
+</style></head><body><div class='surface'><div class='roll'><div class='receipt'><button class='hide' onclick="send({action:'hide'})" title='Hide (⌥⌃⌘W to reopen)'>✕</button><div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>DAILY WORK RECEIPT</div><div class='stamp'>WORK · SCREEN · WEB</div></div><div class='rule'></div><div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>Thu, Aug 6 2026</span></div><div class='kv'><span class='k'>Ref</span><span class='dots'></span><span class='v'>#20260806</span></div><div class='nav'><button onclick='nav(-1)' title='Previous day'>◀</button><input type='date' class='dpick' value='2026-08-06' max='2026-08-07' onchange='goDate(this.value)' title='Jump to date'><button onclick='nav(1)' title='Next day'>▶</button><button onclick='refresh()' title='Refresh'>↻</button></div><div class='rule double'></div><div class='sect'>WORK</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Checkout</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p0','Users Me Work Checkout copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Fixed the coupon rounding edge case</span><span class='tm'>09:12</span></div></div><div id='p0' style='display:none'>Users Me Work Checkout
+  • Fixed the coupon rounding edge case</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Search</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p1','Users Me Work Search copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Reviewed the indexing pull request</span><span class='tm'>11:55</span></div></div><div id='p1' style='display:none'>Users Me Work Search
+  • Reviewed the indexing pull request</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Platform</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p2','Users Me Work Platform copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Trace why the webhook retries twice</span><span class='tm'>15:30</span></div></div><div id='p2' style='display:none'>Users Me Work Platform
+  • Trace why the webhook retries twice</div><div class='rule'></div><div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>From</span><span class='dots'></span><span class='v'>09:12</span></div><div class='kv tot'><span class='k'>To</span><span class='dots'></span><span class='v'>15:30</span></div><div class='rule double'></div><div class='end'>END OF DAY</div><div class='barcode'></div><div class='bcnum'>20260806 · A</div><div class='actions'><button class='copyall' onclick="copyEl('allText','Summary copied')">⎙ Copy</button><button class='copyall seeall' onclick="send({action:'full'})">⊞ See full bill</button></div><div class='ts'>updated 17:00 · ~/.claude · <span class='sig'>A</span></div><div id='allText' style='display:none'>Daily update — Thu, Aug 6 2026
+
+Users Me Work Checkout
+  • Fixed the coupon rounding edge case
+Users Me Work Search
+  • Reviewed the indexing pull request
+Users Me Work Platform
+  • Trace why the webhook retries twice
+</div></div></div></div><div class='toast' id='toast'></div><script>
+function send(m){try{window.webkit.messageHandlers.eod.postMessage(m);return true}catch(e){return false}}
+function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},1300)}
+function copyText(txt,label){
+  if(!send({action:'copy',text:txt})){ // browser fallback
+    var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
+    ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
+  toast((label||'Copied')+' ✓');}
+function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
+function nav(d){send({action:'nav',delta:d})}
+function goDate(v){if(v)send({action:'goDate',date:v})}
+function refresh(){send({action:'refresh'});toast('Refreshing…')}
+function regen(){send({action:'regen'});toast('Re-summarizing…')}
+function _enterEdit(){
+  var list=document.getElementById('workList'),b=document.getElementById('editBtn');
+  list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='true';s.classList.add('editing');});
+  list.setAttribute('data-edit','1');if(b)b.textContent='💾';
+}
+function _collect(){
+  var items=[];document.querySelectorAll('#workList .htext').forEach(function(s){
+    var t=s.textContent.replace(/\s+/g,' ').trim();if(t)items.push(t);});
+  return items;
+}
+function toggleEdit(){
+  var list=document.getElementById('workList'),b=document.getElementById('editBtn');
+  if(!list)return;
+  if(list.getAttribute('data-edit')!=='1'){
+    _enterEdit();var f=list.querySelector('.htext');if(f)f.focus();
+    toast('Edit / add — click 💾 to save');
+  }else{
+    var items=_collect();
+    list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='false';s.classList.remove('editing');});
+    list.setAttribute('data-edit','0');if(b)b.textContent='✎';
+    send({action:'saveEdits',items:items});toast('Saved ✓');
+  }
+}
+function addLine(){
+  var list=document.getElementById('workList');if(!list)return;
+  if(list.getAttribute('data-edit')!=='1')_enterEdit();
+  var d=document.createElement('div');d.className='item';
+  d.innerHTML="<span class='t'><b>•</b><span class='htext editing' contenteditable='true'></span></span>"+
+    "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button>";
+  list.appendChild(d);d.querySelector('.htext').focus();
+}
+function delLine(el){var it=el.closest('.item');if(it)it.remove();}
+function copyWork(){
+  var list=document.getElementById('workList');
+  if(list&&list.getAttribute('data-edit')==='1'){           // copy straight from your edits + persist
+    var items=_collect();
+    copyText(items.map(function(t){return '\u2022 '+t}).join('\n'),'Work update copied');
+    send({action:'saveEdits',items:items});
+  }else{copyEl('workText','Work update copied');}
+}
+function drag(e){if(e.button===0)send({action:'dragStart'})}
+window.playOut=function(){var h=document.documentElement;h.classList.remove('anim-in');h.classList.add('anim-out')};
+</script></body></html>
