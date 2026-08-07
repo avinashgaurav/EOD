@@ -16,7 +16,11 @@ used to have, so anything that reached into it keeps working.
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# realpath, not abspath: ~/.hammerspoon/extract.py is commonly a symlink into a
+# checkout, and abspath would resolve to the symlink's directory, where the eod
+# package is not. This currently works only because Python resolves sys.path[0]
+# for a symlinked script; relying on that is luck, not design.
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 from eod.util import *              # noqa: F401,F403  text, dates, paths, noise filter
 from eod.config import *            # noqa: F401,F403  paths, user config, display limits

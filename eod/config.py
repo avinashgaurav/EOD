@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 # cache live beside it, NOT beside this module: eod.lua and every existing
 # install address them by that path, so resolving them relative to the package
 # would silently move them.
-APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+APP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
 def app_path(*parts):
