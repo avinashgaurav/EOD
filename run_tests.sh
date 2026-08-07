@@ -13,7 +13,7 @@ echo "python: $($PY --version 2>&1)"
 
 echo
 echo "── syntax ──────────────────────────────────────────"
-$PY -m py_compile extract.py && echo "  extract.py OK"
+$PY -m py_compile extract.py $(find eod -name "*.py") && echo "  extract.py + eod/ OK"
 if command -v luac >/dev/null 2>&1; then
   luac -p eod.lua init.lua && echo "  eod.lua, init.lua OK"
 else

@@ -32,17 +32,17 @@ jobs:
         run: |
           # These files are read at runtime but easy to rename without noticing.
           for f in exclude.txt repos.txt polish.off signature.txt; do
-            grep -q "$f" extract.py || { echo "::error::$f is documented but no longer read by extract.py"; exit 1; }
-            grep -q "$f" README.md  || { echo "::error::$f is read by extract.py but missing from README.md"; exit 1; }
+            grep -rq "$f" eod/    || { echo "::error::$f is documented but no longer read by the engine"; exit 1; }
+            grep -q  "$f" README.md || { echo "::error::$f is read by the engine but missing from README.md"; exit 1; }
           done
           echo "all four config files are both read and documented"
 
       - name: Check no hardcoded author mark crept back in
         run: |
-          if grep -q "tamper-guard" extract.py; then
+          if grep -rq "tamper-guard" eod/ extract.py; then
             echo "::error::the self-restoring signature guard is back"; exit 1
           fi
-          if grep -qE "map\(chr, \(65, 71\)\)" extract.py; then
+          if grep -rqE "map\(chr, \(65, 71\)\)" eod/ extract.py; then
             echo "::error::the obfuscated author initials are back"; exit 1
           fi
           echo "signature is still user-derived"

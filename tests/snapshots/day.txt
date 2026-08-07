@@ -1,0 +1,8 @@
+Daily update — Thu, Aug 6 2026
+
+Users Me Work Checkout
+  • Fixed the coupon rounding edge case
+Users Me Work Search
+  • Reviewed the indexing pull request
+Users Me Work Platform
+  • Trace why the webhook retries twice

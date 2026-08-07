@@ -1,0 +1,76 @@
+{
+ "apps": [],
+ "commits": [],
+ "date": "2026-08-06",
+ "docs": [],
+ "generated_at": "2026-08-06 17:00:00",
+ "meetings": [],
+ "people": [],
+ "project_count": 3,
+ "projects": [
+  {
+   "name": "Users Me Work Checkout",
+   "sessions": [
+    {
+     "end": "09:40",
+     "prompts": [
+      {
+       "t": "09:12",
+       "text": "look at the coupon rounding edge case"
+      },
+      {
+       "t": "09:40",
+       "text": "add a regression test for that path"
+      }
+     ],
+     "source": "claude",
+     "start": "09:12",
+     "title": "Fix the coupon rounding edge case"
+    }
+   ],
+   "total": 2
+  },
+  {
+   "name": "Users Me Work Search",
+   "sessions": [
+    {
+     "end": "11:55",
+     "prompts": [
+      {
+       "t": "11:55",
+       "text": "review PR 501 for the search service"
+      }
+     ],
+     "source": "claude",
+     "start": "11:55",
+     "title": "Review the indexing pull request"
+    }
+   ],
+   "total": 1
+  },
+  {
+   "name": "Users Me Work Platform",
+   "sessions": [
+    {
+     "end": "15:30",
+     "prompts": [
+      {
+       "t": "15:30",
+       "text": "trace why the webhook retries twice"
+      }
+     ],
+     "source": "claude",
+     "start": "15:30",
+     "title": "trace why the webhook retries twice"
+    }
+   ],
+   "total": 1
+  }
+ ],
+ "prs": [],
+ "session_count": 3,
+ "sessions_seen": 3,
+ "sessions_untitled": 1,
+ "transcripts_touched": 3,
+ "web": []
+}

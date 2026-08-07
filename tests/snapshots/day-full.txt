@@ -1,0 +1,13 @@
+Full work log — Thu, Aug 6 2026
+
+CLAUDE CODE
+  Users Me Work Checkout
+    • Fixed the coupon rounding edge case  [09:12–09:40]
+        09:12  look at the coupon rounding edge case
+        09:40  add a regression test for that path
+  Users Me Work Search
+    • Reviewed the indexing pull request  [11:55–11:55]
+        11:55  review PR 501 for the search service
+  Users Me Work Platform
+    • Trace why the webhook retries twice  [15:30–15:30]
+        15:30  trace why the webhook retries twice
