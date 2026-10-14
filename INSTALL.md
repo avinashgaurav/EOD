@@ -1,11 +1,14 @@
 # Install — EOD
 
-A little macOS desktop widget that turns your Claude Code activity into a daily
-"work receipt." Takes ~3 minutes to set up.
+A little macOS desktop widget that turns your day (Claude Code and Codex sessions,
+commits, documents, browsing, meetings and screen time) into a daily "work
+receipt." Takes ~3 minutes to set up.
 
 ## What you need
 
-1. **Claude Code** — you must actually use it (the widget reads `~/.claude`).
+1. **Claude Code or Codex**: use at least one. The WORK section is built from their
+   local transcripts (`~/.claude/projects`, `~/.codex/sessions`). The other sections
+   (git, documents, browsing, screen time) work without either.
 2. **Hammerspoon** — the free automation app that hosts the widget.
    Download: <https://www.hammerspoon.org/> → drag to Applications → open it once
    → grant **Accessibility** when it asks (System Settings → Privacy & Security →

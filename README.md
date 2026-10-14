@@ -19,12 +19,25 @@ Mac. Local-first, no API keys (see [Requirements & permissions](#requirements--p
 | Source | Shows up as | Read from |
 |---|---|---|
 | **Claude Code** + **Codex** | **WORK** — your coding sessions, per project | their local JSONL transcripts |
-| **Git** | shipped commits & PRs | repos in your work folders |
+| **Git** | shipped commits | repos in your work folders |
 | **Documents** | decks / docs / sheets / PDFs you created or edited | your work folders |
 | **Browsing** | **WEB** — the sites you spent time on | Chrome / Brave / Safari history |
 | **Apps** | **SCREEN TIME** | the widget samples your frontmost app on a timer (skipping idle time) and saves per-app seconds to `cache/` |
+| **GitHub** (optional) | pull requests you touched | the `gh` CLI, if installed and logged in |
+| **Calendar** (optional) | **MEETINGS** | `icalBuddy`, if installed (`brew install ical-buddy`) |
 
 All local — nothing leaves your Mac (one optional exception, [below](#requirements--permissions)).
+
+### Why AI here, why code there
+
+The AI is deliberately minimal. Code does the work; a model only rewords it, and only if you let it.
+
+| Step | Done by | Why |
+|---|---|---|
+| Reading transcripts, git, documents, browser history, calendar and screen time | Code | Plain file reads: local, repeatable and covered by tests. No model needed. |
+| Grouping, de-duping, noise filtering and `exclude.txt` | Code | Privacy rules have to hold every time, so they are rules, not prompts. |
+| Turning the day (and the week) into manager-ready bullets | Your `claude` CLI, optional | The one step where wording matters more than exactness. Skipped when nothing changed, at most once per 30 minutes on its own, never with `polish.off`. |
+| Fallback when the model is off, missing or fails | Code | The receipt still builds offline; a failed daily call keeps the last good summary. |
 
 <p align="center">
   <img src="screenshots/brief.png" alt="EOD daily work receipt" width="220">
@@ -175,10 +188,11 @@ top-right. (Already have an `init.lua`? Don't overwrite it — see INSTALL.md.)
 
 ## How it works
 
-- **`extract.py`** parses every Claude Code and Codex `*.jsonl` transcript for the
-  target day, takes each session's AI title, de-dupes per project, folds in git
-  commits / documents / browser history / app usage, filters noise, and writes a
-  self-contained receipt HTML to `cache/`.
+- **`extract.py`** is the entry point; the engine lives in the `eod/` package, one
+  module per source. It parses every Claude Code and Codex `*.jsonl` transcript for
+  the target day, takes each session's AI title, de-dupes per project, folds in git
+  commits, pull requests, meetings, documents, browser history and app usage, filters
+  noise, and writes a self-contained receipt HTML to `cache/`.
 - **`eod.lua`** is a Hammerspoon module that renders that HTML in a frameless
   `hs.webview`, runs the engine on a timer, and handles copy / nav / drag / animation.
 
@@ -207,6 +221,7 @@ no fork, no edit to this repo.
 
 ```python
 # ~/.eod/sources/linear.py
+import os
 from eod.sources.base import Source, register
 
 class LinearSource(Source):
@@ -248,13 +263,14 @@ directory so the suite never reads or disturbs your real `~/.claude`.
 ./run_tests.sh test_dates   # a single module
 ```
 
-The suite runs on 3.9 and 3.12 in CI, plus a `luac -p` check on `eod.lua`. It is
+The suite runs on 3.9 and 3.12 in CI, plus a `luac -p` syntax check and a small
+behaviour test (`tests/test_eod_lua.lua`) for the Lua side. It is
 run with `-W error::ResourceWarning`, so a leaked file handle fails the build:
 the transcript readers leaked one per file before these tests existed.
 
 Two guards worth knowing about, because they are about intent rather than
-correctness. CI fails if any of the four config files stops being read by
-`extract.py` or disappears from this README, and it fails if the hardcoded author
+correctness. CI fails if any of the four config files stops being read by the
+engine in `eod/` or disappears from this README, and it fails if the hardcoded author
 signature or its self-restoring guard ever come back.
 
 ---
