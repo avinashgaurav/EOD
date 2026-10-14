@@ -23,7 +23,7 @@ Mac. Local-first, no API keys (see [Requirements & permissions](#requirements--p
 | **Documents** | decks / docs / sheets / PDFs you created or edited | your work folders |
 | **Browsing** | **WEB** — the sites you spent time on | Chrome / Brave / Safari history |
 | **Apps** | **SCREEN TIME** | the widget samples your frontmost app on a timer (skipping idle time) and saves per-app seconds to `cache/` |
-| **GitHub** (optional) | pull requests you touched | the `gh` CLI, if installed and logged in |
+| **GitHub** (optional) | pull requests you touched | the `gh` CLI, if installed (Homebrew paths) and signed in with `gh auth login` |
 | **Calendar** (optional) | **MEETINGS** | `icalBuddy`, if installed (`brew install ical-buddy`) |
 
 All local — nothing leaves your Mac (one optional exception, [below](#requirements--permissions)).
@@ -36,7 +36,7 @@ The AI is deliberately minimal. Code does the work; a model only rewords it, and
 |---|---|---|
 | Reading transcripts, git, documents, browser history, calendar and screen time | Code | Plain file reads: local, repeatable and covered by tests. No model needed. |
 | Grouping, de-duping, noise filtering and `exclude.txt` | Code | Privacy rules have to hold every time, so they are rules, not prompts. |
-| Turning the day (and the week) into manager-ready bullets | Your `claude` CLI, optional | The one step where wording matters more than exactness. Skipped when nothing changed, at most once per 30 minutes on its own, never with `polish.off`. |
+| Turning the day (and the week) into manager-ready bullets | Your `claude` CLI, optional | The one step where wording matters more than exactness. Skipped when nothing changed and never run with `polish.off`; the daily summary also runs at most once per 30 minutes on its own. |
 | Fallback when the model is off, missing or fails | Code | The receipt still builds offline; a failed daily call keeps the last good summary. |
 
 <p align="center">
