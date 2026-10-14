@@ -24,7 +24,7 @@ POLISH_PROMPT = (
     "of line a person actually sends their manager. Quality of selection matters most.\n\n"
     "INCLUDE only substantive work: features built, issues/bugs fixed, docs/decks/sheets/"
     "content created, analyses, things shipped, meetings & discussions, collaboration with "
-    "named people, deliverables shared.\n"
+    "named collaborators (only names that appear in the input), deliverables shared.\n"
     "EXCLUDE trivial mechanical steps that are NOT worth telling a manager — opening or "
     "locating a repo, reading/finding files, checking repo access, logging in, setup/config, "
     "navigating, asking for paths, 'analyzing' just to look. If a whole session was only "
@@ -43,7 +43,7 @@ POLISH_PROMPT = (
     "RULES:\n"
     "- Start lines like the examples: 'Worked on…', 'Discussed with…', 'Worked with <name> on…', "
     "'Made…', 'Reworked…', 'Meeting with…'.\n"
-    "- Use real specifics from the prompts: issue/PR numbers (#253, #254), people names, "
+    "- Use real specifics from the prompts: issue/PR numbers (#253, #254), names that appear in the prompts, "
     "document/deliverable/product names. Never invent details not in the input.\n"
     "- Also fold in work DOCUMENTS created (decks/docs/sheets) and genuinely work-relevant "
     "Google Docs/Sheets/Slides or research from the DOCS sections (e.g. 'Made the launch "
@@ -57,7 +57,7 @@ POLISH_PROMPT = (
     '2. "detailed": array of groups, each {"area": "<short theme/area name>", '
     '"items": ["<clear specific bullet>", ...]} — a MORE GRANULAR breakdown (2-8 bullets per '
     "area) of everything meaningful that day. SAME readable voice and rules; more detail and "
-    "specifics (issue/PR numbers, files, people, outcomes). Still NEVER dump raw prompts — "
+    "specifics (issue/PR numbers, files, names from the input, outcomes). Still NEVER dump raw prompts — "
     "rewrite into clear accomplishments. Skip trivia. Group by theme/area, most important first.\n\n"
     "Output ONLY the JSON object. No markdown, no commentary.\n"
     'Example: {"highlights": ["Worked on Billing Service issues #253 and #254 (PR #268)"], '
@@ -244,7 +244,7 @@ WEEKLY_PROMPT = (
     "- Group by theme/area, most important first; dedupe work repeated across days; show the "
     "outcome (e.g. 'shipped', 'merged') rather than day-by-day churn.\n"
     "- Same voice as the dailies: 'Worked on…', 'Shipped…', 'Discussed with…', 'Met with…'.\n"
-    "- Keep specifics: issue/PR numbers, people, deliverables. Never invent.\n"
+    "- Keep specifics: issue/PR numbers, names from the input, deliverables. Never invent.\n"
     "Return a JSON OBJECT: {\"highlights\": [4-8 top weekly lines], "
     '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}]}. Output ONLY the JSON object.'
 )
