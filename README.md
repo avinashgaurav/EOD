@@ -22,7 +22,7 @@ Mac. Local-first, no API keys (see [Requirements & permissions](#requirements--p
 | **Git** | shipped commits & PRs | repos in your work folders |
 | **Documents** | decks / docs / sheets / PDFs you created or edited | your work folders |
 | **Browsing** | **WEB** — the sites you spent time on | Chrome / Brave / Safari history |
-| **Apps** | **SCREEN TIME** | local app-usage |
+| **Apps** | **SCREEN TIME** | the widget samples your frontmost app on a timer (skipping idle time) and saves per-app seconds to `cache/` |
 
 All local — nothing leaves your Mac (one optional exception, [below](#requirements--permissions)).
 
@@ -109,7 +109,7 @@ Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
 | Session titles | Anything from a project in `exclude.txt` |
 | Up to 8 prompts per session, 160 chars each | Personal browsing (job boards, shopping, social) | <!--claim:polish-sends-prompts-->
 | Commit subjects and PR titles | Mail, chat and calendar hosts |
-| Meeting titles | Names of the people you met or collaborated with | <!--claim:polish-no-third-party-names-->
+| Meeting titles | Attendee lists and the collaborators EOD detects (a name you typed into a prompt or meeting title still goes) | <!--claim:polish-no-third-party-names-->
 | Document filenames and their folder | File contents, ever |
 | Page titles from work browsing | Screen-time app data |
 

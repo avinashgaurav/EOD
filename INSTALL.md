@@ -52,7 +52,7 @@ Hammerspoon Preferences → "Launch Hammerspoon at login").
 
 ## Optional configuration
 
-All three files live next to `extract.py` and none exist by default.
+All four files live next to `extract.py` and none exist by default.
 
 **Hide private projects.** To keep certain projects off the receipt (client /
 NDA / job-hunt work), copy `exclude.txt.example` to `exclude.txt` and add one
@@ -89,4 +89,6 @@ printf 'AG' > ~/.hammerspoon/signature.txt   # or: : > signature.txt for none
   starting with `[eod]`.
 - **"python not found"** — install python3 (see above); the widget looks in
   `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`.
-- Everything stays on your machine. No data leaves your Mac.
+- Everything stays on your machine, except the optional AI-polish step, which sends a
+  summary of the day through your own `claude` CLI login (see the README for exactly what
+  it sends, or create `polish.off` to disable it).

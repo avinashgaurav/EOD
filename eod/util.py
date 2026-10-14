@@ -240,8 +240,7 @@ def clean_title(t):
     return out
 
 
-BRAND_CASE = {
-              "seo": "SEO", "geo": "GEO", "ui": "UI",
+BRAND_CASE = {"seo": "SEO", "geo": "GEO", "ui": "UI",
               "api": "API", "pr": "PR", "v2": "V2", "rec": "Recs"}
 
 

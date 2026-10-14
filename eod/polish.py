@@ -30,8 +30,8 @@ POLISH_PROMPT = (
     "navigating, asking for paths, 'analyzing' just to look. If a whole session was only "
     "this, DROP it entirely.\n"
     "MERGE many small related sessions into ONE themed line (e.g. all website work → one line).\n\n"
-    "STYLE — match these real examples exactly (voice, tone, length):\n"
-    "- Worked on the Content Engine issues and Email infra.\n"
+    "STYLE — match these examples exactly (voice, tone, length):\n"
+    "- Worked on the Billing Service issues and Email infra.\n"
     "- Discussed with Engg on new changes for Website.\n"
     "- Worked on the Mobile App Product Brief and shared that with Team.\n"
     "- Worked on the Pricing Comparison sheet and Competitor One-Pager.\n"
@@ -49,8 +49,6 @@ POLISH_PROMPT = (
     "Google Docs/Sheets/Slides or research from the DOCS sections (e.g. 'Made the launch "
     "deck', 'Worked on the Q3 Roadmap doc'). STRICTLY EXCLUDE anything "
     "personal — email, chat, job-hunting, shopping, food, social. Never put those in the update.\n"
-    "- When the PEOPLE line names collaborators, attribute the relevant work naturally "
-    "('Worked with <name> on…', 'Paired with <name> on…') — only where it genuinely fits.\n"
     "- One line each, ~5-16 words, plain professional English, no first-person 'I', no fluff, "
     "no emojis.\n"
     "- Order by importance (most important first).\n\n"
@@ -62,9 +60,9 @@ POLISH_PROMPT = (
     "specifics (issue/PR numbers, files, people, outcomes). Still NEVER dump raw prompts — "
     "rewrite into clear accomplishments. Skip trivia. Group by theme/area, most important first.\n\n"
     "Output ONLY the JSON object. No markdown, no commentary.\n"
-    'Example: {"highlights": ["Worked on Content Engine issues #253 and #254 (PR #268)"], '
-    '"detailed": [{"area": "Content Engine", "items": ["Fixed chapter-count logic in the ebook '
-    'wizard (#253)", "Raised plan capacity and added 4-variant preview (#254)", "Resolved '
+    'Example: {"highlights": ["Worked on Billing Service issues #253 and #254 (PR #268)"], '
+    '"detailed": [{"area": "Billing Service", "items": ["Fixed proration logic in the invoice '
+    'generator (#253)", "Raised plan capacity and added 4-variant preview (#254)", "Resolved '
     'path-traversal review blocker and opened PR #268"]}]}'
 )
 
