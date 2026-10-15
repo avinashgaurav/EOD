@@ -93,5 +93,5 @@ printf 'AG' > ~/.hammerspoon/signature.txt   # or: : > signature.txt for none
 - **"python not found"** — install python3 (see above); the widget looks in
   `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin`.
 - Everything stays on your machine, except the optional AI-polish step, which sends a
-  summary of the day through your own `claude` CLI login (see the README for exactly what
+  summary of the day through your own `claude` CLI login (see [docs/privacy.md](docs/privacy.md) for exactly what
   it sends, or create `polish.off` to disable it).

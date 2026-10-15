@@ -1,14 +1,14 @@
-"""Every behavioural promise the README makes, as an executable test.
+"""Every behavioural promise the docs make (README.md and docs/), as an executable test.
 
 Three times in one session the README described behaviour the code did not have:
 the polish payload, source failures appearing on the receipt, and then the
 half-fix of that same thing. Each time the sentence was written before the last
 mile of the code, and twice it took someone else to notice.
 
-Remembering not to do that is not a fix. This is: each claim in README.md carries
+Remembering not to do that is not a fix. This is: each claim in the docs carries
 a `<!--claim:NAME-->` marker, each test here declares the claim it proves, and
 tests/test_claim_coverage.py fails the build if the two sets ever diverge. You
-cannot add a promise to the README without also making it falsifiable, and you
+cannot add a promise to the docs without also making it falsifiable, and you
 cannot quietly drop the behaviour without a red test.
 
 Add a claim => add a test here. Delete a claim => delete its test.
