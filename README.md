@@ -91,9 +91,10 @@ verbose view, and like everything else on the card it never leaves your Mac.
 | Facts preserved (issue numbers, figures, names) | 30 / 30 | 30 / 30 |
 | Invented numbers or names | 0 | 0 |
 | Personal browsing leaking into the update | 0 / 10 days | 0 / 10 days |
-| Days with an overstated or embellished claim | 5 / 10 | 0 / 10 |
+| Days with an overstated or embellished claim (manual review; the prompt rules were written from these misses, so tuned on this set) | 5 / 10 | 0 / 10 |
+| Days with 4 to 9 highlights, as the prompt asks (the rest had 3 or fewer work items) | 4 / 10 | 3 / 10 |
 
-For EOD the Claude Code CLI is the production path, so these runs used the real call.
+For EOD the Claude Code CLI is the production path, so these runs used the real call through the real `polish()`. The eval wrapper changes only what it needs to record the run: JSON output instead of text (for latency, usage and model), and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` in the environment, which production now sets too. The weekly rollup was not measured.
 
 ## Features
 

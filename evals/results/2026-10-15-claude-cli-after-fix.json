@@ -35,7 +35,7 @@
       "Website",
       "first-launch"
     ],
-    "fixCommit": "5fb25c0",
+    "fix": "shipped in the same PR as this result file",
     "manualReview": {
       "reviewer": "eval author, one read of all 10 outputs against the payload",
       "unknownTokensCleared": "all 4 flagged tokens are inflections or hyphenated forms of input words; none invented",

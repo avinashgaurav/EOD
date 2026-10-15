@@ -1,8 +1,6 @@
 # EOD polish fidelity eval
 
-First-pass eval of the AI polish step (`eod/polish.py`), which turns a day's raw activity into manager-ready highlights and a detailed breakdown. Run on 2026-10-15, then rerun the same day after the fix in commit `5fb25c0` (see "Before and after the fix").
-
-**Method note.** Measured via the Claude Code CLI with the app's own prompts and schema, not the production API path; an API rerun is planned.
+First-pass eval of the AI polish step (`eod/polish.py`), which turns a day's raw activity into manager-ready highlights and a detailed breakdown. Run on 2026-10-15, then rerun the same day after the fix, which ships in the same PR (see "Before and after the fix").
 
 For EOD the CLI *is* the production path: `polish()` shells out to `claude -p --output-format text`. The harness (`evals/harness/run.py`) calls the real `polish(data, force=True)`, so all of these run unchanged:
 
@@ -13,11 +11,16 @@ For EOD the CLI *is* the production path: `polish()` shells out to `claude -p --
 Only two things are redirected, both eval-only:
 
 - **The cache.** `polish.CACHE` points to a temp dir, so no real cache is read or written.
-- **The CLI binary.** `polish._claude_bin` points to `evals/harness/claude_wrapper.py`. The wrapper runs the same prompt through `claude -p` but adds `--tools ""`, `--strict-mcp-config`, `--setting-sources ""` and `--no-session-persistence`. It requests the JSON envelope only to log latency, usage and model, and hands `polish()` the same result text.
+- **The CLI binary.** `polish._claude_bin` points to `evals/harness/claude_wrapper.py`. The wrapper runs the same prompt through `claude -p` with `polish()`'s own argv, and changes three things:
+  - the output format, text to JSON, only to log latency, usage and model; it hands `polish()` the same result text
+  - the environment: `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, so no CLAUDE.md loads (production now sets this too; it did not during either run)
+  - `--model`, only if `EVAL_MODEL` is set (it was not in these runs)
+
+  If `polish()` did not pass the isolation flags (the first run), the wrapper adds `--tools ""`, `--strict-mcp-config`, `--setting-sources ""` and `--no-session-persistence`.
 
 Differences from how it runs on a user's machine:
 
-- **First run only: production had no isolation flags.** Tools, the user's settings, hooks, MCP servers and CLAUDE.md all loaded there, so the first run measured the prompt, not whatever a given user's setup adds. Since fix `5fb25c0`, production passes the same flags, and the wrapper passes production's argv through.
+- **First run only: production had no isolation flags.** Tools, the user's settings, hooks, MCP servers and CLAUDE.md all loaded there, so the first run measured the prompt, not whatever a given user's setup adds. Since the fix, production passes the same flags, and the wrapper passes production's argv through.
 - **No `--system-prompt` or `--json-schema`.** The app uses neither: the whole prompt is the user turn, and JSON is parsed from text.
 - **No `--model`.** `polish.py` pins no model, so the CLI default answered.
 - **No `--bare`.** It needs `ANTHROPIC_API_KEY`, and this run used a plan login.
@@ -85,14 +88,15 @@ The things that must not appear:
 
 ## Before and after the fix
 
-Fix commit `5fb25c0` (production code, separate from the eval commits):
+The fix (production code, in the same PR as these results):
 
-- `POLISH_PROMPT` gains two rules: only say shipped, merged, deployed, released, sent, shared or met when the input shows it (a commit alone is "fixed" or "committed"; an instruction to send is not proof it was sent), and never add people, teams, meetings, recipients or cadence words that are not in the input.
+- `POLISH_PROMPT` gains two rules: only say shipped, merged, deployed, released, sent, shared or met when the input shows it (a commit alone is "fixed" or "committed"; an instruction to send is not proof it was sent), and never add people, teams, meetings, recipients or cadence words that are not in the input. The same two rules were added to `WEEKLY_PROMPT`, but the weekly rollup is unmeasured: this eval runs the daily polish only.
 - Both `claude -p` calls (daily and weekly) now pass `--tools ""`, `--strict-mcp-config`, `--setting-sources ""` and `--no-session-persistence`. A new README claim (`polish-cli-isolated`) and its test pin this. The `POLISH_SENTINEL` filter is kept: with `--no-session-persistence` EOD's own calls are no longer written to `~/.claude/projects`, so the filter should no longer be needed, but it is a cheap second line of defence and still covers old transcripts and older CLI versions.
+- Added after both runs: both calls also set `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` (checked against the strings in Claude Code 2.1.299, which skips CLAUDE.md loading when it is set), and if an older CLI exits with "unknown option" for one of the flags, the call is retried once with the old `-p --output-format text`.
 
-Tests after the fix: `./run_tests.sh` passes, 134 tests (133 before, plus the new claim test), including `test_claim_coverage`.
+Tests after the fix: `./run_tests.sh` passes, 135 tests (133 before, plus the claim test and a test for the unknown-option retry), including `test_claim_coverage`.
 
-For the rerun, the eval wrapper passes `polish()`'s own argv through (only switching the output format to JSON for logging), so the rerun exercised the production flags exactly. Same 10 days, same checks, same model. Results: `evals/results/2026-10-15-claude-cli.json` (before) and `evals/results/2026-10-15-claude-cli-after-fix.json` (after).
+For the rerun, the eval wrapper passed `polish()`'s own argv through, changing only the output format, and set `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, which production did not yet set. Same 10 days, same checks, same model. Results: `evals/results/2026-10-15-claude-cli.json` (before) and `evals/results/2026-10-15-claude-cli-after-fix.json` (after).
 
 | Metric | Before | After |
 |---|---|---|

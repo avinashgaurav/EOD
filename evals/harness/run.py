@@ -33,7 +33,11 @@ def _env():
 P._full_env = _env
 assert not os.path.exists(P.app_path("polish.off")), "polish.off present; polish() would skip"
 
-DICT = set(w.strip().lower() for w in open("/usr/share/dict/words"))
+WORDS = "/usr/share/dict/words"
+if not os.path.exists(WORDS):
+    sys.exit("%s is missing. The unknown-token check needs an English word list there "
+             "(macOS ships one; on Debian or Ubuntu install the wamerican package)." % WORDS)
+DICT = set(w.strip().lower() for w in open(WORDS))
 STYLE_OK = set("""engg pr prs mdx csv pdf docx xlsx api ui ux qa ci cd sync standup retro onboarding
 backfill backfilled idempotency idempotent redaction configurable lighthouse dashboard widget
 one-pager signup setup p95 ms os android ios cms nav mobile tenant tenants per-tenant""".split())
