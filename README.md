@@ -82,6 +82,19 @@ verbose view, and like everything else on the card it never leaves your Mac.
 
 </details>
 
+## Evals
+
+10 fictional work days, with the facts that must survive and the things that must not appear written down before the run. Method and every miss: [EVALS.md](EVALS.md).
+
+| Measure | Before fix | After fix |
+|---|---|---|
+| Facts preserved (issue numbers, figures, names) | 30 / 30 | 30 / 30 |
+| Invented numbers or names | 0 | 0 |
+| Personal browsing leaking into the update | 0 / 10 days | 0 / 10 days |
+| Days with an overstated or embellished claim | 5 / 10 | 0 / 10 |
+
+For EOD the Claude Code CLI is the production path, so these runs used the real call.
+
 ## Features
 
 - **Auto-built daily** from your local activity — rolls over at midnight, refreshes through the day.
@@ -129,6 +142,10 @@ Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
 Two things worth knowing. Your prompts do go, and prompts sometimes contain
 paths, hostnames or pasted snippets. And this is your own Claude account via
 your own CLI login, not a third party.
+
+The call itself is sealed off: EOD runs `claude -p` with no tools, none of your <!--claim:polish-cli-isolated-->
+settings, hooks, MCP servers or CLAUDE.md, and without saving a session, so the
+summary cannot touch your files and never shows up later as "work".
 
 See it for yourself before trusting any of the above:
 

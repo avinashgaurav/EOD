@@ -45,6 +45,11 @@ POLISH_PROMPT = (
     "'Made…', 'Reworked…', 'Meeting with…'.\n"
     "- Use real specifics from the prompts: issue/PR numbers (#253, #254), names that appear in the prompts, "
     "document/deliverable/product names. Never invent details not in the input.\n"
+    "- Only say shipped, merged, deployed, released, sent, shared or met when the input shows it: a merged "
+    "PR, a meeting in the MEETINGS section, or the person saying it happened. A commit alone is 'fixed' or "
+    "'committed', not 'shipped'. An instruction such as 'send the draft to X' is not proof it was sent.\n"
+    "- Never add people, teams, meetings, recipients or cadence words (weekly, daily) that are not in the "
+    "input. 'Worked with <name>' only when the input shows that person working on it, not just asking for it.\n"
     "- Also fold in work DOCUMENTS created (decks/docs/sheets) and genuinely work-relevant "
     "Google Docs/Sheets/Slides or research from the DOCS sections (e.g. 'Made the launch "
     "deck', 'Worked on the Q3 Roadmap doc'). STRICTLY EXCLUDE anything "
@@ -68,6 +73,14 @@ POLISH_PROMPT = (
 
 
 # Comms surfaces — kept in WEB display but NOT fed to the manager summary.
+# Flags for every EOD call to the claude CLI. EOD only needs text back, so the call
+# runs with no tools, none of the user's settings, hooks, MCP servers or CLAUDE.md,
+# and is not saved as a session (so it never shows up in ~/.claude/projects to be
+# read back as "work"; the POLISH_SENTINEL filter stays as a second line of defence).
+CLAUDE_ARGS = ["-p", "--output-format", "text", "--tools", "", "--strict-mcp-config",
+               "--setting-sources", "", "--no-session-persistence"]
+
+
 POLISH_WEB_SKIP = {"mail.google.com", "chat.google.com", "calendar.google.com", "meet.google.com"}
 
 
@@ -213,7 +226,7 @@ def polish(data, force=False):
     except Exception:
         cwd = None
     try:
-        r = subprocess.run([cb, "-p", "--output-format", "text"],
+        r = subprocess.run([cb, *CLAUDE_ARGS],
                            input=POLISH_PROMPT + "\n\n" + raw,
                            capture_output=True, text=True, timeout=150, cwd=cwd, env=_full_env())
         if r.returncode != 0:
@@ -285,7 +298,7 @@ def polish_weekly(data, force=False):
     except Exception:
         cwd = None
     try:
-        r = subprocess.run([cb, "-p", "--output-format", "text"],
+        r = subprocess.run([cb, *CLAUDE_ARGS],
                            input=WEEKLY_PROMPT + "\n\n" + raw,
                            capture_output=True, text=True, timeout=150, cwd=cwd, env=_full_env())
         obj = json.loads(_extract_json_obj(r.stdout.strip()))

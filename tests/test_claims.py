@@ -15,6 +15,9 @@ Add a claim => add a test here. Delete a claim => delete its test.
 """
 
 import os
+import shutil
+import tempfile
+import types
 import unittest
 
 from harness import TranscriptCase, fake_subprocess, load_extract, title_line, user_line
@@ -144,6 +147,39 @@ class TestPrivacyClaims(ClaimCase):
         finally:
             if created:
                 os.remove(flag)
+
+    CLAIM_polish_cli_isolated = "polish-cli-isolated"
+
+    def test_polish_runs_the_cli_with_isolation_flags(self):
+        """README: no tools, no user settings/hooks/MCP/CLAUDE.md, no saved session."""
+        ex = self.ex
+        argv = []
+
+        class Run:
+            returncode = 0
+            stdout = '{"highlights": ["a bullet"], "detailed": []}'
+            stderr = ""
+
+        def run(cmd, **kw):
+            argv.append(cmd)
+            return Run()
+
+        ex._claude_bin = lambda: "/fake/claude"
+        ex.subprocess = types.SimpleNamespace(run=run)
+        ex.CACHE = tempfile.mkdtemp(prefix="eod-isolated-")
+        try:
+            ex.polish({"date": DAY, "projects": [],
+                       "commits": [{"repo": "r", "subject": "did some work"}]}, force=True)
+        finally:
+            shutil.rmtree(ex.CACHE, ignore_errors=True)
+        self.assertEqual(len(argv), 1)
+        cmd = argv[0]
+        self.assertIn("-p", cmd)
+        for flag in ("--strict-mcp-config", "--no-session-persistence"):
+            self.assertIn(flag, cmd)
+        for flag in ("--tools", "--setting-sources"):
+            self.assertIn(flag, cmd)
+            self.assertEqual(cmd[cmd.index(flag) + 1], "", "%s must be given an empty value" % flag)
 
     CLAIM_exclude_hides_projects = "exclude-hides-projects"
 

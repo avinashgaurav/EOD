@@ -1,0 +1,981 @@
+{
+  "method": "Claude Code CLI via eod.polish.polish() (the production path is also the claude CLI); isolation flags added by an eval-only wrapper",
+  "summary": {
+    "started": "2026-10-15T06:39:55.285316+00:00",
+    "wallMs": 22057,
+    "configuredModel": "CLI default (polish.py passes no --model)",
+    "modelsAnswered": [
+      "claude-opus-5-5"
+    ],
+    "cliCalls": 10,
+    "cliErrors": 0,
+    "callLatencyMs": {
+      "n": 10,
+      "p50": 5628,
+      "p90": 6520,
+      "max": 6520
+    },
+    "usageTotals": {
+      "input": 40664,
+      "output": 2786
+    },
+    "days": 10,
+    "polishSucceeded": 10,
+    "daysWithNoMisses": 10,
+    "itemsKept": 29,
+    "itemsTotal": 29,
+    "factsKept": 30,
+    "factsTotal": 30,
+    "highlightCountInRange": 4,
+    "highlightCountBelowMinOnSmallDays": 6,
+    "missCategories": {},
+    "unknownTokensForManualReview": [
+      "Quillmark",
+      "Rewrote",
+      "Website",
+      "first-launch",
+      "post-outage"
+    ],
+    "manualReview": {
+      "reviewer": "eval author, one read of all 10 outputs against the payload",
+      "unknownTokensCleared": "all 5 flagged tokens are inflections or hyphenated forms of input words (Quillmark from quillmark-app, first-launch, post-outage, Rewrote, Website); none are invented",
+      "overstatedOutcomes": [
+        {
+          "day": "day02",
+          "text": "\"shipped the fix\" (highlight and detail)",
+          "why": "input has a commit only; no PR, merge or deploy"
+        },
+        {
+          "day": "day10",
+          "text": "\"Built and shipped the Brambleworks case study page\" (highlight and detail)",
+          "why": "input has a commit only; no PR, merge or deploy"
+        }
+      ],
+      "minorEmbellishments": [
+        {
+          "day": "day01",
+          "text": "\"Worked with Meera on ... hero copy\"",
+          "why": "input says Meera wants it shorter, not that she worked on it"
+        },
+        {
+          "day": "day03",
+          "text": "\"Meeting with Growth team for weekly sync\"",
+          "why": "\"weekly\" is not in the input"
+        },
+        {
+          "day": "day07",
+          "text": "\"sent draft to Lena for review\"",
+          "why": "input is an instruction to send it; whether it was sent is not stated"
+        }
+      ],
+      "daysWithOverstatedOutcome": 2,
+      "daysWithMinorEmbellishmentOnly": 3,
+      "daysClean": 5,
+      "personalOrTrivialItemsIncluded": 0
+    }
+  },
+  "results": [
+    {
+      "id": "day01",
+      "ms": 6571,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "Rewrote",
+        "Website"
+      ],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "output": {
+        "highlights": [
+          "Worked on harborview-api duplicate charge on payment retry (#412, PR #418).",
+          "Worked with Meera on shorter Pricing page hero copy for tallow-web.",
+          "Meeting with Payments team for daily standup."
+        ],
+        "detailed": [
+          {
+            "area": "harborview-api Payments",
+            "items": [
+              "Fixed double charge on payment retry when the webhook times out (#412)",
+              "Added an idempotency key to the retry path with test coverage",
+              "Committed the fix and opened PR #418 for idempotent payment retries"
+            ]
+          },
+          {
+            "area": "tallow-web Website",
+            "items": [
+              "Rewrote the Pricing page hero copy to be shorter, per Meera's feedback"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the 11:00 Payments standup"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day02",
+      "ms": 5585,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 2,
+      "facts_total": 2,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "output": {
+        "highlights": [
+          "Worked on the Quillmark PDF export bug (#77) and shipped the fix.",
+          "Worked on the Quillmark Onboarding Guide section on workspace invites.",
+          "Meeting with Support for Docs review."
+        ],
+        "detailed": [
+          {
+            "area": "Quillmark App",
+            "items": [
+              "Fixed PDF export cutting off the last table row (#77)",
+              "Corrected page break calculation for tables in PDF export",
+              "Added a regression test and shipped the fix"
+            ]
+          },
+          {
+            "area": "Quillmark Docs",
+            "items": [
+              "Drafted the workspace invites section of the Quillmark Onboarding Guide",
+              "Added a troubleshooting table for bounced invite emails"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Docs review with Support"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day03",
+      "ms": 5673,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 2,
+      "facts_total": 2,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 5,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "output": {
+        "highlights": [
+          "Worked on Q3 churn analysis by plan tier and identified top three drivers.",
+          "Updated the Board Metrics sheet with September numbers from dashboard export.",
+          "Made monthly churn chart for the Starter tier.",
+          "Meeting with Growth team for weekly sync.",
+          "Had 1:1 with manager."
+        ],
+        "detailed": [
+          {
+            "area": "Churn Analysis",
+            "items": [
+              "Analysed Q3 churn by plan tier using churn_q3.csv",
+              "Summarised the top three churn drivers",
+              "Built a monthly churn chart for the Starter tier"
+            ]
+          },
+          {
+            "area": "Board Metrics",
+            "items": [
+              "Updated Board Metrics - Sep.xlsx with September numbers from the dashboard export"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the 10:00 Growth sync",
+              "16:30 1:1 with manager"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day04",
+      "ms": 5213,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "Website"
+      ],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "output": {
+        "highlights": [
+          "Worked on migrating the remaining 14 blog posts to tallow-web MDX (PR #240 merged).",
+          "Fixed the mobile nav menu not closing on link tap (#233).",
+          "Updated footer links to point to the new careers page."
+        ],
+        "detailed": [
+          {
+            "area": "Blog Migration",
+            "items": [
+              "Migrated the 14 remaining blog posts from the old CMS to tallow-web MDX",
+              "Fixed broken image paths in the migrated posts",
+              "Shipped blog migration via PR #240 (merged)"
+            ]
+          },
+          {
+            "area": "Website Fixes",
+            "items": [
+              "Fixed mobile nav menu not closing after tapping a link (#233), included in PR #240",
+              "Updated footer links to the new careers page"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day05",
+      "ms": 5246,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 2,
+      "items_total": 2,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "output": {
+        "highlights": [
+          "Worked on the Orchard Mobile Offline Sync product brief, focused on conflict resolution.",
+          "Added open questions for Kofi from the backend team to the brief.",
+          "Meeting for the Offline sync design review."
+        ],
+        "detailed": [
+          {
+            "area": "Orchard Mobile \u2013 Offline Sync",
+            "items": [
+              "Wrote the product brief for offline sync in Orchard Mobile with focus on conflict resolution",
+              "Added open questions for Kofi from the backend team",
+              "Created the Orchard Offline Sync Brief document"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the Offline sync design review at 14:00"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day06",
+      "ms": 6203,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 4,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "output": {
+        "highlights": [
+          "Worked on per-tenant rate limiting for harborview-api public endpoints (#430).",
+          "Fixed security review findings on PR #433: log redaction and token expiry.",
+          "Opened PR #433 with rate limiting and security fixes for review.",
+          "Tuned p95 latency alert threshold for the reports service in harborview-infra."
+        ],
+        "detailed": [
+          {
+            "area": "harborview-api Rate Limiting",
+            "items": [
+              "Added per-tenant rate limiting to harborview-api public endpoints (#430)",
+              "Set default limit to 600 requests per minute, made configurable",
+              "Committed per-tenant rate limiting change (#430)"
+            ]
+          },
+          {
+            "area": "harborview-api Security Fixes",
+            "items": [
+              "Addressed two security review findings on PR #433",
+              "Redacted tokens in logs",
+              "Shortened token expiry",
+              "PR #433 open with rate limiting and security fixes"
+            ]
+          },
+          {
+            "area": "harborview-infra Alerting",
+            "items": [
+              "Raised p95 latency alert threshold to 800ms for the reports service to reduce noisy alerts"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day07",
+      "ms": 5148,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "output": {
+        "highlights": [
+          "Worked on the Quillmark Tables launch email and sent draft to Lena for review.",
+          "Made the Competitor One-Pager comparing Quillmark Tables to Gridnote and Sheetwise.",
+          "Meeting on Launch planning for Quillmark Tables."
+        ],
+        "detailed": [
+          {
+            "area": "Quillmark Tables Launch",
+            "items": [
+              "Wrote the Quillmark Tables Launch Email (Quillmark Tables Launch Email.docx)",
+              "Shared the launch email draft with Lena for review",
+              "Attended the 12:00 Launch planning meeting"
+            ]
+          },
+          {
+            "area": "Competitive Positioning",
+            "items": [
+              "Made a one-pager comparing Quillmark Tables to Gridnote and Sheetwise using the feature list",
+              "Produced Tables vs Gridnote vs Sheetwise.pdf"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day08",
+      "ms": 6161,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "post-outage"
+      ],
+      "highlight_count": 4,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "output": {
+        "highlights": [
+          "Worked on the Ember Analytics events pipeline backfill for Aug 12\u201319 post-outage.",
+          "Worked on the 30/60/90 day Retention widget for Ember Dashboard (#58).",
+          "Shipped Retention widget via ember-dashboard PR #61 (merged).",
+          "Meeting with team for the Data incident retro."
+        ],
+        "detailed": [
+          {
+            "area": "Ember Analytics",
+            "items": [
+              "Backfilled the events pipeline for Aug 12 to Aug 19 following the outage",
+              "Verified daily row counts against the source for each backfilled day"
+            ]
+          },
+          {
+            "area": "Ember Dashboard",
+            "items": [
+              "Built the 30/60/90 day retention widget for the dashboard (#58)",
+              "Committed the retention widget and merged PR #61"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the Data incident retro"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day09",
+      "ms": 5011,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 2,
+      "items_total": 2,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "first-launch"
+      ],
+      "highlight_count": 2,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "output": {
+        "highlights": [
+          "Worked on Orchard Mobile Android launch crash on OS 12 (#301), merged PR #305.",
+          "Made the Orchard Mobile 3.4 Release Notes including the crash fix."
+        ],
+        "detailed": [
+          {
+            "area": "Orchard Mobile \u2013 Launch Crash",
+            "items": [
+              "Investigated Android build crash on launch for OS 12 users (#301)",
+              "Traced root cause to a null config on first run",
+              "Fixed the null config crash and added a test covering first launch",
+              "Shipped the fix via PR #305 (merged)"
+            ]
+          },
+          {
+            "area": "Orchard Mobile \u2013 Release",
+            "items": [
+              "Wrote the Orchard Mobile 3.4 Release Notes, including the first-launch crash fix"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "day10",
+      "ms": 6104,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 4,
+      "items_total": 4,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "Quillmark"
+      ],
+      "highlight_count": 4,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "output": {
+        "highlights": [
+          "Built and shipped the Brambleworks case study page using approved copy from Ines.",
+          "Worked on Lighthouse performance improvements for the home page (score 61).",
+          "Reviewed Kofi's PR #92 for sharing permissions changes in Quillmark.",
+          "Meeting with team in Website weekly sync."
+        ],
+        "detailed": [
+          {
+            "area": "Tallow Website",
+            "items": [
+              "Built the Brambleworks case study page using the approved copy from Ines",
+              "Shipped the Brambleworks case study page to tallow-web",
+              "Worked on improving Lighthouse performance on the home page, currently scoring 61"
+            ]
+          },
+          {
+            "area": "Quillmark App",
+            "items": [
+              "Reviewed Kofi's PR #92 for the sharing permissions change and left comments"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the Website weekly meeting"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "label": "day02",
+      "ms": 5532,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 3522,
+        "cache_read_input_tokens": 535,
+        "output_tokens": 259,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3522,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 259,
+            "cache_read_input_tokens": 535,
+            "cache_creation_input_tokens": 3522,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3522
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on the Quillmark PDF export bug (#77) and shipped the fix.\", \"Worked on the Quillmark Onboarding Guide section on workspace invites.\", \"Meeting with Support for Docs review.\"], \"detailed\": [{\"area\": \"Quillmark App\", \"items\": [\"Fixed PDF export cutting off the last table row (",
+      "limit_hit": false
+    },
+    {
+      "label": "day03",
+      "ms": 5628,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 3540,
+        "cache_read_input_tokens": 535,
+        "output_tokens": 298,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3540,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 298,
+            "cache_read_input_tokens": 535,
+            "cache_creation_input_tokens": 3540,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3540
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on Q3 churn analysis by plan tier and identified top three drivers.\", \"Updated the Board Metrics sheet with September numbers from dashboard export.\", \"Made monthly churn chart for the Starter tier.\", \"Meeting with Growth team for weekly sync.\", \"Had 1:1 with manager.\"], \"det",
+      "limit_hit": false
+    },
+    {
+      "label": "day01",
+      "ms": 6520,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 3581,
+        "cache_read_input_tokens": 535,
+        "output_tokens": 268,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3581,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 268,
+            "cache_read_input_tokens": 535,
+            "cache_creation_input_tokens": 3581,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3581
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on harborview-api duplicate charge on payment retry (#412, PR #418).\", \"Worked with Meera on shorter Pricing page hero copy for tallow-web.\", \"Meeting with Payments team for daily standup.\"], \"detailed\": [{\"area\": \"harborview-api Payments\", \"items\": [\"Fixed double charge on p",
+      "limit_hit": false
+    },
+    {
+      "label": "day04",
+      "ms": 5151,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2039,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 250,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2039,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 250,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2039,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2039
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on migrating the remaining 14 blog posts to tallow-web MDX (PR #240 merged).\", \"Fixed the mobile nav menu not closing on link tap (#233).\", \"Updated footer links to point to the new careers page.\"], \"detailed\": [{\"area\": \"Blog Migration\", \"items\": [\"Migrated the 14 remaining ",
+      "limit_hit": false
+    },
+    {
+      "label": "day05",
+      "ms": 5207,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2039,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 222,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2039,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 222,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2039,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2039
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on the Orchard Mobile Offline Sync product brief, focused on conflict resolution.\", \"Added open questions for Kofi from the backend team to the brief.\", \"Meeting for the Offline sync design review.\"], \"detailed\": [{\"area\": \"Orchard Mobile \u2013 Offline Sync\", \"items\": [\"Wrote the",
+      "limit_hit": false
+    },
+    {
+      "label": "day06",
+      "ms": 6157,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2077,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 360,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2077,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 360,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2077,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2077
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on per-tenant rate limiting for harborview-api public endpoints (#430).\", \"Fixed security review findings on PR #433: log redaction and token expiry.\", \"Opened PR #433 with rate limiting and security fixes for review.\", \"Tuned p95 latency alert threshold for the reports servi",
+      "limit_hit": true
+    },
+    {
+      "label": "day07",
+      "ms": 5092,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2035,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 291,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2035,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 291,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2035,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2035
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on the Quillmark Tables launch email and sent draft to Lena for review.\", \"Made the Competitor One-Pager comparing Quillmark Tables to Gridnote and Sheetwise.\", \"Meeting on Launch planning for Quillmark Tables.\"], \"detailed\": [{\"area\": \"Quillmark Tables Launch\", \"items\": [\"Wr",
+      "limit_hit": false
+    },
+    {
+      "label": "day08",
+      "ms": 6122,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2083,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 295,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2083,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 295,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2083,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2083
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on the Ember Analytics events pipeline backfill for Aug 12\u201319 post-outage.\", \"Worked on the 30/60/90 day Retention widget for Ember Dashboard (#58).\", \"Shipped Retention widget via ember-dashboard PR #61 (merged).\", \"Meeting with team for the Data incident retro.\"], \"detailed",
+      "limit_hit": false
+    },
+    {
+      "label": "day09",
+      "ms": 4956,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2074,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 250,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2074,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 250,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2074,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2074
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Worked on Orchard Mobile Android launch crash on OS 12 (#301), merged PR #305.\", \"Made the Orchard Mobile 3.4 Release Notes including the crash fix.\"], \"detailed\": [{\"area\": \"Orchard Mobile \u2013 Launch Crash\", \"items\": [\"Investigated Android build crash on launch for OS 12 users (#301)",
+      "limit_hit": false
+    },
+    {
+      "label": "day10",
+      "ms": 6013,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2084,
+        "cache_read_input_tokens": 1995,
+        "output_tokens": 293,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2084,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 293,
+            "cache_read_input_tokens": 1995,
+            "cache_creation_input_tokens": 2084,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2084
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "result_head": "{\"highlights\": [\"Built and shipped the Brambleworks case study page using approved copy from Ines.\", \"Worked on Lighthouse performance improvements for the home page (score 61).\", \"Reviewed Kofi's PR #92 for sharing permissions changes in Quillmark.\", \"Meeting with team in Website weekly sync.\"], \"d",
+      "limit_hit": false
+    }
+  ],
+  "polishErrorLog": ""
+}
