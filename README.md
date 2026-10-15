@@ -2,6 +2,9 @@
 
 By evening, the standup or timesheet asks what you did today and you rebuild it from memory; EOD prints it as a receipt from the files already on your Mac.
 
+> [!NOTE]
+> **In daily use:** 5 people across the author's product and marketing team have used EOD for their end-of-day updates since mid-2026.
+
 **Live demo: [eodreceipt.vercel.app](https://eodreceipt.vercel.app)**
 
 ![EOD daily receipt and weekly recap, sample data](docs/demo.gif)
