@@ -16,5 +16,6 @@ the transcript readers leaked one per file before these tests existed.
 
 Two guards worth knowing about, because they are about intent rather than
 correctness. CI fails if any of the four config files stops being read by the
-engine in `eod/` or disappears from [configuration.md](configuration.md), and it fails if the hardcoded author
-signature or its self-restoring guard ever come back.
+engine in `eod/` or disappears from [configuration.md](configuration.md), and
+it fails if the hardcoded author signature or its self-restoring guard ever
+come back.

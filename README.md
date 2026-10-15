@@ -18,6 +18,7 @@ By evening, the standup or timesheet asks what you did today and you rebuild it 
 > | Invented numbers or names | 0 | **0** |
 > | Personal browsing leaking into the update | 0 / 10 days | **0 / 10 days** |
 > | Days with an overstated or embellished claim | 5 / 10 | **0 / 10** |
+> | Days with 4 to 9 highlights, as the prompt asks (the rest had 3 or fewer work items) | 4 / 10 | **3 / 10** |
 >
 > Caveat: overstatement is manual review, the prompt rules were tuned on these same misses, and the weekly rollup was not measured. Method and every miss: [EVALS.md](EVALS.md).
 

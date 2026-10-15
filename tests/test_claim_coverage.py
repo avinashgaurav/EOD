@@ -22,6 +22,7 @@ trimmed. CLAIM_DOCS is an explicit list, not a glob: a marker in a file nobody
 listed is not scanned, so its test shows up as an orphan and fails the build.
 """
 
+import glob
 import os
 import re
 import unittest
@@ -80,6 +81,20 @@ class TestClaimCoverage(unittest.TestCase):
         """A gate guarding nothing passes forever and protects nothing."""
         self.assertGreaterEqual(len(doc_claims()), 8,
                                 "suspiciously few marked claims; has the markup been lost?")
+
+    def test_every_doc_with_a_claim_is_listed(self):
+        """A marker in a docs file missing from CLAIM_DOCS is never scanned, so
+        a new claim there would ship with no test. Listing the file is the fix."""
+        listed = {os.path.abspath(p) for p in CLAIM_DOCS}
+        unlisted = []
+        for path in sorted(glob.glob(os.path.join(ROOT, "docs", "*.md"))):
+            with open(path, encoding="utf-8") as f:
+                if MARKER.search(f.read()) and os.path.abspath(path) not in listed:
+                    unlisted.append(os.path.relpath(path, ROOT))
+        self.assertEqual(unlisted, [], (
+            "claim markers in files the gate does not scan: %s\n"
+            "Add them to CLAIM_DOCS in tests/test_claim_coverage.py." %
+            ", ".join(unlisted)))
 
     def test_markers_are_unique(self):
         found = all_markers()

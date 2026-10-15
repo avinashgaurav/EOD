@@ -1,5 +1,6 @@
 # Configuration
 
+Four optional files, all sitting next to `extract.py`. None of them exist by
 default; create one only if you want the behaviour.
 
 | File | What it does |
