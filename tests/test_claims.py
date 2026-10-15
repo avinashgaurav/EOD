@@ -15,7 +15,11 @@ Add a claim => add a test here. Delete a claim => delete its test.
 """
 
 import os
+import shutil
+import tempfile
+import types
 import unittest
+from unittest import mock
 
 from harness import TranscriptCase, fake_subprocess, load_extract, title_line, user_line
 
@@ -144,6 +148,59 @@ class TestPrivacyClaims(ClaimCase):
         finally:
             if created:
                 os.remove(flag)
+
+    CLAIM_polish_cli_isolated = "polish-cli-isolated"
+
+    def _polish_with_fake_cli(self, results):
+        """Run the real polish() against a fake CLI that answers with `results` in
+        turn. Returns every argv it was called with."""
+        polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        argv = []
+        answers = iter(results)
+
+        def run(cmd, **kw):
+            argv.append(cmd)
+            return next(answers)
+
+        cache = tempfile.mkdtemp(prefix="eod-isolated-")
+        try:
+            with mock.patch.object(polish_mod, "_claude_bin", lambda: "/fake/claude"), \
+                 mock.patch.object(polish_mod, "subprocess", types.SimpleNamespace(run=run)), \
+                 mock.patch.object(polish_mod, "CACHE", cache):
+                data = {"date": DAY, "projects": [],
+                        "commits": [{"repo": "r", "subject": "did some work"}]}
+                self.ex.polish(data, force=True)
+        finally:
+            shutil.rmtree(cache, ignore_errors=True)
+        return argv, data
+
+    def test_polish_runs_the_cli_with_isolation_flags(self):
+        """README: no tools, no user settings/hooks/MCP/CLAUDE.md, no saved session."""
+        ok = types.SimpleNamespace(returncode=0, stderr="",
+                                   stdout='{"highlights": ["a bullet"], "detailed": []}')
+        argv, _ = self._polish_with_fake_cli([ok])
+        self.assertEqual(len(argv), 1)
+        cmd = argv[0]
+        self.assertIn("-p", cmd)
+        for flag in ("--strict-mcp-config", "--no-session-persistence"):
+            self.assertIn(flag, cmd)
+        for flag in ("--tools", "--setting-sources"):
+            self.assertIn(flag, cmd)
+            self.assertEqual(cmd[cmd.index(flag) + 1], "", "%s must be given an empty value" % flag)
+        polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        self.assertEqual(polish_mod._claude_env().get("CLAUDE_CODE_DISABLE_CLAUDE_MDS"), "1")
+
+    def test_polish_retries_with_the_old_argv_when_a_flag_is_unknown(self):
+        """An older CLI that rejects an isolation flag still produces a summary."""
+        rejected = types.SimpleNamespace(returncode=1, stdout="",
+                                         stderr="error: unknown option '--no-session-persistence'")
+        ok = types.SimpleNamespace(returncode=0, stderr="",
+                                   stdout='{"highlights": ["a bullet"], "detailed": []}')
+        argv, data = self._polish_with_fake_cli([rejected, ok])
+        self.assertEqual(len(argv), 2)
+        self.assertIn("--no-session-persistence", argv[0])
+        self.assertEqual(argv[1][1:], ["-p", "--output-format", "text"])
+        self.assertEqual(data.get("highlights"), ["a bullet"])
 
     CLAIM_exclude_hides_projects = "exclude-hides-projects"
 

@@ -1,0 +1,977 @@
+{
+ "note": "Ten fictional work days in the shape eod/pipeline.py builds (projects/sessions/prompts, commits, PRs, meetings, docs, web). All people, projects, products and issue numbers are made up. Expected answers were written before any model run. 'items' are substantive pieces of work that must survive somewhere in highlights or detailed (any marker regex matches = kept). 'facts' are specifics that must be preserved verbatim-ish (regex). 'exclude' are trivial or personal things that must NOT appear.",
+ "days": [
+  {
+   "id": "day01",
+   "data": {
+    "date": "2026-09-01",
+    "projects": [
+     {
+      "name": "harborview-api",
+      "sessions": [
+       {
+        "title": "Fix duplicate charge on retry",
+        "prompts": [
+         {
+          "text": "the payment retry in harborview-api double charges when the webhook times out, see issue #412"
+         },
+         {
+          "text": "add an idempotency key to the retry path and a test for it"
+         }
+        ]
+       },
+       {
+        "title": "Open the repo",
+        "prompts": [
+         {
+          "text": "where is the harborview-api repo on my machine"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "tallow-web",
+      "sessions": [
+       {
+        "title": "Pricing page copy",
+        "prompts": [
+         {
+          "text": "rewrite the pricing page hero for tallow-web, Meera wants it shorter"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "harborview-api",
+      "subject": "Add idempotency key to payment retry (#412)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "harborview-api",
+      "number": 418,
+      "state": "open",
+      "title": "Idempotent payment retries"
+     }
+    ],
+    "meetings": [
+     {
+      "time": "11:00",
+      "title": "Payments standup",
+      "attendees": "Ravi, Meera"
+     }
+    ],
+    "docs": [],
+    "web": [
+     {
+      "host": "shop.example-sneakers.com",
+      "titles": [
+       {
+        "title": "Trail runners sale"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "duplicate charge fix",
+     "markers": [
+      "idempoten",
+      "duplicate charge",
+      "double charg",
+      "#412"
+     ]
+    },
+    {
+     "label": "pricing page copy",
+     "markers": [
+      "pricing page",
+      "pricing hero"
+     ]
+    },
+    {
+     "label": "payments standup",
+     "markers": [
+      "standup"
+     ]
+    }
+   ],
+   "facts": [
+    "#412",
+    "#418",
+    "Meera"
+   ],
+   "exclude": [
+    "sneaker",
+    "trail runner",
+    "where is the",
+    "locat"
+   ]
+  },
+  {
+   "id": "day02",
+   "data": {
+    "date": "2026-09-02",
+    "projects": [
+     {
+      "name": "quillmark-docs",
+      "sessions": [
+       {
+        "title": "Onboarding guide",
+        "prompts": [
+         {
+          "text": "draft the Quillmark onboarding guide section on workspace invites"
+         },
+         {
+          "text": "add a troubleshooting table for invite emails that bounce"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "quillmark-app",
+      "sessions": [
+       {
+        "title": "Export bug",
+        "prompts": [
+         {
+          "text": "PDF export cuts off the last table row, issue #77"
+         },
+         {
+          "text": "fix the page break calc and add a regression test"
+         }
+        ]
+       },
+       {
+        "title": "Check access",
+        "prompts": [
+         {
+          "text": "do I have write access to quillmark-app"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "quillmark-app",
+      "subject": "Fix PDF export page break for tables (#77)"
+     }
+    ],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "15:00",
+      "title": "Docs review with Support",
+      "attendees": "Lena"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Quillmark Onboarding Guide.docx",
+      "folder": "Documents"
+     }
+    ],
+    "web": []
+   },
+   "items": [
+    {
+     "label": "onboarding guide",
+     "markers": [
+      "onboarding guide"
+     ]
+    },
+    {
+     "label": "pdf export fix",
+     "markers": [
+      "pdf export",
+      "page break",
+      "#77"
+     ]
+    },
+    {
+     "label": "docs review meeting",
+     "markers": [
+      "docs review",
+      "support"
+     ]
+    }
+   ],
+   "facts": [
+    "#77",
+    "Onboarding Guide|onboarding guide"
+   ],
+   "exclude": [
+    "write access",
+    "check access"
+   ]
+  },
+  {
+   "id": "day03",
+   "data": {
+    "date": "2026-09-03",
+    "projects": [
+     {
+      "name": "ember-analytics",
+      "sessions": [
+       {
+        "title": "Churn analysis",
+        "prompts": [
+         {
+          "text": "analyse churn by plan tier from churn_q3.csv and summarise the top three drivers"
+         },
+         {
+          "text": "make a chart of monthly churn for the Starter tier"
+         }
+        ]
+       },
+       {
+        "title": "Board metrics sheet",
+        "prompts": [
+         {
+          "text": "update the Board Metrics sheet with September numbers from the dashboard export"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "10:00",
+      "title": "Growth sync",
+      "attendees": "Tomas"
+     },
+     {
+      "time": "16:30",
+      "title": "1:1 with manager",
+      "attendees": "Ada"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Board Metrics - Sep.xlsx",
+      "folder": "Desktop"
+     }
+    ],
+    "web": [
+     {
+      "host": "careers.example-jobs.com",
+      "titles": [
+       {
+        "title": "Senior PM role, apply now"
+       }
+      ]
+     },
+     {
+      "host": "news.example.com",
+      "titles": [
+       {
+        "title": "Weekend football scores"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "churn analysis",
+     "markers": [
+      "churn"
+     ]
+    },
+    {
+     "label": "board metrics sheet",
+     "markers": [
+      "board metrics"
+     ]
+    },
+    {
+     "label": "growth sync",
+     "markers": [
+      "growth sync",
+      "growth"
+     ]
+    }
+   ],
+   "facts": [
+    "Starter",
+    "Board Metrics|board metrics"
+   ],
+   "exclude": [
+    "apply",
+    "senior pm",
+    "football",
+    "job"
+   ]
+  },
+  {
+   "id": "day04",
+   "data": {
+    "date": "2026-09-04",
+    "projects": [
+     {
+      "name": "tallow-web",
+      "sessions": [
+       {
+        "title": "Blog migration",
+        "prompts": [
+         {
+          "text": "migrate the 14 remaining blog posts from the old CMS to tallow-web MDX"
+         },
+         {
+          "text": "fix broken image paths in the migrated posts"
+         }
+        ]
+       },
+       {
+        "title": "Nav fix",
+        "prompts": [
+         {
+          "text": "mobile nav menu does not close after tapping a link, issue #233"
+         }
+        ]
+       },
+       {
+        "title": "Footer links",
+        "prompts": [
+         {
+          "text": "update footer links to the new careers page"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "tallow-web",
+      "subject": "Migrate remaining blog posts to MDX"
+     },
+     {
+      "repo": "tallow-web",
+      "subject": "Close mobile nav on link tap (#233)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "tallow-web",
+      "number": 240,
+      "state": "merged",
+      "title": "Blog migration and nav fix"
+     }
+    ],
+    "meetings": [],
+    "docs": [],
+    "web": []
+   },
+   "items": [
+    {
+     "label": "blog migration",
+     "markers": [
+      "blog"
+     ]
+    },
+    {
+     "label": "mobile nav fix",
+     "markers": [
+      "nav",
+      "#233"
+     ]
+    },
+    {
+     "label": "footer links",
+     "markers": [
+      "footer",
+      "careers"
+     ],
+     "minor": true
+    }
+   ],
+   "facts": [
+    "\\b14\\b",
+    "#233",
+    "#240"
+   ],
+   "exclude": []
+  },
+  {
+   "id": "day05",
+   "data": {
+    "date": "2026-09-05",
+    "projects": [
+     {
+      "name": "orchard-mobile",
+      "sessions": [
+       {
+        "title": "Offline sync spec",
+        "prompts": [
+         {
+          "text": "write a product brief for offline sync in Orchard Mobile, focus on conflict resolution"
+         },
+         {
+          "text": "add open questions for Kofi from the backend team"
+         }
+        ]
+       },
+       {
+        "title": "Find the spec template",
+        "prompts": [
+         {
+          "text": "find the product brief template in the shared drive"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "14:00",
+      "title": "Offline sync design review",
+      "attendees": "Kofi, Ines"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Orchard Offline Sync Brief.docx",
+      "folder": "Documents"
+     }
+    ],
+    "web": [
+     {
+      "host": "flights.example-travel.com",
+      "titles": [
+       {
+        "title": "Cheap flights to Lisbon"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "offline sync brief",
+     "markers": [
+      "offline sync"
+     ]
+    },
+    {
+     "label": "design review",
+     "markers": [
+      "design review",
+      "review"
+     ]
+    }
+   ],
+   "facts": [
+    "Kofi",
+    "Offline Sync|offline sync",
+    "Orchard"
+   ],
+   "exclude": [
+    "flight",
+    "lisbon",
+    "template"
+   ]
+  },
+  {
+   "id": "day06",
+   "data": {
+    "date": "2026-09-08",
+    "projects": [
+     {
+      "name": "harborview-api",
+      "sessions": [
+       {
+        "title": "Rate limiter",
+        "prompts": [
+         {
+          "text": "add per-tenant rate limiting to the harborview-api public endpoints, issue #430"
+         },
+         {
+          "text": "set the default to 600 requests per minute and make it configurable"
+         }
+        ]
+       },
+       {
+        "title": "Security review fixes",
+        "prompts": [
+         {
+          "text": "address the two findings from the security review on PR #433: log redaction and token expiry"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "harborview-infra",
+      "sessions": [
+       {
+        "title": "Alert tuning",
+        "prompts": [
+         {
+          "text": "the p95 latency alert fires too often, raise threshold to 800ms for the reports service"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "harborview-api",
+      "subject": "Per-tenant rate limiting (#430)"
+     },
+     {
+      "repo": "harborview-api",
+      "subject": "Redact tokens in logs; shorten token expiry"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "harborview-api",
+      "number": 433,
+      "state": "open",
+      "title": "Rate limiting and security fixes"
+     }
+    ],
+    "meetings": [],
+    "docs": [],
+    "web": []
+   },
+   "items": [
+    {
+     "label": "rate limiting",
+     "markers": [
+      "rate limit"
+     ]
+    },
+    {
+     "label": "security review fixes",
+     "markers": [
+      "security",
+      "redact",
+      "token"
+     ]
+    },
+    {
+     "label": "alert tuning",
+     "markers": [
+      "alert",
+      "latency"
+     ]
+    }
+   ],
+   "facts": [
+    "#430",
+    "#433",
+    "600",
+    "800"
+   ],
+   "exclude": []
+  },
+  {
+   "id": "day07",
+   "data": {
+    "date": "2026-09-09",
+    "projects": [
+     {
+      "name": "quillmark-marketing",
+      "sessions": [
+       {
+        "title": "Launch email",
+        "prompts": [
+         {
+          "text": "write the launch email for Quillmark Tables, send draft to Lena for review"
+         }
+        ]
+       },
+       {
+        "title": "Competitor one-pager",
+        "prompts": [
+         {
+          "text": "make a one-pager comparing Quillmark Tables to Gridnote and Sheetwise using our feature list"
+         }
+        ]
+       },
+       {
+        "title": "Login issue",
+        "prompts": [
+         {
+          "text": "I can't log in to the email tool, reset my session"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "12:00",
+      "title": "Launch planning",
+      "attendees": "Lena, Tomas"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Quillmark Tables Launch Email.docx",
+      "folder": "Documents"
+     },
+     {
+      "name": "Tables vs Gridnote vs Sheetwise.pdf",
+      "folder": "Desktop"
+     }
+    ],
+    "web": []
+   },
+   "items": [
+    {
+     "label": "launch email",
+     "markers": [
+      "launch email"
+     ]
+    },
+    {
+     "label": "competitor one-pager",
+     "markers": [
+      "one-pager",
+      "one pager",
+      "gridnote",
+      "comparison"
+     ]
+    },
+    {
+     "label": "launch planning",
+     "markers": [
+      "launch planning",
+      "planning"
+     ]
+    }
+   ],
+   "facts": [
+    "Lena",
+    "Gridnote",
+    "Sheetwise",
+    "Quillmark Tables"
+   ],
+   "exclude": [
+    "log in",
+    "login",
+    "reset my session"
+   ]
+  },
+  {
+   "id": "day08",
+   "data": {
+    "date": "2026-09-10",
+    "projects": [
+     {
+      "name": "ember-analytics",
+      "sessions": [
+       {
+        "title": "Pipeline backfill",
+        "prompts": [
+         {
+          "text": "backfill the events pipeline for Aug 12 to Aug 19 after the outage"
+         },
+         {
+          "text": "verify row counts match the source for each day"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "ember-dashboard",
+      "sessions": [
+       {
+        "title": "Retention widget",
+        "prompts": [
+         {
+          "text": "add a 30/60/90 day retention widget to the Ember dashboard, ticket #58"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "ember-dashboard",
+      "subject": "Add retention widget (#58)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "ember-dashboard",
+      "number": 61,
+      "state": "merged",
+      "title": "Retention widget"
+     }
+    ],
+    "meetings": [
+     {
+      "time": "09:30",
+      "title": "Data incident retro",
+      "attendees": "Tomas, Ada"
+     }
+    ],
+    "docs": [],
+    "web": [
+     {
+      "host": "docs.example-db.dev",
+      "titles": [
+       {
+        "title": "Window functions reference"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "pipeline backfill",
+     "markers": [
+      "backfill"
+     ]
+    },
+    {
+     "label": "retention widget",
+     "markers": [
+      "retention"
+     ]
+    },
+    {
+     "label": "incident retro",
+     "markers": [
+      "retro",
+      "incident"
+     ]
+    }
+   ],
+   "facts": [
+    "#58",
+    "#61",
+    "Aug 12|August 12"
+   ],
+   "exclude": []
+  },
+  {
+   "id": "day09",
+   "data": {
+    "date": "2026-09-11",
+    "projects": [
+     {
+      "name": "orchard-mobile",
+      "sessions": [
+       {
+        "title": "Crash on launch",
+        "prompts": [
+         {
+          "text": "Android build crashes on launch for users on OS 12, issue #301"
+         },
+         {
+          "text": "root cause is a null config on first run, fix and add a test"
+         }
+        ]
+       },
+       {
+        "title": "Release notes",
+        "prompts": [
+         {
+          "text": "write release notes for Orchard Mobile 3.4 including the crash fix"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "personal",
+      "sessions": [
+       {
+        "title": "Gift ideas",
+        "prompts": [
+         {
+          "text": "birthday gift ideas for my sister under 50 dollars"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "orchard-mobile",
+      "subject": "Fix null config crash on first launch (#301)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "orchard-mobile",
+      "number": 305,
+      "state": "merged",
+      "title": "Crash fix for first launch"
+     }
+    ],
+    "meetings": [],
+    "docs": [
+     {
+      "name": "Orchard 3.4 Release Notes.md",
+      "folder": "Documents"
+     }
+    ],
+    "web": []
+   },
+   "items": [
+    {
+     "label": "launch crash fix",
+     "markers": [
+      "crash"
+     ]
+    },
+    {
+     "label": "release notes",
+     "markers": [
+      "release notes"
+     ]
+    }
+   ],
+   "facts": [
+    "#301",
+    "#305",
+    "3\\.4"
+   ],
+   "exclude": [
+    "gift",
+    "sister",
+    "birthday"
+   ]
+  },
+  {
+   "id": "day10",
+   "data": {
+    "date": "2026-09-12",
+    "projects": [
+     {
+      "name": "tallow-web",
+      "sessions": [
+       {
+        "title": "Case study page",
+        "prompts": [
+         {
+          "text": "build the case study page for Brambleworks using the approved copy from Ines"
+         }
+        ]
+       },
+       {
+        "title": "Lighthouse",
+        "prompts": [
+         {
+          "text": "improve Lighthouse performance on the home page, it scores 61"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "quillmark-app",
+      "sessions": [
+       {
+        "title": "Code review",
+        "prompts": [
+         {
+          "text": "review Kofi's PR #92 for the sharing permissions change and leave comments"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "tallow-web",
+      "subject": "Add Brambleworks case study page"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "quillmark-app",
+      "number": 92,
+      "state": "open",
+      "title": "Sharing permissions"
+     }
+    ],
+    "meetings": [
+     {
+      "time": "13:00",
+      "title": "Website weekly",
+      "attendees": "Ines, Meera"
+     }
+    ],
+    "docs": [],
+    "web": [
+     {
+      "host": "shop.example-groceries.com",
+      "titles": [
+       {
+        "title": "Weekly grocery order"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "case study page",
+     "markers": [
+      "case study",
+      "brambleworks"
+     ]
+    },
+    {
+     "label": "lighthouse perf",
+     "markers": [
+      "lighthouse",
+      "performance"
+     ]
+    },
+    {
+     "label": "PR review",
+     "markers": [
+      "review",
+      "#92"
+     ]
+    },
+    {
+     "label": "website weekly",
+     "markers": [
+      "website weekly",
+      "weekly"
+     ]
+    }
+   ],
+   "facts": [
+    "Brambleworks",
+    "#92",
+    "Ines|Kofi"
+   ],
+   "exclude": [
+    "grocer"
+   ]
+  }
+ ]
+}

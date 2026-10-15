@@ -45,6 +45,11 @@ POLISH_PROMPT = (
     "'Made…', 'Reworked…', 'Meeting with…'.\n"
     "- Use real specifics from the prompts: issue/PR numbers (#253, #254), names that appear in the prompts, "
     "document/deliverable/product names. Never invent details not in the input.\n"
+    "- Only say shipped, merged, deployed, released, sent, shared or met when the input shows it: a merged "
+    "PR, a meeting in the MEETINGS section, or the person saying it happened. A commit alone is 'fixed' or "
+    "'committed', not 'shipped'. An instruction such as 'send the draft to X' is not proof it was sent.\n"
+    "- Never add people, teams, meetings, recipients or cadence words (weekly, daily) that are not in the "
+    "input. 'Worked with <name>' only when the input shows that person working on it, not just asking for it.\n"
     "- Also fold in work DOCUMENTS created (decks/docs/sheets) and genuinely work-relevant "
     "Google Docs/Sheets/Slides or research from the DOCS sections (e.g. 'Made the launch "
     "deck', 'Worked on the Q3 Roadmap doc'). STRICTLY EXCLUDE anything "
@@ -65,6 +70,34 @@ POLISH_PROMPT = (
     'generator (#253)", "Raised plan capacity and added 4-variant preview (#254)", "Resolved '
     'path-traversal review blocker and opened PR #268"]}]}'
 )
+
+
+# Flags for every EOD call to the claude CLI. EOD only needs text back, so the call
+# runs with no tools, none of the user's settings, hooks, MCP servers or CLAUDE.md,
+# and is not saved as a session (so it never shows up in ~/.claude/projects to be
+# read back as "work"; the POLISH_SENTINEL filter stays as a second line of defence).
+# CLAUDE.md is kept out by CLAUDE_CODE_DISABLE_CLAUDE_MDS in _claude_env().
+CLAUDE_ARGS = ["-p", "--output-format", "text", "--tools", "", "--strict-mcp-config",
+               "--setting-sources", "", "--no-session-persistence"]
+# What EOD passed before the isolation flags. Used once if an older CLI rejects them.
+CLAUDE_ARGS_LEGACY = ["-p", "--output-format", "text"]
+
+
+def _claude_env():
+    return dict(_full_env(), CLAUDE_CODE_DISABLE_CLAUDE_MDS="1")
+
+
+def _run_claude(cb, prompt, cwd):
+    """One CLI call. An older CLI that does not know an isolation flag exits with
+    "unknown option"; retry once with the old argv rather than lose the summary."""
+    def run(args):
+        return subprocess.run([cb, *args], input=prompt, capture_output=True, text=True,
+                              timeout=150, cwd=cwd, env=_claude_env())
+    r = run(CLAUDE_ARGS)
+    if r.returncode != 0 and re.search(r"unknown (option|flag)", r.stderr or "", re.I):
+        _polish_log("claude rejected an isolation flag, retrying without: %s" % (r.stderr or "").strip()[:200])
+        r = run(CLAUDE_ARGS_LEGACY)
+    return r
 
 
 # Comms surfaces — kept in WEB display but NOT fed to the manager summary.
@@ -213,9 +246,7 @@ def polish(data, force=False):
     except Exception:
         cwd = None
     try:
-        r = subprocess.run([cb, "-p", "--output-format", "text"],
-                           input=POLISH_PROMPT + "\n\n" + raw,
-                           capture_output=True, text=True, timeout=150, cwd=cwd, env=_full_env())
+        r = _run_claude(cb, POLISH_PROMPT + "\n\n" + raw, cwd)
         if r.returncode != 0:
             raise ValueError("claude exit %s: %s" % (r.returncode, (r.stderr or r.stdout or "").strip()))
         obj = json.loads(_extract_json_obj(r.stdout.strip()))
@@ -245,6 +276,11 @@ WEEKLY_PROMPT = (
     "outcome (e.g. 'shipped', 'merged') rather than day-by-day churn.\n"
     "- Same voice as the dailies: 'Worked on…', 'Shipped…', 'Discussed with…', 'Met with…'.\n"
     "- Keep specifics: issue/PR numbers, names from the input, deliverables. Never invent.\n"
+    "- Keep 'shipped', 'merged', 'sent' or 'met' wording exactly as a daily line states it (the dailies were "
+    "already checked). Never upgrade a daily line: 'Worked on', 'Fixed', 'Committed' or 'Drafted' must not "
+    "become 'Shipped' or 'Merged'.\n"
+    "- Never add people, teams, meetings, recipients or cadence words (weekly, daily) that are not in the "
+    "input. 'Worked with <name>' only when the input shows that person working on it, not just asking for it.\n"
     "Return a JSON OBJECT: {\"highlights\": [4-8 top weekly lines], "
     '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}]}. Output ONLY the JSON object.'
 )
@@ -285,9 +321,7 @@ def polish_weekly(data, force=False):
     except Exception:
         cwd = None
     try:
-        r = subprocess.run([cb, "-p", "--output-format", "text"],
-                           input=WEEKLY_PROMPT + "\n\n" + raw,
-                           capture_output=True, text=True, timeout=150, cwd=cwd, env=_full_env())
+        r = _run_claude(cb, WEEKLY_PROMPT + "\n\n" + raw, cwd)
         obj = json.loads(_extract_json_obj(r.stdout.strip()))
         hl = [oneline(x, 140) for x in obj.get("highlights", []) if isinstance(x, str) and x.strip()]
         det = _clean_detailed(obj.get("detailed"))
