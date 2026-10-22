@@ -10,17 +10,17 @@ By evening, the standup or timesheet asks what you did today and you rebuild it 
 ![EOD daily receipt and weekly recap, sample data](docs/demo.gif)
 
 > [!NOTE]
-> **Evals: 10 fictional work days**, with the facts that must survive and the things that must not appear written down before the run.
+> **How I tested it: 10 made-up work days.** Before the test, I wrote down which facts each update must keep and what must never appear.
 >
-> | Measure | Before fix | After fix |
+> | What was checked | Before fix | After fix |
 > |---|---|---|
-> | Facts preserved (issue numbers, figures, names) | 30 / 30 | **30 / 30** |
-> | Invented numbers or names | 0 | **0** |
-> | Personal browsing leaking into the update | 0 / 10 days | **0 / 10 days** |
-> | Days with an overstated or embellished claim | 5 / 10 | **0 / 10** |
-> | Days with 4 to 9 highlights, as the prompt asks (the rest had 3 or fewer work items) | 4 / 10 | **3 / 10** |
+> | Facts kept (issue numbers, figures, names) | 30 / 30 | **30 / 30** |
+> | Made-up numbers or names | 0 | **0** |
+> | Personal browsing showing up in the update | 0 / 10 days | **0 / 10 days** |
+> | Days where the update claimed more than really happened | 5 / 10 | **0 / 10** |
+> | Days with 4 to 9 highlights, as the prompt asks (the other days had 3 or fewer work items) | 4 / 10 | **3 / 10** |
 >
-> Caveat: overstatement is manual review, the prompt rules were tuned on these same misses, and the weekly rollup was not measured. Method and every miss: [EVALS.md](EVALS.md).
+> Limits: I checked for overstated claims by reading the updates myself. I wrote the prompt rules to fix these same misses, so the same days were used to build and to test. The weekly summary was not tested. How it was done, and every miss: [EVALS.md](EVALS.md).
 
 ## Why AI here, why code there
 
@@ -52,8 +52,8 @@ top-right. (Already have an `init.lua`? Don't overwrite it; see INSTALL.md.)
 - [Configuration](docs/configuration.md): `exclude.txt`, `repos.txt`, `polish.off`, `signature.txt`
 - [Using EOD](docs/usage.md): features, controls and the `bin/eod` command line
 - [Adding a source](docs/plugins.md): one file in `~/.eod/sources/`, no fork
-- [Tests](docs/testing.md): the stdlib suite and CI guards; each `claim:` marker in these docs has a test that must pass
-- [Evals](EVALS.md): method, dataset and every miss
+- [Tests](docs/testing.md): the built-in test suite and the automatic checks that run on every change; each `claim:` marker in these docs has a test that must pass
+- [Evals](EVALS.md): how the AI step was tested, the test days, and every miss
 
 ---
 
