@@ -8,6 +8,7 @@ oneline, _clean_detailed). Only two things are redirected, both eval-only:
   - polish._claude_bin -> evals/harness/claude_wrapper.py (adds isolation flags, logs usage)
 
 Usage: python3 evals/harness/run.py            (10 CLI calls)
+       EVAL_DATASET=days-new.json EVAL_TAG=new-run1 python3 evals/harness/run.py
 """
 import copy, json, os, re, sys, tempfile, threading, time
 from concurrent.futures import ThreadPoolExecutor
@@ -17,8 +18,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, ROOT)
 from eod import polish as P  # noqa: E402
+sys.path.insert(0, HERE)
+import claims_check as C  # noqa: E402
 
-DS = json.load(open(os.path.join(ROOT, "evals", "datasets", "days.json")))
+DATASET = os.environ.get("EVAL_DATASET", "days.json")
+DS = json.load(open(os.path.join(ROOT, "evals", "datasets", DATASET)))
 TMP = tempfile.mkdtemp(prefix="eod-eval-")
 CALL_LOG = os.path.join(TMP, "calls.jsonl")
 P.CACHE = TMP
@@ -86,11 +90,17 @@ def score(day, out):
                  w[:-3] + "y" if w.endswith("ied") else w, w[:-2] if w.endswith("ed") and len(w) > 4 and w[-3] == w[-4] else w}
         return any(f in in_words or f in DICT or f in STYLE_OK for f in forms if f)
     unknown = sorted(set(w for w in words(all_text) if not known(w)))
+    # overstated outcomes and added people, teams, meetings or cadence words
+    # (claims_check.py; the 2026-10-15 runs checked these by hand)
+    claims = C.check(C.lines_of(out), payload, day, bool(day["data"].get("meetings")))
+    misses += claims
     return {"dropped": dropped, "facts_kept": len(facts_kept), "facts_total": len(day["facts"]),
             "items_kept": len(day["items"]) - len(dropped), "items_total": len(day["items"]),
             "misses": misses, "unknown_tokens_for_review": unknown,
             "highlight_count": len(hl), "highlights_in_range": 4 <= len(hl) <= 9,
-            "highlights_below_min_but_input_has_fewer_items": len(hl) < 4 and len(day["items"]) < 4}
+            "highlights_below_min_but_input_has_fewer_items": len(hl) < 4 and len(day["items"]) < 4,
+            "overstated": any(m["category"] == "overstated-outcome" for m in claims),
+            "added": any(m["category"].startswith("added-") for m in claims)}
 
 def run_day(day):
     _tl.label = day["id"]
@@ -133,11 +143,16 @@ if __name__ == "__main__":
         "factsKept": sum(r.get("facts_kept", 0) for r in ok), "factsTotal": sum(len(d["facts"]) for d in days),
         "highlightCountInRange": sum(1 for r in ok if r["highlights_in_range"]),
         "highlightCountBelowMinOnSmallDays": sum(1 for r in ok if r["highlights_below_min_but_input_has_fewer_items"]),
+        "daysWithOverstatedOutcome": sum(1 for r in ok if r["overstated"]),
+        "daysWithAddition": sum(1 for r in ok if r["added"]),
+        "daysWithNeither": sum(1 for r in ok if not r["overstated"] and not r["added"]),
+        "costUsdReportedByCli": round(sum(c.get("cost_usd") or 0 for c in calls), 4),
         "missCategories": cats,
         "unknownTokensForManualReview": sorted(set(t for r in ok for t in r["unknown_tokens_for_review"])),
     }
     tag = os.environ.get("EVAL_TAG")
-    out = os.path.join(ROOT, "evals", "results", started[:10] + "-claude-cli" + ("-partial" if only else "") + ("-" + tag if tag else "") + ".json")
-    json.dump({"method": "Claude Code CLI via eod.polish.polish() (the production path is also the claude CLI); isolation flags added by an eval-only wrapper", "summary": summary, "results": results, "calls": calls, "polishErrorLog": errlog}, open(out, "w"), indent=2)
+    out = os.path.join(ROOT, "evals", "results", started[:10] + "-claude-cli"
+                       + ("" if DATASET == "days.json" else "-" + DATASET.rsplit(".", 1)[0]) + ("-partial" if only else "") + ("-" + tag if tag else "") + ".json")
+    json.dump({"method": "Claude Code CLI via eod.polish.polish() (the production path is also the claude CLI); isolation flags added by an eval-only wrapper", "dataset": DATASET, "summary": summary, "results": results, "calls": calls, "polishErrorLog": errlog}, open(out, "w"), indent=2)
     print(json.dumps(summary, indent=2))
     print("wrote", out)
