@@ -1134,9 +1134,9 @@
    "collab_ok": [],
    "must_not_say": [
     {
-     "re": "\\bweekly\\b",
+     "re": "office hours[^.;|]{0,30}\\b(weekly|daily|monthly)\\b|\\b(weekly|daily|monthly)\\b[^.;|]{0,30}office hours",
      "kind": "added",
-     "why": "the input says every Monday, not weekly; and office hours has no cadence"
+     "why": "office hours has no stated cadence (the link check is every Monday, so 'weekly' is fair there)"
     },
     {
      "re": "\\b(published|deployed|released|live)\\b",
