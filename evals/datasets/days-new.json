@@ -1,0 +1,1285 @@
+{
+ "note": "Ten NEW fictional work days, written 2026-11-04 after the prompt fixes, in the shape eod/pipeline.py builds. No person, product, project or issue number is shared with days.json. The answer key below each day was written before any model saw these days. Same keys as days.json (items, facts, exclude) plus three keys for the automatic overstatement check: items[].outcomes_ok lists the outcome words the input supports for that item (shipped, merged, deployed, released, launched, published, sent, shared, approved, scheduled, met); any other outcome word on a line about that item is an overstatement. collab_ok lists the only names the output may say it 'worked with'. must_not_say are day-specific patterns: kind 'overstated' (an outcome the input does not show) or 'added' (a person, team, meeting or cadence word the input does not have).",
+ "days": [
+  {
+   "id": "new01",
+   "data": {
+    "date": "2026-10-05",
+    "projects": [
+     {
+      "name": "lumenpay-core",
+      "sessions": [
+       {
+        "title": "Refund rounding bug",
+        "prompts": [
+         {
+          "text": "refunds in lumenpay-core round half-cents the wrong way for JPY, issue #1184"
+         },
+         {
+          "text": "fix the rounding in the refund calculator and add tests for JPY and KWD"
+         }
+        ]
+       },
+       {
+        "title": "Find the config",
+        "prompts": [
+         {
+          "text": "where does lumenpay-core keep the currency config"
+         }
+        ]
+       },
+       {
+        "title": "Staging check",
+        "prompts": [
+         {
+          "text": "the staging deploy of the refund fix finished, now check the staging logs for refund errors"
+         }
+        ]
+       },
+       {
+        "title": "Refund retry runbook",
+        "prompts": [
+         {
+          "text": "write a runbook for on-call on retrying failed refunds, Farah wants to test it next week"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "lumenpay-core",
+      "subject": "Fix half-cent rounding in refunds for JPY (#1184)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "lumenpay-core",
+      "number": 1190,
+      "state": "open",
+      "title": "Refund rounding fix"
+     }
+    ],
+    "meetings": [
+     {
+      "time": "09:45",
+      "title": "Refunds standup",
+      "attendees": "Dmitri, Yuki"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Refund Retry Runbook.md",
+      "folder": "Documents"
+     }
+    ],
+    "web": [
+     {
+      "host": "tickets.example-concerts.com",
+      "titles": [
+       {
+        "title": "Autumn tour presale"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "refund rounding fix",
+     "markers": [
+      "rounding",
+      "#1184",
+      "half-cent",
+      "jpy"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "staging deploy check",
+     "markers": [
+      "staging"
+     ],
+     "outcomes_ok": [
+      "deployed"
+     ]
+    },
+    {
+     "label": "refund retry runbook",
+     "markers": [
+      "runbook"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "refunds standup",
+     "markers": [
+      "standup"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    }
+   ],
+   "facts": [
+    "#1184",
+    "#1190",
+    "JPY",
+    "[Rr]unbook"
+   ],
+   "exclude": [
+    "presale",
+    "concert",
+    "where does",
+    "currency config"
+   ],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "(deployed|live|released|shipped)[^.;|]{0,30}\\b(prod|production)\\b|\\b(prod|production)\\b[^.;|]{0,30}(deployed|live)",
+     "kind": "overstated",
+     "why": "only a staging deploy is shown"
+    },
+    {
+     "re": "\\bmerged\\b",
+     "kind": "overstated",
+     "why": "PR #1190 is open"
+    },
+    {
+     "re": "\\bwith Farah\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Farah only wants to test the runbook later"
+    },
+    {
+     "re": "\\bdaily\\b",
+     "kind": "added",
+     "why": "the standup has no stated cadence"
+    }
+   ]
+  },
+  {
+   "id": "new02",
+   "data": {
+    "date": "2026-10-06",
+    "projects": [
+     {
+      "name": "fernway-marketing",
+      "sessions": [
+       {
+        "title": "Partner newsletter",
+        "prompts": [
+         {
+          "text": "write the Fernway partner newsletter for October, I'll send it to Marisol's partner list on Friday"
+         },
+         {
+          "text": "add a section on the new route planner"
+         }
+        ]
+       },
+       {
+        "title": "Webinar reply",
+        "prompts": [
+         {
+          "text": "draft a reply to Henrik about the co-marketing webinar, to send after legal checks the dates"
+         }
+        ]
+       },
+       {
+        "title": "Deck edits",
+        "prompts": [
+         {
+          "text": "Henrik replied to the co-marketing deck I sent this morning, apply his edits to slides 4-6"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [],
+    "prs": [],
+    "meetings": [],
+    "docs": [
+     {
+      "name": "Fernway Partner Newsletter - October.docx",
+      "folder": "Documents"
+     },
+     {
+      "name": "Fernway x Henrik co-marketing deck.pptx",
+      "folder": "Desktop"
+     }
+    ],
+    "web": [
+     {
+      "host": "rentals.example-homes.com",
+      "titles": [
+       {
+        "title": "2 bed apartments near the river"
+       }
+      ]
+     },
+     {
+      "host": "docs.google.com",
+      "titles": [
+       {
+        "title": "Fernway route planner FAQ"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "partner newsletter",
+     "markers": [
+      "newsletter"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "webinar reply draft",
+     "markers": [
+      "webinar",
+      "reply"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "deck edits",
+     "markers": [
+      "deck",
+      "slides"
+     ],
+     "outcomes_ok": [
+      "sent"
+     ]
+    }
+   ],
+   "facts": [
+    "Henrik",
+    "[Nn]ewsletter",
+    "Fernway",
+    "4.{0,4}6"
+   ],
+   "exclude": [
+    "apartment",
+    "rental",
+    "\\b2 bed"
+   ],
+   "collab_ok": [
+    "Henrik"
+   ],
+   "must_not_say": [
+    {
+     "re": "newsletter[^.;|]{0,40}\\b(sent|shared|emailed|published)\\b|\\b(sent|shared|emailed|published)\\b[^.;|]{0,40}newsletter",
+     "kind": "overstated",
+     "why": "the newsletter goes out on Friday"
+    },
+    {
+     "re": "(reply|webinar)[^.;|]{0,40}\\b(sent|emailed)\\b|\\b(sent|emailed)\\b[^.;|]{0,40}(reply|webinar)",
+     "kind": "overstated",
+     "why": "the reply waits for legal"
+    },
+    {
+     "re": "\\bwith Marisol\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Marisol owns the list, did not work on it"
+    },
+    {
+     "re": "\\bmonthly\\b",
+     "kind": "added",
+     "why": "no cadence in the input"
+    }
+   ]
+  },
+  {
+   "id": "new03",
+   "data": {
+    "date": "2026-10-07",
+    "projects": [
+     {
+      "name": "kitewire-app",
+      "sessions": [
+       {
+        "title": "Reports CSV export",
+        "prompts": [
+         {
+          "text": "Anjali asked for a CSV export on the Kitewire reports page, build it, issue #1302"
+         },
+         {
+          "text": "include the date range in the file name"
+         }
+        ]
+       },
+       {
+        "title": "Date filter edge cases",
+        "prompts": [
+         {
+          "text": "Seun and I paired on the date filter this morning, finish the edge cases he found, issue #1307"
+         },
+         {
+          "text": "empty range should show a hint, not an error"
+         }
+        ]
+       },
+       {
+        "title": "Branch check",
+        "prompts": [
+         {
+          "text": "which branch am I on"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "kitewire-app",
+      "subject": "Add CSV export to reports page (#1302)"
+     },
+     {
+      "repo": "kitewire-app",
+      "subject": "Handle empty range in date filter (#1307)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "kitewire-app",
+      "number": 1311,
+      "state": "merged",
+      "title": "Reports CSV export and date filter fixes"
+     }
+    ],
+    "meetings": [
+     {
+      "time": "16:00",
+      "title": "Reports roadmap review",
+      "attendees": "Elif, Mateo"
+     }
+    ],
+    "docs": [],
+    "web": [
+     {
+      "host": "scores.example-sport.com",
+      "titles": [
+       {
+        "title": "Cricket live scores"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "csv export",
+     "markers": [
+      "csv",
+      "export",
+      "#1302"
+     ],
+     "outcomes_ok": [
+      "merged",
+      "shipped"
+     ]
+    },
+    {
+     "label": "date filter edge cases",
+     "markers": [
+      "date filter",
+      "#1307",
+      "empty range"
+     ],
+     "outcomes_ok": [
+      "merged",
+      "shipped"
+     ]
+    },
+    {
+     "label": "roadmap review",
+     "markers": [
+      "roadmap"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    }
+   ],
+   "facts": [
+    "#1302",
+    "#1307",
+    "#1311",
+    "Seun"
+   ],
+   "exclude": [
+    "cricket",
+    "branch am i"
+   ],
+   "collab_ok": [
+    "Seun"
+   ],
+   "must_not_say": [
+    {
+     "re": "\\bwith Anjali\\b(?!['’]s)|\\bAnjali and\\b",
+     "kind": "added",
+     "why": "Anjali only asked for the export"
+    },
+    {
+     "re": "\\b(deployed|released|launched|live)\\b",
+     "kind": "overstated",
+     "why": "merged, not deployed or released"
+    }
+   ]
+  },
+  {
+   "id": "new04",
+   "data": {
+    "date": "2026-10-08",
+    "projects": [
+     {
+      "name": "pinecrest-data",
+      "sessions": [
+       {
+        "title": "Revenue cube refresh",
+        "prompts": [
+         {
+          "text": "set up the job that refreshes the Pinecrest revenue cube, no schedule yet, run it once by hand for now"
+         },
+         {
+          "text": "check the cube totals against the ledger export"
+         }
+        ]
+       },
+       {
+        "title": "Q3 variance",
+        "prompts": [
+         {
+          "text": "explain the 7% gap between Q3 revenue and forecast, break it down by region"
+         }
+        ]
+       },
+       {
+        "title": "Warehouse login",
+        "prompts": [
+         {
+          "text": "what's the password for the warehouse read-only user"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "11:30",
+      "title": "Finance check-in",
+      "attendees": "Greta"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Revenue Variance Q3.xlsx",
+      "folder": "Desktop"
+     }
+    ],
+    "web": [
+     {
+      "host": "recipes.example-food.com",
+      "titles": [
+       {
+        "title": "Easy lentil soup"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "revenue cube refresh",
+     "markers": [
+      "cube",
+      "refresh"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "q3 variance analysis",
+     "markers": [
+      "variance",
+      "7%",
+      "forecast"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "finance check-in",
+     "markers": [
+      "check-in",
+      "finance"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    }
+   ],
+   "facts": [
+    "7%",
+    "Q3",
+    "Pinecrest"
+   ],
+   "exclude": [
+    "password",
+    "lentil",
+    "soup",
+    "read-only user"
+   ],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "\\b(nightly|daily|hourly|scheduled|automated|automatic(ally)?)\\b",
+     "kind": "added",
+     "why": "the refresh has no schedule and was run by hand"
+    },
+    {
+     "re": "\\bweekly\\b",
+     "kind": "added",
+     "why": "the check-in has no stated cadence"
+    }
+   ]
+  },
+  {
+   "id": "new05",
+   "data": {
+    "date": "2026-10-09",
+    "projects": [
+     {
+      "name": "saltmarsh-ios",
+      "sessions": [
+       {
+        "title": "Release branch",
+        "prompts": [
+         {
+          "text": "PR #742 is merged, cut the 2.8 release branch but do not submit to the App Store yet, waiting on QA"
+         }
+        ]
+       },
+       {
+        "title": "Release notes",
+        "prompts": [
+         {
+          "text": "write the Saltmarsh 2.8 release notes, mention offline drafts and the faster search"
+         }
+        ]
+       },
+       {
+        "title": "Xcode",
+        "prompts": [
+         {
+          "text": "open the project in xcode"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "saltmarsh-ios",
+      "subject": "Bump version to 2.8.0"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "saltmarsh-ios",
+      "number": 742,
+      "state": "merged",
+      "title": "Offline drafts"
+     }
+    ],
+    "meetings": [],
+    "docs": [
+     {
+      "name": "Saltmarsh 2.8 Release Notes.md",
+      "folder": "Documents"
+     }
+    ],
+    "web": [
+     {
+      "host": "flights.example-air.com",
+      "titles": [
+       {
+        "title": "Return flights to Oslo"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "offline drafts merged",
+     "markers": [
+      "offline drafts",
+      "#742"
+     ],
+     "outcomes_ok": [
+      "merged",
+      "shipped"
+     ]
+    },
+    {
+     "label": "2.8 release branch",
+     "markers": [
+      "release branch",
+      "2\\.8"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "release notes",
+     "markers": [
+      "release notes"
+     ],
+     "outcomes_ok": []
+    }
+   ],
+   "facts": [
+    "#742",
+    "2\\.8",
+    "Saltmarsh",
+    "QA"
+   ],
+   "exclude": [
+    "oslo",
+    "flight",
+    "xcode"
+   ],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "(shipped|released|launched|live|submitted|published)[^.;|]{0,40}2\\.8|2\\.8[^.;|]{0,40}\\b(shipped|released|launched|live|submitted|published)\\b",
+     "kind": "overstated",
+     "why": "2.8 is not submitted or released"
+    },
+    {
+     "re": "(submitted|released) to the App Store|\\bon the App Store\\b",
+     "kind": "overstated",
+     "why": "not submitted yet"
+    }
+   ]
+  },
+  {
+   "id": "new06",
+   "data": {
+    "date": "2026-10-12",
+    "projects": [
+     {
+      "name": "cobalt-ledger",
+      "sessions": [
+       {
+        "title": "Pricing proposal",
+        "prompts": [
+         {
+          "text": "write the Cobalt Ledger pricing proposal v2, it needs Noor's approval before we share it with sales"
+         },
+         {
+          "text": "add a table comparing us to Ledgerly and Paywise on per-seat price"
+         }
+        ]
+       },
+       {
+        "title": "Usage tiers",
+        "prompts": [
+         {
+          "text": "model three usage tiers at 50, 200 and 1000 invoices a month"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "15:00",
+      "title": "Pricing review",
+      "attendees": "Caspian, Jun"
+     }
+    ],
+    "docs": [
+     {
+      "name": "Cobalt Pricing Proposal v2.docx",
+      "folder": "Documents"
+     }
+    ],
+    "web": [
+     {
+      "host": "shop.example-shoes.com",
+      "titles": [
+       {
+        "title": "Waterproof boots"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "pricing proposal",
+     "markers": [
+      "pricing proposal",
+      "proposal"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "competitor table",
+     "markers": [
+      "ledgerly",
+      "paywise"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "usage tiers",
+     "markers": [
+      "tier"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "pricing review",
+     "markers": [
+      "pricing review",
+      "review"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    }
+   ],
+   "facts": [
+    "Ledgerly",
+    "Paywise",
+    "Cobalt",
+    "Noor",
+    "\\b200\\b",
+    "1000|1,000"
+   ],
+   "exclude": [
+    "boots",
+    "waterproof"
+   ],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "\\bapproved\\b|\\bsigned off\\b",
+     "kind": "overstated",
+     "why": "approval is still needed"
+    },
+    {
+     "re": "\\bshared\\b[^.;|]{0,30}\\b(sales|Sales)\\b|\\bsent\\b[^.;|]{0,30}\\b(sales|Sales)\\b",
+     "kind": "overstated",
+     "why": "it is shared with sales only after approval"
+    },
+    {
+     "re": "\\bwith Noor\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Noor is the approver, not in the meeting or the work"
+    }
+   ]
+  },
+  {
+   "id": "new07",
+   "data": {
+    "date": "2026-10-13",
+    "projects": [
+     {
+      "name": "lumenpay-dashboard",
+      "sessions": [
+       {
+        "title": "Invoices chart rollback",
+        "prompts": [
+         {
+          "text": "the 3.1 deploy to production broke the invoices chart, roll it back"
+         }
+        ]
+       },
+       {
+        "title": "Chart query timeout",
+        "prompts": [
+         {
+          "text": "rollback done, now find why the invoices chart query times out, issue #1215"
+         },
+         {
+          "text": "add an index on invoices.created_at and rewrite the query"
+         }
+        ]
+       },
+       {
+        "title": "Grafana",
+        "prompts": [
+         {
+          "text": "log in to grafana for me"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "lumenpay-dashboard",
+      "subject": "Revert invoices chart query change"
+     },
+     {
+      "repo": "lumenpay-dashboard",
+      "subject": "Add index on invoices.created_at (#1215)"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "lumenpay-dashboard",
+      "number": 1220,
+      "state": "open",
+      "title": "Fix invoices chart query timeout"
+     }
+    ],
+    "meetings": [
+     {
+      "time": "17:00",
+      "title": "Incident review",
+      "attendees": "Zainab"
+     }
+    ],
+    "docs": [],
+    "web": [
+     {
+      "host": "www.postgresql.org",
+      "titles": [
+       {
+        "title": "EXPLAIN ANALYZE"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "rollback",
+     "markers": [
+      "roll",
+      "revert"
+     ],
+     "outcomes_ok": [
+      "deployed"
+     ]
+    },
+    {
+     "label": "chart query fix",
+     "markers": [
+      "#1215",
+      "index",
+      "query",
+      "timeout",
+      "time out"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "incident review",
+     "markers": [
+      "incident"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    }
+   ],
+   "facts": [
+    "#1215",
+    "#1220",
+    "3\\.1"
+   ],
+   "exclude": [
+    "grafana",
+    "log in"
+   ],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "(fix|#1215|#1220|index)[^.;|]{0,40}\\b(deployed|merged|shipped|released|live)\\b|\\b(deployed|merged|shipped|released)\\b[^.;|]{0,40}(fix|#1215|#1220|index)",
+     "kind": "overstated",
+     "why": "the query fix is committed with PR #1220 open"
+    },
+    {
+     "re": "\\b(resolved|restored|fixed)\\b[^.;|]{0,30}\\bincident\\b",
+     "kind": "overstated",
+     "why": "the input shows a rollback, not that the incident is closed"
+    }
+   ]
+  },
+  {
+   "id": "new08",
+   "data": {
+    "date": "2026-10-14",
+    "projects": [
+     {
+      "name": "fernway-blog",
+      "sessions": [
+       {
+        "title": "Halvorsen case study",
+        "prompts": [
+         {
+          "text": "draft the blog post on Halvorsen Freight's route savings, Mateo will publish it after the customer signs off"
+         },
+         {
+          "text": "pull the 18% fuel saving from the customer interview notes"
+         }
+        ]
+       },
+       {
+        "title": "Social posts",
+        "prompts": [
+         {
+          "text": "write 3 LinkedIn posts for the case study, we will schedule them later"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "fernway-site",
+      "sessions": [
+       {
+        "title": "Customer logos",
+        "prompts": [
+         {
+          "text": "add the Halvorsen logo to the customers strip on the homepage"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "fernway-site",
+      "subject": "Add Halvorsen logo to customers strip"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "fernway-site",
+      "number": 618,
+      "state": "merged",
+      "title": "Halvorsen logo"
+     }
+    ],
+    "meetings": [],
+    "docs": [
+     {
+      "name": "Halvorsen Case Study Draft.docx",
+      "folder": "Documents"
+     }
+    ],
+    "web": [
+     {
+      "host": "trails.example-outdoors.com",
+      "titles": [
+       {
+        "title": "Weekend hiking routes"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "case study draft",
+     "markers": [
+      "case study",
+      "blog"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "social posts",
+     "markers": [
+      "linkedin",
+      "social",
+      "posts"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "customer logo",
+     "markers": [
+      "logo"
+     ],
+     "outcomes_ok": [
+      "merged",
+      "shipped"
+     ]
+    }
+   ],
+   "facts": [
+    "Halvorsen",
+    "18%",
+    "#618",
+    "\\b3\\b|three"
+   ],
+   "exclude": [
+    "hiking",
+    "weekend"
+   ],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "\\b(published|posted|scheduled|live)\\b",
+     "kind": "overstated",
+     "why": "nothing is published, posted or scheduled"
+    },
+    {
+     "re": "\\bwith Mateo\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Mateo publishes later, did not work on it"
+    },
+    {
+     "re": "(case study|blog)[^.;|]{0,40}\\b(approved|signed off)\\b",
+     "kind": "overstated",
+     "why": "the customer has not signed off"
+    }
+   ]
+  },
+  {
+   "id": "new09",
+   "data": {
+    "date": "2026-10-15",
+    "projects": [
+     {
+      "name": "kitewire-docs",
+      "sessions": [
+       {
+        "title": "Webhooks reference",
+        "prompts": [
+         {
+          "text": "update the Kitewire API reference for the v4 webhooks, the old page still shows v3 payloads"
+         }
+        ]
+       },
+       {
+        "title": "Link check",
+        "prompts": [
+         {
+          "text": "every Monday I check the docs build for broken links, do that now and fix any you find"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "kitewire-docs",
+      "subject": "Update webhooks reference to v4"
+     }
+    ],
+    "prs": [],
+    "meetings": [
+     {
+      "time": "14:00",
+      "title": "Docs office hours",
+      "attendees": "Jun"
+     }
+    ],
+    "docs": [],
+    "web": []
+   },
+   "items": [
+    {
+     "label": "webhooks reference",
+     "markers": [
+      "webhook",
+      "v4",
+      "api reference"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "broken link check",
+     "markers": [
+      "link"
+     ],
+     "outcomes_ok": [],
+     "minor": true
+    },
+    {
+     "label": "docs office hours",
+     "markers": [
+      "office hours"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    }
+   ],
+   "facts": [
+    "v4",
+    "Kitewire"
+   ],
+   "exclude": [],
+   "collab_ok": [],
+   "must_not_say": [
+    {
+     "re": "\\bweekly\\b",
+     "kind": "added",
+     "why": "the input says every Monday, not weekly; and office hours has no cadence"
+    },
+    {
+     "re": "\\b(published|deployed|released|live)\\b",
+     "kind": "overstated",
+     "why": "only a commit is shown"
+    }
+   ]
+  },
+  {
+   "id": "new10",
+   "data": {
+    "date": "2026-10-16",
+    "projects": [
+     {
+      "name": "harrow-crm",
+      "sessions": [
+       {
+        "title": "Contact dedupe",
+        "prompts": [
+         {
+          "text": "Elif reviewed my PR #905 and approved it, address her two nits and merge"
+         },
+         {
+          "text": "dedupe contacts by email, issue #899"
+         }
+        ]
+       },
+       {
+        "title": "Migration note",
+        "prompts": [
+         {
+          "text": "write a migration note for the dedupe to share with Support tomorrow"
+         }
+        ]
+       },
+       {
+        "title": "Import wizard",
+        "prompts": [
+         {
+          "text": "Greta wants the import wizard to accept xlsx files, scope it, issue #911"
+         }
+        ]
+       }
+      ]
+     }
+    ],
+    "commits": [
+     {
+      "repo": "harrow-crm",
+      "subject": "Dedupe contacts by email (#899)"
+     },
+     {
+      "repo": "harrow-crm",
+      "subject": "Address review nits"
+     }
+    ],
+    "prs": [
+     {
+      "repo": "harrow-crm",
+      "number": 905,
+      "state": "merged",
+      "title": "Contact dedupe"
+     }
+    ],
+    "meetings": [],
+    "docs": [
+     {
+      "name": "Dedupe Migration Note.md",
+      "folder": "Documents"
+     }
+    ],
+    "web": [
+     {
+      "host": "news.example-tech.com",
+      "titles": [
+       {
+        "title": "Phone launch rumours"
+       }
+      ]
+     }
+    ]
+   },
+   "items": [
+    {
+     "label": "contact dedupe",
+     "markers": [
+      "dedupe",
+      "#899",
+      "#905"
+     ],
+     "outcomes_ok": [
+      "merged",
+      "shipped",
+      "approved"
+     ]
+    },
+    {
+     "label": "migration note",
+     "markers": [
+      "migration note"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "import wizard scoping",
+     "markers": [
+      "import wizard",
+      "xlsx",
+      "#911"
+     ],
+     "outcomes_ok": []
+    }
+   ],
+   "facts": [
+    "#899",
+    "#905",
+    "#911",
+    "xlsx|XLSX"
+   ],
+   "exclude": [
+    "phone launch",
+    "rumour"
+   ],
+   "collab_ok": [
+    "Elif"
+   ],
+   "must_not_say": [
+    {
+     "re": "migration note[^.;|]{0,40}\\b(shared|sent)\\b|\\b(shared|sent)\\b[^.;|]{0,40}(migration note|Support)",
+     "kind": "overstated",
+     "why": "the note is shared tomorrow"
+    },
+    {
+     "re": "\\bwith Greta\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Greta only asked for it"
+    },
+    {
+     "re": "(import wizard|xlsx|#911)[^.;|]{0,40}\\b(built|added|shipped|merged)\\b|\\b(built|added|shipped|merged)\\b[^.;|]{0,40}(import wizard|xlsx|#911)",
+     "kind": "overstated",
+     "why": "the import wizard work was scoping only"
+    }
+   ]
+  }
+ ]
+}

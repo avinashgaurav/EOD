@@ -1,0 +1,238 @@
+{
+ "note": "Two NEW fictional weeks of daily highlights, the input polish_weekly() builds from cached dailies. Written 2026-11-04 by hand (not taken from any model output), with the same answer-key keys as days-new.json. The weekly prompt says to keep outcome words exactly as a daily line states them, so outcomes_ok lists only words a daily line uses for that item.",
+ "weeks": [
+  {
+   "id": "week1",
+   "data": {
+    "week_start": "2026-10-19",
+    "days": [
+     [
+      "2026-10-19",
+      [
+       "Fixed the webhook signature check in Lumenpay Core (#1402) and opened PR #1405.",
+       "Drafted the Q4 partner update to send to Yuki."
+      ]
+     ],
+     [
+      "2026-10-20",
+      [
+       "Deployed the webhook signature fix to staging for testing (#1405).",
+       "Meeting with Risk to review chargeback rules."
+      ]
+     ],
+     [
+      "2026-10-21",
+      [
+       "Worked on the chargeback rules sheet requested by Noor.",
+       "Reviewed Seun's PR #1410 for payout retries and left comments."
+      ]
+     ],
+     [
+      "2026-10-22",
+      [
+       "Merged PR #1405 for the webhook signature fix.",
+       "Worked with Farah on the Payouts Runbook."
+      ]
+     ],
+     [
+      "2026-10-23",
+      [
+       "Made the Payouts Runbook doc and shared it with Ops.",
+       "Worked on edits to the Q4 partner update draft."
+      ]
+     ]
+    ]
+   },
+   "items": [
+    {
+     "label": "webhook signature fix",
+     "markers": [
+      "webhook",
+      "signature",
+      "#1402",
+      "#1405"
+     ],
+     "outcomes_ok": [
+      "deployed",
+      "merged"
+     ]
+    },
+    {
+     "label": "q4 partner update",
+     "markers": [
+      "partner update"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "chargeback rules",
+     "markers": [
+      "chargeback"
+     ],
+     "outcomes_ok": [
+      "met"
+     ]
+    },
+    {
+     "label": "payout retries review",
+     "markers": [
+      "#1410",
+      "payout retr"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "payouts runbook",
+     "markers": [
+      "runbook"
+     ],
+     "outcomes_ok": [
+      "shared"
+     ]
+    }
+   ],
+   "facts": [
+    "#1402",
+    "#1405",
+    "#1410",
+    "Payouts Runbook|payouts runbook",
+    "Yuki"
+   ],
+   "exclude": [],
+   "collab_ok": [
+    "Farah"
+   ],
+   "must_not_say": [
+    {
+     "re": "\\bshipped\\b",
+     "kind": "overstated",
+     "why": "no daily line says shipped"
+    },
+    {
+     "re": "(deployed|live)[^.;|]{0,30}\\b(prod|production)\\b|\\b(prod|production)\\b[^.;|]{0,30}\\b(deployed|live)\\b",
+     "kind": "overstated",
+     "why": "only a staging deploy is stated"
+    },
+    {
+     "re": "partner update[^.;|]{0,40}\\b(sent|shared)\\b|\\b(sent|shared)\\b[^.;|]{0,40}partner update",
+     "kind": "overstated",
+     "why": "the partner update is still a draft"
+    },
+    {
+     "re": "\\bwith Noor\\b(?!['’]s)|\\bwith Yuki\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Noor requested; Yuki is the recipient"
+    },
+    {
+     "re": "#1410[^.;|]{0,40}\\bmerged\\b|\\bmerged\\b[^.;|]{0,20}(Seun|#1410)",
+     "kind": "overstated",
+     "why": "PR #1410 was only reviewed"
+    }
+   ]
+  },
+  {
+   "id": "week2",
+   "data": {
+    "week_start": "2026-10-26",
+    "days": [
+     [
+      "2026-10-26",
+      [
+       "Worked with Marisol on the Fernway pricing page redesign.",
+       "Committed the newsletter signup fix (#655)."
+      ]
+     ],
+     [
+      "2026-10-27",
+      [
+       "Drafted the Halvorsen case study; Mateo to publish after customer sign-off."
+      ]
+     ],
+     [
+      "2026-10-28",
+      [
+       "Meeting with Design to review the pricing page.",
+       "Fixed the signup form follow-up and opened PR #661."
+      ]
+     ],
+     [
+      "2026-10-29",
+      [
+       "Worked on the Q4 webinar outline requested by Henrik.",
+       "Released Fernway site 5.2 with the new pricing page."
+      ]
+     ]
+    ]
+   },
+   "items": [
+    {
+     "label": "pricing page",
+     "markers": [
+      "pricing page"
+     ],
+     "outcomes_ok": [
+      "released",
+      "met"
+     ]
+    },
+    {
+     "label": "signup fix",
+     "markers": [
+      "signup",
+      "#655",
+      "#661"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "halvorsen case study",
+     "markers": [
+      "halvorsen",
+      "case study"
+     ],
+     "outcomes_ok": []
+    },
+    {
+     "label": "webinar outline",
+     "markers": [
+      "webinar"
+     ],
+     "outcomes_ok": []
+    }
+   ],
+   "facts": [
+    "#655",
+    "#661",
+    "5\\.2",
+    "Halvorsen",
+    "Marisol"
+   ],
+   "exclude": [],
+   "collab_ok": [
+    "Marisol"
+   ],
+   "must_not_say": [
+    {
+     "re": "\\bshipped\\b",
+     "kind": "overstated",
+     "why": "no daily line says shipped"
+    },
+    {
+     "re": "(signup|#655|#661)[^.;|]{0,40}\\b(released|merged|shipped|live|deployed)\\b|\\b(merged|shipped|deployed)\\b[^.;|]{0,40}(signup|#655|#661)",
+     "kind": "overstated",
+     "why": "the signup fix is committed with PR #661 open"
+    },
+    {
+     "re": "\\b(published|posted|live)\\b[^.;|]{0,40}(case study|Halvorsen)|(case study|Halvorsen)[^.;|]{0,40}\\b(published|posted|live)\\b",
+     "kind": "overstated",
+     "why": "the case study is a draft"
+    },
+    {
+     "re": "\\bwith Henrik\\b(?!['’]s)|\\bwith Mateo\\b(?!['’]s)",
+     "kind": "added",
+     "why": "Henrik requested; Mateo publishes later"
+    }
+   ]
+  }
+ ]
+}
