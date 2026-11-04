@@ -1,0 +1,79 @@
+{
+  "reviewer": "AI reviewer: claude-opus-5-5 (the same model that wrote the new cases and answer key). Not read by the author; nothing below has been checked by the author yet.",
+  "date": "2026-11-04",
+  "method": "Read every highlight and detailed line of each output side by side with the input the model was sent, looking for outcomes, people, teams, meetings or cadence words the input does not support, including claims phrased without the words claims_check.py looks for.",
+  "outputsRead": {
+    "days": [
+      "2026-11-04-claude-cli-days-new-run1.json",
+      "2026-11-04-claude-cli-days-new-run2.json",
+      "2026-11-04-claude-cli-days-new-run3.json"
+    ],
+    "weeks": [
+      "2026-11-04-claude-cli-weeks-new-run1.json",
+      "2026-11-04-claude-cli-weeks-new-run2.json",
+      "2026-11-04-claude-cli-weeks-new-run3.json"
+    ],
+    "count": {
+      "dayOutputs": 30,
+      "weekOutputs": 6
+    }
+  },
+  "overstatedResults": [],
+  "smallAdditions": [
+    {
+      "case": "new07",
+      "runs": [
+        "run2",
+        "run3"
+      ],
+      "text": "Meeting on Incident review for the invoices chart issue (run3: 'Meeting for Incident review on the Invoices chart issue')",
+      "why": "the input has a meeting titled 'Incident review' only; linking it to the invoices chart is likely but not stated"
+    }
+  ],
+  "firstScoringFlagsJudgedFalseAlarms": [
+    {
+      "case": "new08",
+      "runs": [
+        "run1",
+        "run2",
+        "run3"
+      ],
+      "text": "to be published by Mateo after customer sign-off; to be scheduled later",
+      "why": "pending steps the input states"
+    },
+    {
+      "case": "new02",
+      "runs": [
+        "run2"
+      ],
+      "text": "to be sent once legal checks the dates",
+      "why": "pending step the input states"
+    },
+    {
+      "case": "new02",
+      "runs": [
+        "run3"
+      ],
+      "text": "Shared the Fernway x Henrik co-marketing deck with Henrik in the morning",
+      "why": "input: 'the co-marketing deck I sent this morning'"
+    },
+    {
+      "case": "week1, week2",
+      "runs": [
+        "run1",
+        "run2",
+        "run3"
+      ],
+      "text": "Met with Risk / met with Design",
+      "why": "daily lines say 'Meeting with Risk' and 'Meeting with Design'; harness passed has_meetings=False"
+    }
+  ],
+  "unknownWordsCleared": {
+    "Website": "capitalised common word",
+    "modelling": "English (British spelling)",
+    "rewrote": "past tense of rewrite",
+    "sign-off": "from 'signs off' in the input",
+    "broken-link": "from 'broken links' in the input",
+    "currencies": "English"
+  }
+}

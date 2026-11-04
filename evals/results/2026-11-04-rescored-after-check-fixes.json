@@ -1,0 +1,180 @@
+{
+  "2026-10-15-claude-cli.json": {
+    "totals": {
+      "daysWithOverstatement": 3,
+      "daysWithAddition": 2,
+      "daysClean": 5
+    },
+    "flags": {
+      "day01": [
+        {
+          "category": "added-collaborator",
+          "detail": "Meera",
+          "line": "Worked with Meera on shorter Pricing page hero copy for tallow-web."
+        },
+        {
+          "category": "added-cadence",
+          "detail": "daily",
+          "line": "Meeting with Payments team for daily standup."
+        }
+      ],
+      "day02": [
+        {
+          "category": "overstated-outcome",
+          "detail": "shipped",
+          "line": "Worked on the Quillmark PDF export bug (#77) and shipped the fix."
+        },
+        {
+          "category": "overstated-outcome",
+          "detail": "shipped",
+          "line": "Quillmark App: Added a regression test and shipped the fix"
+        }
+      ],
+      "day03": [
+        {
+          "category": "added-cadence",
+          "detail": "weekly",
+          "line": "Meeting with Growth team for weekly sync."
+        }
+      ],
+      "day04": [],
+      "day05": [],
+      "day06": [],
+      "day07": [
+        {
+          "category": "overstated-outcome",
+          "detail": "sent",
+          "line": "Worked on the Quillmark Tables launch email and sent draft to Lena for review."
+        },
+        {
+          "category": "overstated-outcome",
+          "detail": "shared",
+          "line": "Quillmark Tables Launch: Shared the launch email draft with Lena for review"
+        }
+      ],
+      "day08": [],
+      "day09": [],
+      "day10": [
+        {
+          "category": "overstated-outcome",
+          "detail": "shipped",
+          "line": "Built and shipped the Brambleworks case study page using approved copy from Ines."
+        },
+        {
+          "category": "overstated-outcome",
+          "detail": "shipped",
+          "line": "Tallow Website: Shipped the Brambleworks case study page to tallow-web"
+        }
+      ]
+    }
+  },
+  "2026-10-15-claude-cli-after-fix.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 10
+    },
+    "flags": {
+      "day01": [],
+      "day02": [],
+      "day03": [],
+      "day04": [],
+      "day05": [],
+      "day06": [],
+      "day07": [],
+      "day08": [],
+      "day09": [],
+      "day10": []
+    }
+  },
+  "2026-11-04-claude-cli-days-new-run1.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 10
+    },
+    "flags": {
+      "new01": [],
+      "new02": [],
+      "new03": [],
+      "new04": [],
+      "new05": [],
+      "new06": [],
+      "new07": [],
+      "new08": [],
+      "new09": [],
+      "new10": []
+    }
+  },
+  "2026-11-04-claude-cli-days-new-run2.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 10
+    },
+    "flags": {
+      "new01": [],
+      "new02": [],
+      "new03": [],
+      "new04": [],
+      "new05": [],
+      "new06": [],
+      "new07": [],
+      "new08": [],
+      "new09": [],
+      "new10": []
+    }
+  },
+  "2026-11-04-claude-cli-days-new-run3.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 10
+    },
+    "flags": {
+      "new01": [],
+      "new02": [],
+      "new03": [],
+      "new04": [],
+      "new05": [],
+      "new06": [],
+      "new07": [],
+      "new08": [],
+      "new09": [],
+      "new10": []
+    }
+  },
+  "2026-11-04-claude-cli-weeks-new-run1.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 2
+    },
+    "flags": {
+      "week1": [],
+      "week2": []
+    }
+  },
+  "2026-11-04-claude-cli-weeks-new-run2.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 2
+    },
+    "flags": {
+      "week1": [],
+      "week2": []
+    }
+  },
+  "2026-11-04-claude-cli-weeks-new-run3.json": {
+    "totals": {
+      "daysWithOverstatement": 0,
+      "daysWithAddition": 0,
+      "daysClean": 2
+    },
+    "flags": {
+      "week1": [],
+      "week2": []
+    }
+  }
+}

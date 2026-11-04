@@ -68,6 +68,8 @@ class TestClaimsCheck(unittest.TestCase):
             "new09": "Weekly broken link check on the docs build",
             "new02": "Applied Henrik's edits to the deck shared with him this morning",
         }
+        # A pending step the input never plans is still an invented outcome.
+        self.assertTrue(self._flags(days["new07"], ["Query fix to be shipped tomorrow"]))
         for day, line in fine.items():
             self.assertEqual(self._flags(days[day], [line]), [], "%s: %r should pass" % (day, line))
 

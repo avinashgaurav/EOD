@@ -34,7 +34,7 @@ def payload(data):
 
 
 def has_meetings(raw):
-    return bool(re.search(r"\b(meeting|met)\b", C.HEADER.sub("", raw), re.I))
+    return bool(re.search(r"\b(meeting with|met with)\b", C.HEADER.sub("", raw), re.I))
 
 
 def nums(s):
