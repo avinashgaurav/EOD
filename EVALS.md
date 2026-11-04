@@ -141,6 +141,63 @@ On these days, the AI kept every work item and every specific detail, and the pr
 
 With fix 1 in and a clean second run, the numbers above are fair to publish, as long as it is clear this is 10 hand-built days.
 
+## Results on new cases (2026-11-04)
+
+The first test had a weak spot: I wrote the prompt rules to fix the misses on the same 10 days I then re-tested. So I added cases the prompt was never tuned on, and also tested the weekly summary for the first time.
+
+**What the new set is.** 10 new made-up work days (`evals/datasets/days-new.json`), in the same shape as before, and 2 new made-up weeks of daily highlight lines, the input the weekly summary works from (`evals/datasets/weeks-new.json`). No person, product, project or issue number is shared with the first set. The days lean on the shapes that tripped the first run:
+
+- commit vs merge vs deploy: a commit with an open PR, a merged PR, a deploy to staging only, a production deploy that was rolled back, a release branch cut but not submitted
+- "to send" notes: a newsletter that goes out Friday, a reply waiting on legal, a deck that really was sent this morning
+- requests vs collaboration: "Anjali asked for", "Greta wants", "Noor's approval", next to "Seun and I paired"
+- cadence words: a refresh job with no schedule, a check done "every Monday", meetings with no stated cadence
+- the same busywork and personal browsing traps as before
+
+Claude (claude-opus-5-5) wrote the new cases and the answer key for me. The answers were committed before any model saw the cases, in the commit "Add new test cases and answer key, before any model call". One answer-key rule was then corrected, still before any model call (commit "Correct one answer-key rule, still before any model call"): it would have flagged "weekly link check" for a check the input says runs every Monday.
+
+**Same setup as before.** The same harness (`evals/harness/run.py`, now with `EVAL_DATASET`), the real `polish()` and `polish_weekly()`, the same wrapper and settings, no `--model`, so the CLI default answered: `claude-opus-5-5` on every call (Claude Code 2.1.312). The app code and prompts on this branch are those of the "Pin the polish prompt rules" PR (#15), which reworded one weekly prompt line. 3 runs of each.
+
+**The overstatement check is now automatic.** On 2026-10-15 I found overstated results by reading the outputs. That read is now a set of fixed rules (`evals/harness/claims_check.py`):
+
+- an outcome word (shipped, merged, deployed, released, launched, published, sent, shared, approved, scheduled, met) on a line about an item whose input does not show it
+- a cadence word (daily, weekly, monthly, nightly...), a team name, or a meeting word the input does not have
+- "worked with <name>" for anyone the answer key does not list as working on it
+- per-day patterns from the answer key, such as "deployed to production" when only staging is shown
+
+To check the rules, I ran them on the saved 2026-10-15 outputs (no model call). Before the fix they flag the same 5 days my read did (day01, day02, day03, day07, day10); after the fix they flag none, matching my read. They also found one thing I missed: day01 before the fix said "daily standup", and "daily" is not in the input. `tests/test_eval_checks.py` keeps this agreement in the test suite.
+
+**Two false alarms, fixed after the first scoring.** On the new days, the rules first flagged 1, 2 and 2 days in the three runs. Every flagged line was fine: "to be published by Mateo after customer sign-off", "to be scheduled later", "to be sent once legal checks the dates", and "shared the deck with Henrik" where the input says "the deck I sent this morning". I changed the rules to skip "to be <outcome>" and to treat sent and shared as the same outcome, and re-scored the saved outputs with no new model call. The weekly runs came after the first fix, so they were scored with it; their one false alarm ("Met with Design" for a daily "Meeting with Design", because the harness told the rules the week had no meetings) was fixed the same way. The results files keep the first scoring; the numbers below are after these fixes. Commands for both are under "Reproduce".
+
+| What was checked | Tuned cases (2026-10-15, after the fix, 1 run) | New days (3 runs) | New weeks (3 runs) |
+|---|---|---|---|
+| Work items kept | 29 / 29 | 32 / 32 every run | 9 / 9 every run |
+| Facts kept | 30 / 30 | 38 / 38 every run | 10 / 10 every run |
+| Made-up numbers or names | 0 | 0 every run | 0 every run (numbers only; no attendees in this input) |
+| Personal or busywork items included | 0 / 10 days | 0 / 10 days every run | not tested (no such lines in the input) |
+| Overstated result | 0 / 10 days (my read) | 0 / 10 days every run (rules) | 0 / 2 weeks every run (rules) |
+| Added person, team, meeting or cadence word | 0 / 10 days (my read) | 0 / 10 days every run (rules) | 0 / 2 weeks every run (rules) |
+| Days with 4 to 9 highlights | 3 / 10 | 3, 3 and 5 / 10 (the rest have 3 or fewer items) | weekly asks for 4 to 8: 4 or 5 lines per week, every run |
+| Overstated result, as first scored | | 1, 2 and 2 / 10 days, all false alarms | 0 / 2 weeks |
+
+**AI read.** The rules cannot judge a claim that uses none of their words. So all 30 day outputs and all 6 week outputs were also read side by side with their input, by an AI reviewer (claude-opus-5-5, the same model that wrote the cases), not by me. It found no overstated result. It noted one small addition the rules cannot see: in 2 of 3 runs, new07 says "Meeting on Incident review for the invoices chart issue" (or close to it), while the input only has a meeting called "Incident review" (that is a likely link, but the input does not state it). The words the unknown-word check listed (Website, modelling, rewrote, sign-off, broken-link, currencies) were also cleared by that AI read as English words or forms of input words. These items are for me to check.
+
+**Concrete checks on the traps.** Every run kept the line between steps:
+
+- new01: "Deployed the refund rounding fix to staging"; PR #1190 "still open"; never "production" or "merged".
+- new05: "Cut the 2.8 release branch ... App Store submission pending QA"; never "released" or "shipped 2.8".
+- new03: "CSV export requested by Anjali" and "Worked with Seun"; never "worked with Anjali".
+- new04: "ran it once manually (no schedule yet)"; never "nightly" or "weekly check-in".
+- Weekly: "Merged PR #1405 ... after deploying it to staging" and "Drafted the Q4 partner update to send to Yuki"; no daily "Committed" or "Drafted" line became "shipped".
+
+**Speed and cost.** New days: a typical call took 5.1 to 5.4 s (p50) and a slow one 7.0 to 8.0 s (p90); each run of 10 calls took about 20 s. 36 CLI calls in all (30 daily, 6 weekly), 0 errors. Cost reported by the CLI: 0.85 USD for the days and 0.15 USD for the weeks, 1.01 USD in all.
+
+**Honest limits.**
+
+- 10 days and 2 weeks is still a small set, and the same AI wrote the cases, the answer key and the AI read. A clean result on cases it built is weaker evidence than cases from real users.
+- The rules are word rules. They can miss an overstatement in other words ("finished the export" when it was half done), and I adjusted them once after seeing the first scores. The test suite pins them against my earlier hand read, but they have never caught a real miss on cases I did not already know about.
+- The weekly test feeds hand-written daily lines, not real daily outputs, and covers only whether the weekly keeps each line's outcome, people and facts.
+- Results files for these runs: `evals/results/2026-11-04-claude-cli-days-new-run{1,2,3}.json` and `evals/results/2026-11-04-claude-cli-weeks-new-run{1,2,3}.json`.
+
 ## Reproduce
 
 ```sh
@@ -148,6 +205,9 @@ cd eod
 python3 evals/harness/run.py                  # 10 CLI calls; writes evals/results/<date>-claude-cli.json
 EVAL_TAG=after-fix python3 evals/harness/run.py   # same, written with an -after-fix suffix
 EVAL_ONLY=day01,day02 python3 evals/harness/run.py   # subset; writes a -partial file
+EVAL_DATASET=days-new.json EVAL_TAG=run1 python3 evals/harness/run.py   # the new days
+EVAL_TAG=run1 python3 evals/harness/run_weekly.py   # the new weeks (2 CLI calls)
+python3 evals/harness/rescore.py evals/results/<file>.json evals/datasets/days-new.json   # re-check saved outputs, no model call
 ```
 
 Requires Python 3.9+ and a logged-in `claude` CLI. No packages to install.
