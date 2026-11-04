@@ -57,6 +57,12 @@ HEADER = re.compile(r"^## .*$", re.M)
 # (2026-11-04), which flagged 4 such lines; see EVALS.md.
 PENDING = re.compile(r"\b(to be|will be|to get|yet to be|not yet)\s+(shipped|merged|deployed|released|launched|"
                      r"published|posted|sent|emailed|submitted|shared|approved|signed off|scheduled)\b", re.I)
+# A pending step is only fine if the input plans it. "to be shipped" when the
+# input never mentions shipping is an invented step, so it is still flagged.
+PENDING_ROOT = {"shipped": r"\bship", "merged": r"\bmerg", "deployed": r"\bdeploy", "released": r"\breleas",
+                "launched": r"\blaunch", "published": r"\bpublish", "posted": r"\bpost", "sent": r"\bsen[dt]",
+                "emailed": r"\bemail", "submitted": r"\bsubmit", "shared": r"\bshar", "approved": r"\bapprov",
+                "signed off": r"\bsign", "scheduled": r"\bschedul"}
 # Telling someone "I sent the deck" and "shared the deck with them" are the same outcome.
 SAME_OUTCOME = {"sent": "shared", "shared": "sent"}
 
@@ -83,6 +89,9 @@ def check(lines, payload, case, has_meetings):
     items = case.get("items", [])
     keyed = any("outcomes_ok" in it for it in items)
     for shown in lines:
+        for m in PENDING.finditer(shown):
+            if not re.search(PENDING_ROOT[m.group(2).lower()], body, re.I):
+                flags.append({"category": "overstated-outcome", "detail": "invented pending step: " + m.group(0), "line": shown})
         line = PENDING.sub(lambda m: m.group(1) + " (pending)", shown)
         # outcome words
         for cl in clauses(line):

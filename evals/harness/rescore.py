@@ -2,7 +2,7 @@
 """Re-run the automatic overstatement checks on a saved results file. No model call.
 
 Usage: python3 evals/harness/rescore.py evals/results/<file>.json [evals/datasets/<dataset>.json]
-       (pass weeks-new.json for a weekly results file)
+       (pass weeks-new.json for a weekly results file; set RESCORE_OUT=<file>.json to record the result)
 
 Used to test the checks against the 2026-10-15 hand read: on those outputs the
 rules should flag the same lines the author found by reading.
@@ -32,6 +32,13 @@ for r in res["results"]:
     report[r["id"]] = flags
     for f in flags:
         print("%s  %-20s %-12s %s" % (r["id"], f["category"], f["detail"][:12], f["line"]))
-print(json.dumps({"daysWithOverstatement": sum(1 for v in report.values() if any(f["category"] == "overstated-outcome" for f in v)),
+totals = {"daysWithOverstatement": sum(1 for v in report.values() if any(f["category"] == "overstated-outcome" for f in v)),
                   "daysWithAddition": sum(1 for v in report.values() if any(f["category"].startswith("added-") for f in v)),
-                  "daysClean": sum(1 for v in report.values() if not v)}))
+                  "daysClean": sum(1 for v in report.values() if not v)}
+print(json.dumps(totals))
+if os.environ.get("RESCORE_OUT"):
+    # Append to a JSON record of re-scores: {"<results file>": {"totals", "flags"}}.
+    path = os.environ["RESCORE_OUT"]
+    rec = json.load(open(path)) if os.path.exists(path) else {}
+    rec[os.path.basename(sys.argv[1])] = {"totals": totals, "flags": report}
+    json.dump(rec, open(path, "w"), indent=2)

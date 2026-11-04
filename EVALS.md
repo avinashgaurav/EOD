@@ -166,7 +166,9 @@ Claude (claude-opus-5-5) wrote the new cases and the answer key for me. The answ
 
 To check the rules, I ran them on the saved 2026-10-15 outputs (no model call). Before the fix they flag the same 5 days my read did (day01, day02, day03, day07, day10); after the fix they flag none, matching my read. They also found one thing I missed: day01 before the fix said "daily standup", and "daily" is not in the input. `tests/test_eval_checks.py` keeps this agreement in the test suite.
 
-**Two false alarms, fixed after the first scoring.** On the new days, the rules first flagged 1, 2 and 2 days in the three runs. Every flagged line was fine: "to be published by Mateo after customer sign-off", "to be scheduled later", "to be sent once legal checks the dates", and "shared the deck with Henrik" where the input says "the deck I sent this morning". I changed the rules to skip "to be <outcome>" and to treat sent and shared as the same outcome, and re-scored the saved outputs with no new model call. The weekly runs came after the first fix, so they were scored with it; their one false alarm ("Met with Design" for a daily "Meeting with Design", because the harness told the rules the week had no meetings) was fixed the same way. The results files keep the first scoring; the numbers below are after these fixes. Commands for both are under "Reproduce".
+**Two false alarms, fixed after the first scoring.** On the new days, the rules first flagged 1, 2 and 2 days in the three runs. Every flagged line was fine: "to be published by Mateo after customer sign-off", "to be scheduled later", "to be sent once legal checks the dates", and "shared the deck with Henrik" where the input says "the deck I sent this morning". I changed the rules to skip "to be <outcome>" when the input plans that step, and to treat sent and shared as the same outcome, and re-scored the saved outputs with no new model call. The weekly runs were scored by the rules as they stood in my working copy, which already had the "to be" and sent/shared change (it was committed afterwards, so the commit order puts the weekly results first). As first scored, the weeks still flagged an added meeting on 2, 2 and 1 of 2 weeks: "Met with Risk" and "met with Design" where the daily lines say "Meeting with Risk" and "Meeting with Design". All were false alarms, because the weekly harness told the rules the weeks had no meetings; that harness bug is fixed.
+
+The summary inside each committed results file is the first scoring. The numbers in the table below come from re-scoring the saved outputs with `rescore.py`, recorded in `evals/results/2026-11-04-rescored-after-check-fixes.json`. Commands for both are under "Reproduce".
 
 | What was checked | Tuned cases (2026-10-15, after the fix, 1 run) | New days (3 runs) | New weeks (3 runs) |
 |---|---|---|---|
@@ -178,8 +180,9 @@ To check the rules, I ran them on the saved 2026-10-15 outputs (no model call). 
 | Added person, team, meeting or cadence word | 0 / 10 days (my read) | 0 / 10 days every run (rules) | 0 / 2 weeks every run (rules) |
 | Days with 4 to 9 highlights | 3 / 10 | 3, 3 and 5 / 10 (the rest have 3 or fewer items) | weekly asks for 4 to 8: 4 or 5 lines per week, every run |
 | Overstated result, as first scored | | 1, 2 and 2 / 10 days, all false alarms | 0 / 2 weeks |
+| Added meeting, as first scored | | 0 / 10 days | 2, 2 and 1 / 2 weeks, all false alarms |
 
-**AI read.** The rules cannot judge a claim that uses none of their words. So all 30 day outputs and all 6 week outputs were also read side by side with their input, by an AI reviewer (claude-opus-5-5, the same model that wrote the cases), not by me. It found no overstated result. It noted one small addition the rules cannot see: in 2 of 3 runs, new07 says "Meeting on Incident review for the invoices chart issue" (or close to it), while the input only has a meeting called "Incident review" (that is a likely link, but the input does not state it). The words the unknown-word check listed (Website, modelling, rewrote, sign-off, broken-link, currencies) were also cleared by that AI read as English words or forms of input words. These items are for me to check.
+**AI read.** The rules cannot judge a claim that uses none of their words. So all 30 day outputs and all 6 week outputs were also read side by side with their input, by an AI reviewer (claude-opus-5-5, the same model that wrote the cases), not by me. It found no overstated result. It noted one small addition the rules cannot see: in 2 of 3 runs, new07 says "Meeting on Incident review for the invoices chart issue" (or close to it), while the input only has a meeting called "Incident review" (that is a likely link, but the input does not state it). The words the unknown-word check listed (Website, modelling, rewrote, sign-off, broken-link, currencies) were also cleared by that AI read as English words or forms of input words. What it checked and found is in `evals/results/2026-11-04-ai-read.json`. I have not yet checked any of it myself.
 
 **Concrete checks on the traps.** Every run kept the line between steps:
 
@@ -194,7 +197,9 @@ To check the rules, I ran them on the saved 2026-10-15 outputs (no model call). 
 **Honest limits.**
 
 - 10 days and 2 weeks is still a small set, and the same AI wrote the cases, the answer key and the AI read. A clean result on cases it built is weaker evidence than cases from real users.
-- The rules are word rules. They can miss an overstatement in other words ("finished the export" when it was half done), and I adjusted them once after seeing the first scores. The test suite pins them against my earlier hand read, but they have never caught a real miss on cases I did not already know about.
+- The rules are word rules. They can miss an overstatement in other words ("finished the export" when it was half done), and I adjusted them once after seeing the first scores.
+- "to be <outcome>" is skipped as a pending step when the input mentions that step (for example "Mateo will publish it"); it is still flagged when the input never mentions it. The day-specific answer-key patterns run after this, so they do not see a pending phrase the input does plan.
+- The weekly harness counts a week as having meetings when a daily line says "meeting with" or "met with". The test suite pins them against my earlier hand read, but they have never caught a real miss on cases I did not already know about.
 - The weekly test feeds hand-written daily lines, not real daily outputs, and covers only whether the weekly keeps each line's outcome, people and facts.
 - Results files for these runs: `evals/results/2026-11-04-claude-cli-days-new-run{1,2,3}.json` and `evals/results/2026-11-04-claude-cli-weeks-new-run{1,2,3}.json`.
 
@@ -208,6 +213,7 @@ EVAL_ONLY=day01,day02 python3 evals/harness/run.py   # subset; writes a -partial
 EVAL_DATASET=days-new.json EVAL_TAG=run1 python3 evals/harness/run.py   # the new days
 EVAL_TAG=run1 python3 evals/harness/run_weekly.py   # the new weeks (2 CLI calls)
 python3 evals/harness/rescore.py evals/results/<file>.json evals/datasets/days-new.json   # re-check saved outputs, no model call
+RESCORE_OUT=evals/results/<record>.json python3 evals/harness/rescore.py ...   # same, and record the result
 ```
 
 Requires Python 3.9+ and a logged-in `claude` CLI. No packages to install.

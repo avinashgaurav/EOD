@@ -20,7 +20,7 @@ By evening, the standup or timesheet asks what you did today and you rebuild it 
 > | Days where the update claimed more than really happened | 5 / 10 | **0 / 10** |
 > | Days with 4 to 9 highlights, as the prompt asks (the other days had 3 or fewer work items) | 4 / 10 | **3 / 10** |
 >
-> On new cases (10 new days and 2 new weeks, answers written first, 3 runs, overstated claims checked by fixed rules): facts kept 38 / 38 and 10 / 10 every run; 0 / 10 days and 0 / 2 weekly summaries claimed more than happened.
+> On new cases (10 new days and 2 new weeks, answers written first, 3 runs, overstated claims checked by fixed rules): facts kept 38 / 38 and 10 / 10 every run; 0 / 10 days and 0 / 2 weekly summaries claimed more than happened (rules adjusted after first scores, see EVALS.md).
 >
 > Limits: in the table above I checked for overstated claims by reading the updates myself, and I wrote the prompt rules to fix those same misses. The new cases were written by Claude, not taken from real users. How it was done, and every miss: [EVALS.md](EVALS.md).
 
