@@ -1,0 +1,259 @@
+{
+  "method": "Claude Code CLI via eod.polish.polish_weekly(); eval-only wrapper logs usage",
+  "dataset": "weeks-new.json",
+  "summary": {
+    "started": "2026-11-04T07:26:19.281901+00:00",
+    "configuredModel": "CLI default (polish.py passes no --model)",
+    "modelsAnswered": [
+      "claude-opus-5-5"
+    ],
+    "cliCalls": 2,
+    "cliErrors": 0,
+    "costUsdReportedByCli": 0.0515,
+    "weeks": 2,
+    "polishSucceeded": 2,
+    "itemsKept": 9,
+    "itemsTotal": 9,
+    "factsKept": 10,
+    "factsTotal": 10,
+    "weeksWithOverstatedOutcome": 0,
+    "weeksWithAddition": 2,
+    "weeksWithNoMisses": 0
+  },
+  "results": [
+    {
+      "id": "week1",
+      "ms": 6315,
+      "ok": true,
+      "pass": false,
+      "misses": [
+        {
+          "category": "added-meeting",
+          "detail": "Met",
+          "line": "Met with Risk to review chargeback rules and worked on the chargeback rules sheet requested by Noor."
+        }
+      ],
+      "items_kept": 5,
+      "items_total": 5,
+      "facts_kept": 5,
+      "facts_total": 5,
+      "overstated": false,
+      "added": true,
+      "highlight_count": 5,
+      "output": {
+        "highlights": [
+          "Merged PR #1405 for the webhook signature fix in Lumenpay Core (#1402), after deploying it to staging for testing.",
+          "Made the Payouts Runbook doc with Farah and shared it with Ops.",
+          "Met with Risk to review chargeback rules and worked on the chargeback rules sheet requested by Noor.",
+          "Reviewed Seun's PR #1410 for payout retries and left comments.",
+          "Drafted the Q4 partner update to send to Yuki and worked on edits to the draft."
+        ],
+        "detailed": [
+          {
+            "area": "Lumenpay Core \u2013 Webhook Signature Fix",
+            "items": [
+              "Fixed the webhook signature check (#1402) and opened PR #1405.",
+              "Deployed the fix to staging for testing (#1405).",
+              "Merged PR #1405 for the webhook signature fix."
+            ]
+          },
+          {
+            "area": "Payouts",
+            "items": [
+              "Worked with Farah on the Payouts Runbook; made the doc and shared it with Ops.",
+              "Reviewed Seun's PR #1410 for payout retries and left comments."
+            ]
+          },
+          {
+            "area": "Chargeback Rules",
+            "items": [
+              "Meeting with Risk to review chargeback rules.",
+              "Worked on the chargeback rules sheet requested by Noor."
+            ]
+          },
+          {
+            "area": "Q4 Partner Update",
+            "items": [
+              "Drafted the Q4 partner update to send to Yuki.",
+              "Worked on edits to the Q4 partner update draft."
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "week2",
+      "ms": 6235,
+      "ok": true,
+      "pass": false,
+      "misses": [
+        {
+          "category": "added-meeting",
+          "detail": "met",
+          "line": "Worked with Marisol on the Fernway pricing page redesign; met with Design to review the pricing page."
+        },
+        {
+          "category": "added-meeting",
+          "detail": "Met",
+          "line": "Fernway pricing page & site release: Met with Design to review the pricing page."
+        }
+      ],
+      "items_kept": 4,
+      "items_total": 4,
+      "facts_kept": 5,
+      "facts_total": 5,
+      "overstated": false,
+      "added": true,
+      "highlight_count": 5,
+      "output": {
+        "highlights": [
+          "Released Fernway site 5.2 with the new pricing page.",
+          "Worked with Marisol on the Fernway pricing page redesign; met with Design to review the pricing page.",
+          "Committed the newsletter signup fix (#655) and fixed the signup form follow-up, opening PR #661.",
+          "Drafted the Halvorsen case study; Mateo to publish after customer sign-off.",
+          "Worked on the Q4 webinar outline requested by Henrik."
+        ],
+        "detailed": [
+          {
+            "area": "Fernway pricing page & site release",
+            "items": [
+              "Worked with Marisol on the Fernway pricing page redesign.",
+              "Met with Design to review the pricing page.",
+              "Released Fernway site 5.2 with the new pricing page."
+            ]
+          },
+          {
+            "area": "Newsletter signup fixes",
+            "items": [
+              "Committed the newsletter signup fix (#655).",
+              "Fixed the signup form follow-up and opened PR #661."
+            ]
+          },
+          {
+            "area": "Content & marketing",
+            "items": [
+              "Drafted the Halvorsen case study; Mateo to publish after customer sign-off.",
+              "Worked on the Q4 webinar outline requested by Henrik."
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "label": "weekly",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 6249,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2706,
+        "cache_read_input_tokens": 649,
+        "output_tokens": 486,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2706,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 486,
+            "cache_read_input_tokens": 649,
+            "cache_creation_input_tokens": 2706,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2706
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.0315058,
+      "result_head": "{\"highlights\": [\"Merged PR #1405 for the webhook signature fix in Lumenpay Core (#1402), after deploying it to staging for testing.\", \"Made the Payouts Runbook doc with Farah and shared it with Ops.\", \"Met with Risk to review chargeback rules and worked on the chargeback rules sheet requested by Noo",
+      "limit_hit": false
+    },
+    {
+      "label": "weekly",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 6184,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 1172,
+        "cache_read_input_tokens": 2090,
+        "output_tokens": 508,
+        "output_tokens_details": {
+          "thinking_tokens": 122
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 1172,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 508,
+            "cache_read_input_tokens": 2090,
+            "cache_creation_input_tokens": 1172,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 1172
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.019962,
+      "result_head": "{\"highlights\": [\"Released Fernway site 5.2 with the new pricing page.\", \"Worked with Marisol on the Fernway pricing page redesign; met with Design to review the pricing page.\", \"Committed the newsletter signup fix (#655) and fixed the signup form follow-up, opening PR #661.\", \"Drafted the Halvorsen ",
+      "limit_hit": false
+    }
+  ]
+}
