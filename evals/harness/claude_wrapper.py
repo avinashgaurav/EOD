@@ -32,7 +32,7 @@ except Exception:
 rec = {"label": os.environ.get("EVAL_LABEL", ""), "argv_from_polish": sys.argv[1:], "ms": ms, "exit": r.returncode,
        "is_error": (envl or {}).get("is_error", True),
        "models": list((envl or {}).get("modelUsage", {}).keys()),
-       "usage": (envl or {}).get("usage"), "result_head": ((envl or {}).get("result") or r.stderr or "")[:300]}
+       "usage": (envl or {}).get("usage"), "cost_usd": (envl or {}).get("total_cost_usd"), "result_head": ((envl or {}).get("result") or r.stderr or "")[:300]}
 rec["limit_hit"] = any(k in (rec["result_head"] + r.stderr).lower() for k in ("usage limit", "limit reached", "rate limit"))
 with open(os.environ["EVAL_CALL_LOG"], "a") as f:
     f.write(json.dumps(rec) + "\n")
