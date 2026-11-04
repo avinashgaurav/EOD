@@ -77,7 +77,10 @@ def build(target):
                 "prompts": [{"t": t, "text": x} for t, x in s["prompts"]],
             } for s in sessions],
         })
-    out_projects.sort(key=lambda p: -p["total"])
+    # Ties need an explicit order: `projects` is filled in glob order, which is
+    # readdir order, and ext4 hashes that with a per-disk seed. Without this a new
+    # runner image reshuffled equal-sized projects. Earliest start, then name.
+    out_projects.sort(key=lambda p: (-p["total"], p["sessions"][0]["start"], p["name"]))
     collected, problems = collect_sources(target)
     commits = collected.get("commits", [])
     meetings = collected.get("meetings", [])
