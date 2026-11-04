@@ -41,6 +41,10 @@ your own CLI login, not a third party.
 The call itself is sealed off: EOD runs `claude -p` with no tools, none of your <!--claim:polish-cli-isolated-->
 settings, hooks, MCP servers or CLAUDE.md, and without saving a session, so the
 summary cannot touch your files and never shows up later as "work".
+One exception: if an older `claude` CLI stops with "unknown option" on one of
+these flags, EOD retries once with plain `claude -p --output-format text`, so
+that one call runs without the isolation flags (CLAUDE.md stays off). The retry
+is written to `polish-error.log`. Update the CLI to keep every call sealed off.
 
 See it for yourself before trusting any of the above:
 

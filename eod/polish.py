@@ -273,7 +273,7 @@ WEEKLY_PROMPT = (
     "(one block per day below, each a list of that day's accomplishments).\n\n"
     "Merge the week into a concise summary. Rules:\n"
     "- Group by theme/area, most important first; dedupe work repeated across days; show the "
-    "outcome (e.g. 'shipped', 'merged') rather than day-by-day churn.\n"
+    "outcome the dailies state rather than day-by-day churn.\n"
     "- Same voice as the dailies: 'Worked on…', 'Shipped…', 'Discussed with…', 'Met with…'.\n"
     "- Keep specifics: issue/PR numbers, names from the input, deliverables. Never invent.\n"
     "- Keep 'shipped', 'merged', 'sent' or 'met' wording exactly as a daily line states it (the dailies were "

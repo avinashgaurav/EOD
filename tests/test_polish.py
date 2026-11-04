@@ -170,6 +170,43 @@ class TestPolishOff(unittest.TestCase):
         self.assertNotIn("highlights", d)
 
 
+class TestPromptRules(unittest.TestCase):
+    """Pin the rules the 2026-10-15 polish test led to (see EVALS.md).
+
+    Rewording a prompt is easy to do in passing. If one of these rules is
+    dropped, the overstated "shipped" lines that test found can come back,
+    so the wording that carries each rule is pinned here.
+    """
+
+    def setUp(self):
+        ex = load_extract()
+        self.p = next(m for m in ex._mods if m.__name__ == "eod.polish")
+
+    def test_weekly_prompt_never_upgrades_a_daily_line(self):
+        w = self.p.WEEKLY_PROMPT
+        self.assertIn("Keep 'shipped', 'merged', 'sent' or 'met' wording exactly as a daily line states it", w)
+        self.assertIn("Never upgrade a daily line", w)
+        self.assertIn("must not become 'Shipped' or 'Merged'", w)
+
+    def test_weekly_prompt_adds_nothing(self):
+        w = self.p.WEEKLY_PROMPT
+        self.assertIn("Never add people, teams, meetings, recipients or cadence words", w)
+        self.assertIn("'Worked with <name>' only when the input shows that person working on it", w)
+
+    def test_weekly_outcome_comes_from_the_dailies(self):
+        w = self.p.WEEKLY_PROMPT
+        self.assertIn("show the outcome the dailies state", w)
+        # The old line offered 'shipped' and 'merged' as examples of an outcome to show.
+        self.assertNotIn("outcome (e.g. 'shipped', 'merged')", w)
+
+    def test_daily_prompt_keeps_the_outcome_and_no_additions_rules(self):
+        d = self.p.POLISH_PROMPT
+        self.assertIn("Only say shipped, merged, deployed, released, sent, shared or met when the input shows it", d)
+        self.assertIn("A commit alone is 'fixed' or 'committed', not 'shipped'", d)
+        self.assertIn("is not proof it was sent", d)
+        self.assertIn("Never add people, teams, meetings, recipients or cadence words", d)
+
+
 class TestNoCli(unittest.TestCase):
     def test_missing_cli_falls_back_quietly_and_logs(self):
         ex = load_extract()                      # harness leaves _claude_bin as None
