@@ -1,0 +1,1108 @@
+{
+  "method": "Claude Code CLI via eod.polish.polish() (the production path is also the claude CLI); isolation flags added by an eval-only wrapper",
+  "dataset": "days-new.json",
+  "summary": {
+    "started": "2026-11-04T07:24:02.677986+00:00",
+    "wallMs": 20424,
+    "configuredModel": "CLI default (polish.py passes no --model)",
+    "modelsAnswered": [
+      "claude-opus-5-5"
+    ],
+    "cliCalls": 10,
+    "cliErrors": 0,
+    "callLatencyMs": {
+      "n": 10,
+      "p50": 5080,
+      "p90": 6980,
+      "max": 6980
+    },
+    "usageTotals": {
+      "input": 43544,
+      "output": 3350
+    },
+    "days": 10,
+    "polishSucceeded": 10,
+    "daysWithNoMisses": 9,
+    "itemsKept": 32,
+    "itemsTotal": 32,
+    "factsKept": 38,
+    "factsTotal": 38,
+    "highlightCountInRange": 3,
+    "highlightCountBelowMinOnSmallDays": 7,
+    "daysWithOverstatedOutcome": 1,
+    "daysWithAddition": 0,
+    "daysWithNeither": 9,
+    "costUsdReportedByCli": 0.2862,
+    "missCategories": {
+      "overstated-outcome": 4
+    },
+    "unknownTokensForManualReview": [
+      "Website",
+      "modelling",
+      "rewrote",
+      "sign-off"
+    ]
+  },
+  "results": [
+    {
+      "id": "new01",
+      "ms": 6425,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 4,
+      "items_total": 4,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 4,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on the JPY refund half-cent rounding bug #1184 and opened PR #1190.",
+          "Deployed the refund rounding fix to staging and checked logs for refund errors.",
+          "Made the Refund Retry Runbook for on-call, for Farah to test.",
+          "Meeting in the Refunds standup."
+        ],
+        "detailed": [
+          {
+            "area": "Refund Rounding Fix (lumenpay-core)",
+            "items": [
+              "Fixed half-cent rounding in the refund calculator for JPY (#1184)",
+              "Added tests covering JPY and KWD refund rounding",
+              "Committed the fix and opened PR #1190 (still open)",
+              "Refund fix deployed to staging; reviewed staging logs for refund errors"
+            ]
+          },
+          {
+            "area": "On-call Documentation",
+            "items": [
+              "Wrote the Refund Retry Runbook for on-call on retrying failed refunds",
+              "Runbook prepared for Farah to test"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the Refunds standup"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new02",
+      "ms": 7349,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on the Fernway Partner Newsletter for October, including a new route planner section.",
+          "Reworked the Fernway x Henrik co-marketing deck with Henrik's edits to slides 4-6.",
+          "Drafted reply to Henrik on the co-marketing webinar, pending legal date check."
+        ],
+        "detailed": [
+          {
+            "area": "Partner Newsletter",
+            "items": [
+              "Wrote the Fernway Partner Newsletter for October, planned for Marisol's partner list on Friday",
+              "Added a section on the new route planner, referencing the Fernway route planner FAQ"
+            ]
+          },
+          {
+            "area": "Co-marketing with Henrik",
+            "items": [
+              "Applied Henrik's edits to slides 4-6 of the co-marketing deck sent earlier in the day",
+              "Drafted a reply to Henrik on the co-marketing webinar, to go out after legal checks the dates"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new03",
+      "ms": 5451,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on Reports page CSV export requested by Anjali (#1302), merged in PR #1311.",
+          "Worked with Seun on date filter edge cases (#1307), merged in PR #1311.",
+          "Meeting on Reports roadmap review."
+        ],
+        "detailed": [
+          {
+            "area": "Reports CSV Export",
+            "items": [
+              "Built CSV export on the Kitewire reports page as requested by Anjali (#1302)",
+              "Included the selected date range in the exported file name",
+              "Merged as part of PR #1311"
+            ]
+          },
+          {
+            "area": "Date Filter",
+            "items": [
+              "Paired with Seun on the date filter and finished the edge cases found (#1307)",
+              "Empty date range now shows a hint instead of an error",
+              "Merged as part of PR #1311"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the Reports roadmap review"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new04",
+      "ms": 4807,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 5,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on the Q3 revenue vs forecast variance analysis by region.",
+          "Set up the Pinecrest revenue cube refresh job and ran it manually.",
+          "Validated revenue cube totals against the ledger export.",
+          "Made the Revenue Variance Q3 sheet.",
+          "Meeting for Finance check-in."
+        ],
+        "detailed": [
+          {
+            "area": "Q3 Revenue Variance",
+            "items": [
+              "Analyzed the 7% gap between Q3 revenue and forecast",
+              "Broke down the Q3 variance by region",
+              "Made the Revenue Variance Q3.xlsx sheet"
+            ]
+          },
+          {
+            "area": "Pinecrest Revenue Cube",
+            "items": [
+              "Set up the job that refreshes the Pinecrest revenue cube",
+              "Ran the refresh once manually; no schedule set yet",
+              "Checked cube totals against the ledger export"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Finance check-in at 11:30"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new05",
+      "ms": 4882,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on Saltmarsh iOS offline drafts, merged in PR #742.",
+          "Cut the Saltmarsh 2.8 release branch and bumped version to 2.8.0; App Store submission pending QA.",
+          "Made the Saltmarsh 2.8 Release Notes covering offline drafts and faster search."
+        ],
+        "detailed": [
+          {
+            "area": "Saltmarsh iOS 2.8 Release",
+            "items": [
+              "Offline drafts feature merged via PR #742",
+              "Cut the 2.8 release branch after PR #742 merged",
+              "Bumped app version to 2.8.0",
+              "Held App Store submission while waiting on QA"
+            ]
+          },
+          {
+            "area": "Release Documentation",
+            "items": [
+              "Wrote Saltmarsh 2.8 Release Notes highlighting offline drafts and faster search"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new06",
+      "ms": 5454,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 6,
+      "facts_total": 6,
+      "items_kept": 4,
+      "items_total": 4,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "modelling"
+      ],
+      "highlight_count": 4,
+      "highlights_in_range": true,
+      "highlights_below_min_but_input_has_fewer_items": false,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on the Cobalt Ledger Pricing Proposal v2, pending Noor's approval before sharing with Sales.",
+          "Made per-seat price comparison of Cobalt Ledger against Ledgerly and Paywise.",
+          "Worked on modelling three usage tiers at 50, 200 and 1000 invoices a month.",
+          "Meeting on Pricing review."
+        ],
+        "detailed": [
+          {
+            "area": "Cobalt Ledger Pricing",
+            "items": [
+              "Drafted the Cobalt Pricing Proposal v2 document, to go to Noor for approval before sharing with Sales",
+              "Added a per-seat price comparison table against Ledgerly and Paywise",
+              "Modelled three usage tiers at 50, 200 and 1000 invoices a month"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended the Pricing review meeting at 15:00"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new07",
+      "ms": 5038,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 3,
+      "facts_total": 3,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [
+        "rewrote"
+      ],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on rolling back the 3.1 production deploy that broke the invoices chart.",
+          "Worked on the invoices chart query timeout, issue #1215 (PR #1220 open).",
+          "Meeting on Incident review."
+        ],
+        "detailed": [
+          {
+            "area": "Invoices Chart Incident",
+            "items": [
+              "Rolled back the 3.1 production deploy that broke the invoices chart",
+              "Committed revert of the invoices chart query change"
+            ]
+          },
+          {
+            "area": "Query Timeout Fix (#1215)",
+            "items": [
+              "Investigated why the invoices chart query times out (#1215)",
+              "Added an index on invoices.created_at and rewrote the query",
+              "Opened PR #1220 to fix the invoices chart query timeout",
+              "Reviewed PostgreSQL EXPLAIN ANALYZE docs for query performance analysis"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended Incident review at 17:00"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new08",
+      "ms": 4680,
+      "ok": true,
+      "pass": false,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [
+        {
+          "category": "overstated-outcome",
+          "detail": "published",
+          "line": "Halvorsen Case Study: Draft to be published by Mateo after customer sign-off"
+        },
+        {
+          "category": "overstated-outcome",
+          "detail": "nothing is published, posted or scheduled",
+          "line": "Halvorsen Case Study: Draft to be published by Mateo after customer sign-off"
+        },
+        {
+          "category": "overstated-outcome",
+          "detail": "scheduled",
+          "line": "Social Content: Wrote 3 LinkedIn posts for the Halvorsen case study, to be scheduled later"
+        },
+        {
+          "category": "overstated-outcome",
+          "detail": "nothing is published, posted or scheduled",
+          "line": "Social Content: Wrote 3 LinkedIn posts for the Halvorsen case study, to be scheduled later"
+        }
+      ],
+      "unknown_tokens_for_review": [
+        "Website",
+        "sign-off"
+      ],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": true,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on the Halvorsen Freight route savings case study blog post draft.",
+          "Made 3 LinkedIn posts for the Halvorsen case study.",
+          "Added Halvorsen logo to the homepage customers strip (PR #618 merged)."
+        ],
+        "detailed": [
+          {
+            "area": "Halvorsen Case Study",
+            "items": [
+              "Drafted the blog post on Halvorsen Freight's route savings (Halvorsen Case Study Draft.docx)",
+              "Pulled the 18% fuel saving figure from the customer interview notes",
+              "Draft to be published by Mateo after customer sign-off"
+            ]
+          },
+          {
+            "area": "Social Content",
+            "items": [
+              "Wrote 3 LinkedIn posts for the Halvorsen case study, to be scheduled later"
+            ]
+          },
+          {
+            "area": "Fernway Website",
+            "items": [
+              "Added the Halvorsen logo to the customers strip on the homepage (PR #618 merged)"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new09",
+      "ms": 6402,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 2,
+      "facts_total": 2,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on the Kitewire API webhooks reference, updated from v3 to v4 payloads.",
+          "Worked on broken link check and fixes for the Kitewire docs build.",
+          "Attended Docs office hours."
+        ],
+        "detailed": [
+          {
+            "area": "Kitewire API Docs",
+            "items": [
+              "Updated the webhooks reference page to v4, replacing outdated v3 payloads",
+              "Committed the v4 webhooks reference update to kitewire-docs",
+              "Checked the docs build for broken links and worked on fixes"
+            ]
+          },
+          {
+            "area": "Meetings",
+            "items": [
+              "Attended Docs office hours at 14:00"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "new10",
+      "ms": 5109,
+      "ok": true,
+      "pass": true,
+      "dropped": [],
+      "facts_kept": 4,
+      "facts_total": 4,
+      "items_kept": 3,
+      "items_total": 3,
+      "misses": [],
+      "unknown_tokens_for_review": [],
+      "highlight_count": 3,
+      "highlights_in_range": false,
+      "highlights_below_min_but_input_has_fewer_items": true,
+      "overstated": false,
+      "added": false,
+      "output": {
+        "highlights": [
+          "Worked on contact dedupe by email (#899) and merged PR #905 after Elif's review.",
+          "Made the Dedupe Migration Note for Support.",
+          "Worked on scoping xlsx support for the Import Wizard requested by Greta (#911)."
+        ],
+        "detailed": [
+          {
+            "area": "Contact Dedupe",
+            "items": [
+              "Built contact deduplication by email for harrow-crm (#899)",
+              "Addressed Elif's two review nits on PR #905",
+              "Merged PR #905 for contact dedupe after Elif's approval"
+            ]
+          },
+          {
+            "area": "Documentation",
+            "items": [
+              "Wrote the Dedupe Migration Note to share with Support"
+            ]
+          },
+          {
+            "area": "Import Wizard",
+            "items": [
+              "Scoped xlsx file support for the Import Wizard as requested by Greta (#911)"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "label": "new03",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 5080,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 3739,
+        "cache_read_input_tokens": 649,
+        "output_tokens": 286,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3739,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 286,
+            "cache_read_input_tokens": 649,
+            "cache_creation_input_tokens": 3739,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3739
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.035769800000000004,
+      "result_head": "{\"highlights\": [\"Worked on Reports page CSV export requested by Anjali (#1302), merged in PR #1311.\", \"Worked with Seun on date filter edge cases (#1307), merged in PR #1311.\", \"Meeting on Reports roadmap review.\"], \"detailed\": [{\"area\": \"Reports CSV Export\", \"items\": [\"Built CSV export on the Kitew",
+      "limit_hit": false
+    },
+    {
+      "label": "new01",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 6051,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 3802,
+        "cache_read_input_tokens": 649,
+        "output_tokens": 443,
+        "output_tokens_details": {
+          "thinking_tokens": 100
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3802,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 443,
+            "cache_read_input_tokens": 649,
+            "cache_creation_input_tokens": 3802,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3802
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.0394138,
+      "result_head": "{\"highlights\": [\"Worked on the JPY refund half-cent rounding bug #1184 and opened PR #1190.\", \"Deployed the refund rounding fix to staging and checked logs for refund errors.\", \"Made the Refund Retry Runbook for on-call, for Farah to test.\", \"Meeting in the Refunds standup.\"], \"detailed\": [{\"area\": ",
+      "limit_hit": false
+    },
+    {
+      "label": "new02",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 6980,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 3715,
+        "cache_read_input_tokens": 649,
+        "output_tokens": 445,
+        "output_tokens_details": {
+          "thinking_tokens": 146
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 3715,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 445,
+            "cache_read_input_tokens": 649,
+            "cache_creation_input_tokens": 3715,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 3715
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.038757799999999995,
+      "result_head": "{\"highlights\": [\"Worked on the Fernway Partner Newsletter for October, including a new route planner section.\", \"Reworked the Fernway x Henrik co-marketing deck with Henrik's edits to slides 4-6.\", \"Drafted reply to Henrik on the co-marketing webinar, pending legal date check.\"], \"detailed\": [{\"area",
+      "limit_hit": false
+    },
+    {
+      "label": "new04",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 4759,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2234,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 326,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2234,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 326,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2234,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2234
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.024817,
+      "result_head": "{\"highlights\": [\"Worked on the Q3 revenue vs forecast variance analysis by region.\", \"Set up the Pinecrest revenue cube refresh job and ran it manually.\", \"Validated revenue cube totals against the ledger export.\", \"Made the Revenue Variance Q3 sheet.\", \"Meeting for Finance check-in.\"], \"detailed\": ",
+      "limit_hit": false
+    },
+    {
+      "label": "new05",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 4829,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2267,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 279,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2267,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 279,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2267,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2267
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.024141,
+      "result_head": "{\"highlights\": [\"Worked on Saltmarsh iOS offline drafts, merged in PR #742.\", \"Cut the Saltmarsh 2.8 release branch and bumped version to 2.8.0; App Store submission pending QA.\", \"Made the Saltmarsh 2.8 Release Notes covering offline drafts and faster search.\"], \"detailed\": [{\"area\": \"Saltmarsh iOS",
+      "limit_hit": false
+    },
+    {
+      "label": "new06",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 5388,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2219,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 300,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2219,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 300,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2219,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2219
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.024177,
+      "result_head": "{\"highlights\": [\"Worked on the Cobalt Ledger Pricing Proposal v2, pending Noor's approval before sharing with Sales.\", \"Made per-seat price comparison of Cobalt Ledger against Ledgerly and Paywise.\", \"Worked on modelling three usage tiers at 50, 200 and 1000 invoices a month.\", \"Meeting on Pricing r",
+      "limit_hit": false
+    },
+    {
+      "label": "new07",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 4974,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2296,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 315,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2296,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 315,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2296,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2296
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.025092999999999997,
+      "result_head": "{\"highlights\": [\"Worked on rolling back the 3.1 production deploy that broke the invoices chart.\", \"Worked on the invoices chart query timeout, issue #1215 (PR #1220 open).\", \"Meeting on Incident review.\"], \"detailed\": [{\"area\": \"Invoices Chart Incident\", \"items\": [\"Rolled back the 3.1 production de",
+      "limit_hit": false
+    },
+    {
+      "label": "new08",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 4602,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2301,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 314,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2301,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 314,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2301,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2301
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.025113,
+      "result_head": "{\"highlights\": [\"Worked on the Halvorsen Freight route savings case study blog post draft.\", \"Made 3 LinkedIn posts for the Halvorsen case study.\", \"Added Halvorsen logo to the homepage customers strip (PR #618 merged).\"], \"detailed\": [{\"area\": \"Halvorsen Case Study\", \"items\": [\"Drafted the blog pos",
+      "limit_hit": false
+    },
+    {
+      "label": "new09",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 6340,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2121,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 365,
+        "output_tokens_details": {
+          "thinking_tokens": 150
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2121,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 365,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2121,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2121
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.024693,
+      "result_head": "{\"highlights\": [\"Worked on the Kitewire API webhooks reference, updated from v3 to v4 payloads.\", \"Worked on broken link check and fixes for the Kitewire docs build.\", \"Attended Docs office hours.\"], \"detailed\": [{\"area\": \"Kitewire API Docs\", \"items\": [\"Updated the webhooks reference page to v4, rep",
+      "limit_hit": false
+    },
+    {
+      "label": "new10",
+      "argv_from_polish": [
+        "-p",
+        "--output-format",
+        "text",
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+        "--no-session-persistence"
+      ],
+      "ms": 5056,
+      "exit": 0,
+      "is_error": false,
+      "models": [
+        "claude-opus-5-5"
+      ],
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 2288,
+        "cache_read_input_tokens": 2085,
+        "output_tokens": 277,
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 2288,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 277,
+            "cache_read_input_tokens": 2085,
+            "cache_creation_input_tokens": 2288,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 2288
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "cost_usd": 0.024269,
+      "result_head": "{\"highlights\": [\"Worked on contact dedupe by email (#899) and merged PR #905 after Elif's review.\", \"Made the Dedupe Migration Note for Support.\", \"Worked on scoping xlsx support for the Import Wizard requested by Greta (#911).\"], \"detailed\": [{\"area\": \"Contact Dedupe\", \"items\": [\"Built contact dedu",
+      "limit_hit": false
+    }
+  ],
+  "polishErrorLog": ""
+}
