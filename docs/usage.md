@@ -1,6 +1,6 @@
 # Using EOD
 
-For EOD the Claude Code CLI is the production path, so these runs used the real call through the real `polish()`. The eval wrapper changes only what it needs to record the run: JSON output instead of text (for latency, usage and model), and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` in the environment, which production now sets too. The weekly rollup was not measured.
+For EOD the Claude Code CLI is the production path, so these runs used the real call through the real `polish()`. The eval wrapper changes only what it needs to record the run: JSON output instead of text (for latency, usage and model), and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` in the environment, which production now sets too. The weekly rollup was not measured in those runs; it was first tested on 2026-11-04 (see [EVALS.md](../EVALS.md)).
 
 ## Features
 
