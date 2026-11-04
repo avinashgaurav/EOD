@@ -170,6 +170,11 @@ class TestPrivacyClaims(ClaimCase):
                 data = {"date": DAY, "projects": [],
                         "commits": [{"repo": "r", "subject": "did some work"}]}
                 self.ex.polish(data, force=True)
+            log = os.path.join(cache, "polish-error.log")
+            self.polish_log = ""
+            if os.path.exists(log):
+                with open(log) as fh:
+                    self.polish_log = fh.read()
         finally:
             shutil.rmtree(cache, ignore_errors=True)
         return argv, data
@@ -201,6 +206,8 @@ class TestPrivacyClaims(ClaimCase):
         self.assertIn("--no-session-persistence", argv[0])
         self.assertEqual(argv[1][1:], ["-p", "--output-format", "text"])
         self.assertEqual(data.get("highlights"), ["a bullet"])
+        # docs/privacy.md: the retry drops the isolation flags, and says so in the log.
+        self.assertIn("retrying without", self.polish_log)
 
     CLAIM_exclude_hides_projects = "exclude-hides-projects"
 
