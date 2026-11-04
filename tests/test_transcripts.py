@@ -134,5 +134,38 @@ class TestMalformedInput(TranscriptCase):
         self.assertEqual(self.ex.build(DAY)["projects"], [])
 
 
+class TestProjectOrder(TranscriptCase):
+    def test_tied_projects_do_not_follow_directory_order(self):
+        """Projects with equal totals must come out in the same order whatever
+        order the filesystem lists them in. glob follows readdir, which on ext4
+        is a hash order seeded per disk, so a new CI runner image reordered the
+        snapshot while macOS kept passing."""
+        import glob as real_glob
+        import types
+        self.write_session("-Users-me-work-search", "b.jsonl", [
+            user_line("review the search PR", DAY, "11:55"),
+        ], mtime_date=DAY)
+        self.write_session("-Users-me-work-platform", "c.jsonl", [
+            user_line("trace the webhook retries", DAY, "15:30"),
+        ], mtime_date=DAY)
+        # Both transcript readers list files with glob, so flip both.
+        readers = [m for m in self.ex._mods
+                   if m.__name__ in ("eod.sources.claude", "eod.sources.codex")]
+        orders = []
+        try:
+            for flip in (sorted, lambda xs: sorted(xs, reverse=True)):
+                fake = types.SimpleNamespace(
+                    glob=lambda pat, _f=flip: _f(real_glob.glob(pat)))
+                for m in readers:
+                    m.glob = fake
+                orders.append([p["name"] for p in self.ex.build(DAY)["projects"]])
+        finally:
+            for m in readers:
+                m.glob = real_glob
+        self.assertEqual(orders[0], orders[1])
+        # Busiest first, then whichever project started earlier in the day.
+        self.assertEqual(orders[0], ["Users Me Work Search", "Users Me Work Platform"])
+
+
 if __name__ == "__main__":
     unittest.main()

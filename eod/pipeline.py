@@ -66,7 +66,9 @@ def build(target):
 
     # shape output, ordered by busiest project
     out_projects = []
-    for pn, sessions in projects.items():
+    # Walk the raw project keys in sorted order so the stable sort below falls
+    # back to the key itself when everything else ties: pretty names can collide.
+    for pn, sessions in sorted(projects.items()):
         sessions.sort(key=lambda s: s["start"])
         total = sum(len(s["prompts"]) for s in sessions)
         out_projects.append({
@@ -77,7 +79,12 @@ def build(target):
                 "prompts": [{"t": t, "text": x} for t, x in s["prompts"]],
             } for s in sessions],
         })
-    out_projects.sort(key=lambda p: -p["total"])
+    # Ties need an explicit order: `projects` is filled in glob order, which is
+    # readdir order, and ext4 hashes that with a per-disk seed. Without this a new
+    # runner image reshuffled equal-sized projects. Earliest start, then name,
+    # then the raw key (via the sorted walk above). sessions were sorted by start
+    # in the loop, so sessions[0] is the project's earliest session.
+    out_projects.sort(key=lambda p: (-p["total"], p["sessions"][0]["start"], p["name"]))
     collected, problems = collect_sources(target)
     commits = collected.get("commits", [])
     meetings = collected.get("meetings", [])
