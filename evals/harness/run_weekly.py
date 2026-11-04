@@ -33,6 +33,10 @@ def payload(data):
     return "\n".join("## " + P.pretty_date(d) + "\n" + "\n".join("- " + h for h in hl) for d, hl in data["days"])
 
 
+def has_meetings(raw):
+    return bool(re.search(r"\b(meeting|met)\b", C.HEADER.sub("", raw), re.I))
+
+
 def nums(s):
     return set(re.findall(r"\d+(?:\.\d+)?", s))
 
@@ -59,7 +63,8 @@ def run_week(week):
     kept = [f for f in week["facts"] if re.search(f, text, re.I)]
     misses += [{"category": "fact-lost", "detail": f} for f in week["facts"] if f not in kept]
     misses += [{"category": "invented-number", "detail": n} for n in sorted(nums(text) - nums(raw))]
-    claims = C.check(lines, raw, week, False)
+    # A daily "Meeting with Design" line is the week's meeting; "Met with Design" restates it.
+    claims = C.check(lines, raw, week, has_meetings(raw))
     misses += claims
     return {"id": week["id"], "ms": ms, "ok": True, "pass": not misses, "misses": misses,
             "items_kept": len(week["items"]) - sum(1 for m in misses if m["category"] == "dropped-item"),

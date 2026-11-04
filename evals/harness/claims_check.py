@@ -52,6 +52,13 @@ CADENCE_SAME = {"daily": r"\b(each|every|per) day\b",
                 "monthly": r"\b(each|every|per|a) month\b",
                 "nightly": r"\b(each|every) night\b"}
 HEADER = re.compile(r"^## .*$", re.M)
+# "to be published by Mateo" states a pending step, not an outcome. These words
+# are masked before any check. Added after the first scoring of the new cases
+# (2026-11-04), which flagged 4 such lines; see EVALS.md.
+PENDING = re.compile(r"\b(to be|will be|to get|yet to be|not yet)\s+(shipped|merged|deployed|released|launched|"
+                     r"published|posted|sent|emailed|submitted|shared|approved|signed off|scheduled)\b", re.I)
+# Telling someone "I sent the deck" and "shared the deck with them" are the same outcome.
+SAME_OUTCOME = {"sent": "shared", "shared": "sent"}
 
 
 def lines_of(out):
@@ -75,7 +82,8 @@ def check(lines, payload, case, has_meetings):
     body = HEADER.sub("", payload).lower()
     items = case.get("items", [])
     keyed = any("outcomes_ok" in it for it in items)
-    for line in lines:
+    for shown in lines:
+        line = PENDING.sub(lambda m: m.group(1) + " (pending)", shown)
         # outcome words
         for cl in clauses(line):
             for fam, rx in OUTCOMES.items():
@@ -84,35 +92,35 @@ def check(lines, payload, case, has_meetings):
                 if keyed:
                     hit = _items_in(cl, items) or _items_in(line, items) or items
                     ok = set(x for it in hit for x in it.get("outcomes_ok", []))
-                    if fam not in ok:
-                        flags.append({"category": "overstated-outcome", "detail": fam, "line": line})
+                    if fam not in ok and SAME_OUTCOME.get(fam) not in ok:
+                        flags.append({"category": "overstated-outcome", "detail": fam, "line": shown})
                 else:
                     supported = ((fam == "met" and has_meetings)
                                  # the prompt's own rule: a merged PR is evidence for "shipped"
                                  or (fam == "shipped" and "(merged)" in body)
                                  or re.search(rx, body, re.I))
                     if not supported:
-                        flags.append({"category": "overstated-outcome", "detail": fam, "line": line})
+                        flags.append({"category": "overstated-outcome", "detail": fam, "line": shown})
         # additions
         for m in re.finditer(CADENCE, line, re.I):
             w = m.group(0).lower()
             if w not in body and not re.search(CADENCE_SAME.get(w, r"$^"), body):
-                flags.append({"category": "added-cadence", "detail": m.group(0), "line": line})
+                flags.append({"category": "added-cadence", "detail": m.group(0), "line": shown})
         for m in re.finditer(TEAMS, line):
             w = (m.group(1) or m.group(2)).lower()
             if w not in body:
-                flags.append({"category": "added-team", "detail": m.group(0), "line": line})
+                flags.append({"category": "added-team", "detail": m.group(0), "line": shown})
         # A day with a calendar meeting may call it a meeting, a sync or a discussion.
         for m in ([] if has_meetings else re.finditer(MEETING, line, re.I)):
             if m.group(0).lower() not in body:
-                flags.append({"category": "added-meeting", "detail": m.group(0), "line": line})
+                flags.append({"category": "added-meeting", "detail": m.group(0), "line": shown})
         for m in re.finditer(COLLAB, line):
             if m.group(1) not in case.get("collab_ok", []):
-                flags.append({"category": "added-collaborator", "detail": m.group(1), "line": line})
+                flags.append({"category": "added-collaborator", "detail": m.group(1), "line": shown})
         for rule in case.get("must_not_say", []):
             if re.search(rule["re"], line, re.I):
                 cat = "overstated-outcome" if rule["kind"] == "overstated" else "added-by-key"
-                flags.append({"category": cat, "detail": rule["why"], "line": line})
+                flags.append({"category": cat, "detail": rule["why"], "line": shown})
     # one flag per (category, detail, line)
     seen, out = set(), []
     for f in flags:
