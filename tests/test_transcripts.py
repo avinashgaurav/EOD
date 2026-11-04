@@ -148,13 +148,20 @@ class TestProjectOrder(TranscriptCase):
         self.write_session("-Users-me-work-platform", "c.jsonl", [
             user_line("trace the webhook retries", DAY, "15:30"),
         ], mtime_date=DAY)
-        claude_mod = [m for m in self.ex._mods if m.__name__ == "eod.sources.claude"][0]
+        # Both transcript readers list files with glob, so flip both.
+        readers = [m for m in self.ex._mods
+                   if m.__name__ in ("eod.sources.claude", "eod.sources.codex")]
         orders = []
-        for flip in (sorted, lambda xs: sorted(xs, reverse=True)):
-            claude_mod.glob = types.SimpleNamespace(
-                glob=lambda pat, _f=flip: _f(real_glob.glob(pat)))
-            orders.append([p["name"] for p in self.ex.build(DAY)["projects"]])
-        claude_mod.glob = real_glob
+        try:
+            for flip in (sorted, lambda xs: sorted(xs, reverse=True)):
+                fake = types.SimpleNamespace(
+                    glob=lambda pat, _f=flip: _f(real_glob.glob(pat)))
+                for m in readers:
+                    m.glob = fake
+                orders.append([p["name"] for p in self.ex.build(DAY)["projects"]])
+        finally:
+            for m in readers:
+                m.glob = real_glob
         self.assertEqual(orders[0], orders[1])
         # Busiest first, then whichever project started earlier in the day.
         self.assertEqual(orders[0], ["Users Me Work Search", "Users Me Work Platform"])
