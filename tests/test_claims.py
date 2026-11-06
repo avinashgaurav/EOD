@@ -56,6 +56,31 @@ register(Linear())
 
 BROKEN = "import a_module_that_certainly_does_not_exist\n"
 
+# Files allowed to import a network module, and which ones. Everything else in
+# eod/ may import none of NETWORK_MODULES, anywhere in the file.
+NETWORK_ALLOWED = {"eod/polish.py": {"urllib.request", "urllib.error"}}
+
+NETWORK_MODULES = ("urllib.request", "urllib.error", "http.client", "socket", "ssl",
+                   "smtplib", "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio")
+
+
+def _network_imports(node):
+    """The network modules an Import/ImportFrom node pulls in, e.g. both
+    `import urllib.request` and `from urllib import request` give urllib.request."""
+    import ast
+    if isinstance(node, ast.Import):
+        names = [a.name for a in node.names]
+    elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+        names = [node.module] + [node.module + "." + a.name for a in node.names]
+    else:
+        return set()
+    hits = set()
+    for n in names:
+        for m in NETWORK_MODULES:
+            if n == m or n.startswith(m + "."):
+                hits.add(m)
+    return hits
+
 
 class FakeRun:
     returncode = 0
@@ -230,17 +255,69 @@ class TestPrivacyClaims(ClaimCase):
 
     def test_the_engine_makes_no_network_calls(self):
         """README: 'no telemetry', 'nothing leaves your Mac'. The only outbound
-        path is the claude CLI subprocess, which polish.off disables."""
+        path is the claude CLI subprocess, which polish.off disables. The one
+        HTTP client is polish.py's call to Ollama, which is held to loopback at
+        runtime by _open_local (tested in test_polish.py)."""
+        import ast
         import glob
-        src = ""
-        for p in glob.glob(os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eod", "**", "*.py"),
-                recursive=True):
-            with open(p) as f:
-                src += f.read()
-        for banned in ("import requests", "import urllib.request", "urlopen(",
-                       "http.client", "import socket"):
-            self.assertNotIn(banned, src, "%s would be an outbound path" % banned)
+        from urllib.parse import urlparse
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for path in sorted(glob.glob(os.path.join(root, "eod", "**", "*.py"), recursive=True)):
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
+            allowed = NETWORK_ALLOWED.get(rel, set())
+            with open(path, encoding="utf-8") as f:
+                tree = ast.parse(f.read(), rel)
+            for node in ast.walk(tree):
+                for mod in _network_imports(node):
+                    self.assertIn(mod, allowed, "%s imports %s, an outbound path (line %s)"
+                                  % (rel, mod, node.lineno))
+        # The one allowed file: exactly one opener, used from exactly one place.
+        polish_path = os.path.join(root, "eod", "polish.py")
+        with open(polish_path, encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+        calls = [n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", None)
+                 for n in ast.walk(tree) if isinstance(n, ast.Call)]
+        self.assertEqual(calls.count("build_opener"), 1, "polish.py should build one opener")
+        self.assertEqual(calls.count("_open_local"), 1, "only _run_ollama should open a URL")
+        polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        self.assertEqual(urlparse(polish_mod.OLLAMA_URL).hostname, "127.0.0.1")
+
+    CLAIM_ollama_stays_local = "ollama-stays-local"
+
+    def test_ollama_txt_sends_the_day_to_loopback_and_never_the_cli(self):
+        """configuration.md: ollama.txt runs polish on local Ollama instead of the
+        claude CLI, only on 127.0.0.1:11434, and a failure falls back like the CLI."""
+        from urllib.parse import urlparse
+        polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        cli_calls, urls = [], []
+
+        class Resp:
+            def __init__(self, body): self.body = body
+            def read(self): return self.body
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        def fake_open(req, timeout):
+            urls.append(req.full_url)
+            return Resp(b'{"response": "{\\"highlights\\": [\\"local bullet\\"], \\"detailed\\": []}"}')
+
+        cache = tempfile.mkdtemp(prefix="eod-ollama-claim-")
+        try:
+            with mock.patch.object(polish_mod, "load_ollama_model", lambda: "llama3.2"), \
+                 mock.patch.object(polish_mod, "_claude_bin", lambda: "/fake/claude"), \
+                 mock.patch.object(polish_mod, "subprocess", fake_subprocess(cli_calls, FakeRun())), \
+                 mock.patch.object(polish_mod, "_open_local", fake_open), \
+                 mock.patch.object(polish_mod, "CACHE", cache):
+                data = {"date": DAY, "projects": [],
+                        "commits": [{"repo": "r", "subject": "did some work"}]}
+                self.ex.polish(data, force=True)
+        finally:
+            shutil.rmtree(cache, ignore_errors=True)
+        self.assertEqual(cli_calls, [], "the claude CLI must not run when ollama.txt is set")
+        self.assertEqual(data["highlights"], ["local bullet"])
+        self.assertEqual(len(urls), 1)
+        u = urlparse(urls[0])
+        self.assertEqual((u.hostname, u.port), ("127.0.0.1", 11434))
 
 
 class TestSourceContractClaims(ClaimCase):

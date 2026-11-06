@@ -4,9 +4,9 @@ import json, os, glob, sys, html
 from datetime import datetime
 
 from .util import pretty_date
-from .config import CACHE, app_path
+from .config import CACHE, app_path, load_ollama_model
 from .pipeline import build
-from .polish import _polish_input, polish
+from .polish import OLLAMA_URL, _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
 from .render.html import to_html, to_html_full, to_html_weekly
 from .weekly import build_weekly
@@ -75,11 +75,14 @@ def main():
         # The privacy claim in the README should be checkable, not taken on trust.
         payload = _polish_input(data)
         off = os.path.exists(app_path("polish.off"))
+        model = load_ollama_model()
+        to = ("to Ollama on this Mac (model %s at %s). It does not leave the Mac."
+              % (model, OLLAMA_URL)) if model else "via your own claude CLI login."
         sys.stderr.write(
-            "# This is everything AI-polish would send for %s, via your own claude CLI login.\n"
+            "# This is everything AI-polish would send for %s, %s\n"
             "# Nothing is being sent now. %s\n"
             "# %d characters. Disable the step for good with: touch polish.off\n\n"
-            % (date, "polish.off is present, so the step is already disabled." if off
+            % (date, to, "polish.off is present, so the step is already disabled." if off
                else "The step is currently ENABLED.", len(payload)))
         print(payload)
         return
