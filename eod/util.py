@@ -179,6 +179,16 @@ def oneline(s, n=160):
     return " ".join(str(s).split())[:n]
 
 
+def split_problem(p):
+    """A pipeline source problem ("name: detail") as (name, detail).
+
+    One parser, so the daily and weekly receipts cannot drift apart if the
+    format in pipeline.collect_sources ever changes.
+    """
+    name, _, detail = str(p).partition(": ")
+    return name, detail
+
+
 def pretty_date(d):
     try:
         return datetime.strptime(d, "%Y-%m-%d").strftime("%a, %b %-d %Y")

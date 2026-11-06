@@ -59,8 +59,13 @@ def collect_sources(target):
     return items, problems
 
 
-def build(target):
-    """One day, assembled from every source."""
+def build_projects(target):
+    """The WORK half of a day: Claude Code and Codex sessions grouped by project.
+
+    Split out so the timesheet export can read sessions without also running
+    git, browser history, screen time and the rest for every day of a week.
+    Returns (projects, n_sessions, n_untitled, touched).
+    """
     projects, n_sessions, n_untitled, touched = read_sessions(target)
     add_codex(projects, target)   # merge Codex sessions into the same project buckets
 
@@ -85,6 +90,12 @@ def build(target):
     # then the raw key (via the sorted walk above). sessions were sorted by start
     # in the loop, so sessions[0] is the project's earliest session.
     out_projects.sort(key=lambda p: (-p["total"], p["sessions"][0]["start"], p["name"]))
+    return out_projects, n_sessions, n_untitled, touched
+
+
+def build(target):
+    """One day, assembled from every source."""
+    out_projects, n_sessions, n_untitled, touched = build_projects(target)
     collected, problems = collect_sources(target)
     commits = collected.get("commits", [])
     meetings = collected.get("meetings", [])

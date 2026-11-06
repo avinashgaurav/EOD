@@ -14,6 +14,7 @@ cannot quietly drop the behaviour without a red test.
 Add a claim => add a test here. Delete a claim => delete its test.
 """
 
+import json
 import os
 import shutil
 import tempfile
@@ -363,6 +364,70 @@ class TestSourceContractClaims(ClaimCase):
         _, data = self.a_normal_day(ex)
         self.assertTrue(data["projects"], "the day must still build")
         self.assertTrue(any("broken.py" in p for p in data["source_problems"]))
+
+
+class TestWeeklySourceClaims(ClaimCase):
+    """The weekly is built from cached days, so it has to read their failures
+    back rather than inherit them. It used to not, and could not say so."""
+
+    WEEK = ["2026-10-05", "2026-10-06", "2026-10-07"]
+
+    def cache_day(self, ex, date, highlights, problems=()):
+        with open(os.path.join(ex.CACHE, "polish-%s.json" % date), "w") as fh:
+            json.dump({"highlights": highlights}, fh)
+        with open(os.path.join(ex.CACHE, "%s.json" % date), "w") as fh:
+            json.dump({"date": date, "source_problems": list(problems)}, fh)
+
+    def weekly(self, ex):
+        ex._claude_bin = lambda: None      # fallback path: no model, no network
+        return ex.build_weekly(self.WEEK[-1])
+
+    CLAIM_weekly_source_failure_visible = "weekly-source-failure-visible"
+
+    def test_a_week_with_a_failed_source_says_so_on_both_surfaces(self):
+        ex = self.ex
+        self.cache_day(ex, self.WEEK[0], ["shipped the parser"])
+        self.cache_day(ex, self.WEEK[1], ["fixed the cache"], ["boomsource: token expired"])
+        self.cache_day(ex, self.WEEK[2], ["wrote docs"],
+                       ["boomsource: HTTP 401", "calendar: no access"])
+        data = self.weekly(ex)
+        self.assertEqual(data["source_problems"], [
+            {"source": "boomsource", "detail": "HTTP 401",
+             "days": ["2026-10-06", "2026-10-07"]},
+            {"source": "calendar", "detail": "no access", "days": ["2026-10-07"]},
+        ])
+        text = ex.to_text_weekly(data)
+        self.assertIn("! boomsource unavailable on Tue, Wed: HTTP 401", text)
+        self.assertIn("! calendar unavailable on Wed: no access", text)
+        page = ex.to_html_weekly(data)
+        self.assertIn("boomsource unavailable on Tue, Wed: HTTP 401", page)
+        self.assertEqual(page.count("<div class='warn'>"), 2)
+
+    def test_a_failure_is_shown_even_when_the_week_has_no_highlights(self):
+        ex = self.ex
+        self.cache_day(ex, self.WEEK[0], [], ["boomsource: token expired"])
+        data = self.weekly(ex)
+        self.assertIn("boomsource", ex.to_text_weekly(data))
+        self.assertIn("boomsource", ex.to_html_weekly(data))
+
+    def test_a_healthy_week_renders_exactly_as_before(self):
+        ex = self.ex
+        for d in self.WEEK:
+            self.cache_day(ex, d, ["did a thing on " + d])
+        data = self.weekly(ex)
+        self.assertEqual(data["source_problems"], [])
+        legacy = dict(data)
+        del legacy["source_problems"]
+        self.assertEqual(ex.to_text_weekly(data), ex.to_text_weekly(legacy))
+        self.assertEqual(ex.to_html_weekly(data), ex.to_html_weekly(legacy))
+        self.assertNotIn("unavailable", ex.to_text_weekly(data))
+
+    def test_a_missing_or_corrupt_day_cache_is_not_a_failure(self):
+        ex = self.ex
+        self.cache_day(ex, self.WEEK[0], ["shipped"])
+        with open(os.path.join(ex.CACHE, "%s.json" % self.WEEK[1]), "w") as fh:
+            fh.write("{not json")
+        self.assertEqual(self.weekly(ex)["source_problems"], [])
 
 
 class TestConfigClaims(ClaimCase):
