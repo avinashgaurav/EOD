@@ -15,10 +15,23 @@ just determines what shows up on the receipt:
 | Browser history | Powers the WEB section (Chrome / Brave automatic). | Safari history may need **Full Disk Access** for the Hammerspoon process. |
 
 **Local-first, no API keys, no telemetry.** EOD reads local files and writes a <!--claim:no-network-->
-receipt to its own `cache/` folder. The one exception is the **optional AI-polish**
-step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
-crisper, manager-ready bullets, through your **existing CLI login** (no API key).
-Missing CLI? It falls back to fully-offline cleanup.
+receipt to its own `cache/` folder. There are two exceptions, both yours to switch
+on. The first is the **optional AI-polish** step: if your `claude` CLI is logged
+in, EOD asks it to rewrite the day into crisper, manager-ready bullets, through
+your **existing CLI login** (no API key). Missing CLI? It falls back to
+fully-offline cleanup. Want the polish without anything leaving the Mac? Create
+`ollama.txt` and the same step runs on a local [Ollama](https://ollama.com) model
+at `127.0.0.1:11434` instead (see [Configuration](configuration.md)).
+
+The second is the **↗ Send** button, and it sends only when you press it. It <!--claim:send-only-on-press-->
+exists only if you create a `send.txt` (see [Configuration](configuration.md)),
+and the first press only arms it; the second posts. What goes is the same
+bullets shown on the card's WORK section, to the Slack or Teams webhook or
+Linear issue you listed, and nothing else: no screen time, no browsing,
+nothing from the full bill. It posts the card as it is and never asks the
+`claude` CLI for anything. Building and refreshing the receipt never sends.
+Your webhook URLs and Linear key stay in that file; EOD never prints or logs
+them.
 
 <!--claim:share-image-no-prompts-->
 **The share image** (the **⇪** on the receipt) is drawn on your Mac by the WebKit
@@ -30,7 +43,8 @@ totals. Never prompts, session titles, project names, sites or app names.
 <details>
 <summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>
 
-Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
+Apart from the Send button above, nothing else in EOD leaves your Mac. When
+AI-polish runs, it sends:
 
 | Sent | Not sent |
 |---|---|
@@ -43,7 +57,8 @@ Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
 
 Two things worth knowing. Your prompts do go, and prompts sometimes contain
 paths, hostnames or pasted snippets. And this is your own Claude account via
-your own CLI login, not a third party.
+your own CLI login, not a third party. With `ollama.txt` the same text goes to
+Ollama on your own Mac instead, so none of it leaves the machine.
 
 The call itself is sealed off: EOD runs `claude -p` with no tools, none of your <!--claim:polish-cli-isolated-->
 settings, hooks, MCP servers or CLAUDE.md, and without saving a session, so the
@@ -56,7 +71,7 @@ is written to `polish-error.log`. Update the CLI to keep every call sealed off.
 See it for yourself before trusting any of the above:
 
 ```sh
-python3 extract.py --show-polish-payload      # prints the exact text, sends nothing
+python3 extract.py --show-polish-payload      # prints the exact text and where it would go, sends nothing
 touch polish.off                              # never run this step again
 ```
 

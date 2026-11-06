@@ -1,8 +1,9 @@
 """Plain-text receipts: what lands on the clipboard."""
 
 import time
+from datetime import datetime
 
-from ..util import clean_title, fmt_dur, oneline, pretty_date
+from ..util import clean_title, fmt_dur, oneline, pretty_date, split_problem
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB
 
 
@@ -69,8 +70,28 @@ def source_warnings(data):
     """
     out = []
     for p in data.get("source_problems") or []:
-        name, _, detail = str(p).partition(": ")
+        name, detail = split_problem(p)
         out.append("%s unavailable: %s" % (name, oneline(detail or "failed", 70)))
+    return out
+
+
+def _weekday(d):
+    try:
+        return datetime.strptime(d, "%Y-%m-%d").strftime("%a")
+    except Exception:
+        return str(d)
+
+
+def weekly_source_warnings(data):
+    """The weekly's version of source_warnings: one line per failed source, with
+    the days it failed on, so "was anything broken this week" has an answer."""
+    out = []
+    for p in data.get("source_problems") or []:
+        # Weekday names are unambiguous inside one week and keep the line short.
+        days = ", ".join(_weekday(d) for d in p.get("days") or [])
+        out.append("%s unavailable on %s: %s" % (
+            p.get("source", "source"), days or "some days",
+            oneline(p.get("detail") or "failed", 70)))
     return out
 
 
@@ -230,6 +251,11 @@ def to_text_weekly(data):
             L.append(g["area"])
             for it in g["items"]:
                 L.append("  - " + it)
+    warns = weekly_source_warnings(data)
+    if warns:
+        L.append("")
+        for w in warns:
+            L.append("! " + w)
     return "\n".join(L).rstrip() + "\n"
 
 
@@ -255,3 +281,22 @@ def to_markdown(data):
         L += ["- `%s` %s" % (c["repo"], c["subject"]) for c in data["commits"]]
         L.append("")
     return "\n".join(L).rstrip() + "\n"
+
+
+def to_standup(data, bullet="• "):
+    """The day's work as a standup message, for the Send button.
+
+    Work only: the highlights, or the per-project items when there are none.
+    Screen time and browsing stay on the Mac; a channel does not need them.
+    Returns None for a day with no work to report.
+    """
+    if data.get("highlights"):
+        items = list(data["highlights"])
+    else:
+        items = ["%s: %s" % (p["name"], it["text"])
+                 for p in data.get("projects") or [] for it in display_items(p)]
+    if not items:
+        return None
+    L = ["Daily update: %s" % pretty_date(data["date"]), ""]
+    L += [bullet + t for t in items]
+    return "\n".join(L) + "\n"
