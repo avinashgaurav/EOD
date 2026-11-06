@@ -39,8 +39,35 @@ bin/eod today --md         # markdown, for a PR description or doc
 bin/eod today --json       # the whole day
 bin/eod day 2026-08-01     # any past day
 bin/eod week               # the weekly recap
+bin/eod timesheet          # time per project as CSV; prints the file's path
 bin/eod sources            # what is set up on this machine, and what is not
 bin/eod payload            # what AI-polish would send, without sending it
 ```
 
 `--raw` skips the AI-polish step even when it is configured.
+
+### Timesheet CSV
+
+```sh
+bin/eod timesheet                        # today -> cache/timesheet-YYYY-MM-DD.csv
+bin/eod timesheet --date 2026-08-01      # any past day
+bin/eod timesheet --week                 # Monday to today -> cache/timesheet-week-<Monday>.csv
+bin/eod timesheet --week --out ~/ts.csv  # write it somewhere else
+```
+
+Columns: `date, project, source, start, end, minutes, sessions`. One row per
+project per source (`claude` or `codex`) per day, sorted by date, then project,
+then source. A day with no sessions writes the header row only.
+
+How `minutes` is counted, so you can check it against the receipt:
+
+- Each session counts from its first prompt to its last prompt. Idle time in
+  between is counted; time after the last prompt is not.
+- A session with a single prompt counts as 0 minutes.
+- Sessions that overlap are each counted in full, so a project's minutes can be
+  more than the gap between its `start` and `end`.
+
+`--week` builds every day from Monday up to `--date` (never past today) from the
+transcripts, rather than reading old receipts from `cache/`, so it is slower than
+a single day but never stale. Rows stay per day; sum them in your spreadsheet if
+you want weekly totals.
