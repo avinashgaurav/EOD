@@ -3,6 +3,7 @@ ollama.txt it does not: the same prompt goes to Ollama on this Mac instead."""
 
 import json, os, re, time, subprocess, hashlib
 import urllib.error, urllib.request
+from urllib.parse import urlparse
 from datetime import datetime
 
 from .util import oneline, pretty_date
@@ -114,10 +115,25 @@ OLLAMA_NUM_CTX = 16384   # Ollama's default window is a few thousand tokens and 
                          # of a longer prompt, which is where the rules are
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """A 30x from "Ollama" could point anywhere; refuse it so it surfaces as an HTTPError."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _local_opener():
+    """No proxies: urllib honours HTTP_PROXY, which could route even a loopback
+    request through another machine. No redirects, for the reason above."""
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
+
 def _open_local(req, timeout):
-    """urlopen without proxies. urllib honours HTTP_PROXY, which could route even a
-    loopback request through another machine; an empty ProxyHandler rules that out."""
-    return urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=timeout)
+    """Open req only if it is for this Mac. The URL is a constant today; this
+    holds the line if it ever stops being one."""
+    host = urlparse(req.full_url).hostname
+    if host != "127.0.0.1":
+        raise ValueError("refusing a non-loopback polish request to %r" % host)
+    return _local_opener().open(req, timeout=timeout)
 
 
 def _run_ollama(model, prompt):
@@ -139,8 +155,12 @@ def _run_ollama(model, prompt):
             e.close()
         raise ValueError("ollama HTTP %s for model %r: %s" % (e.code, model, detail.strip()))
     except (urllib.error.URLError, OSError) as e:
-        raise ValueError("ollama not reachable at %s (is it running?): %s"
-                         % (OLLAMA_URL, getattr(e, "reason", e)))
+        reason = getattr(e, "reason", e)
+        # socket.timeout is TimeoutError from 3.10, its own OSError subclass on 3.9;
+        # either can arrive bare or wrapped in a URLError.
+        if isinstance(e, TimeoutError) or isinstance(reason, TimeoutError) or "timed out" in str(reason):
+            raise ValueError("ollama timed out after %ss (model %r)" % (OLLAMA_TIMEOUT, model))
+        raise ValueError("ollama not reachable at %s (is it running?): %s" % (OLLAMA_URL, reason))
     try:
         reply = json.loads(raw.decode("utf-8"))
     except ValueError:
@@ -227,6 +247,15 @@ def _polish_input(data):
 POLISH_MIN_INTERVAL = 1800   # seconds
 
 
+def _cache_key(raw, model):
+    """Hash of the input, plus the Ollama model when there is one, so switching
+    provider or model re-summarises without Regenerate. The claude key is the
+    plain hash it always was, so existing caches stay valid."""
+    if model:
+        raw += "\n\x00ollama:" + model
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
 def _polished_recently(path):
     """True if the cached summary is younger than the debounce floor."""
     try:
@@ -256,16 +285,17 @@ def polish(data, force=False):
     if not (data["projects"] or data.get("commits") or data.get("meetings")):
         return
     raw = _polish_input(data)
-    key = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    key = _cache_key(raw, model)
     cache_path = os.path.join(CACHE, "polish-" + data["date"] + ".json")
 
-    cached = cached_detail = None
+    cached = cached_detail = cached_model = None
     try:
         with open(cache_path) as fh:
             c = json.load(fh)
         if isinstance(c.get("highlights"), list) and c["highlights"]:
             cached = c["highlights"]
             cached_detail = c.get("detailed")
+            cached_model = c.get("model")       # only Ollama summaries record one
             if c.get("edited") and not force:      # user hand-edited → keep, never auto-overwrite
                 data["highlights"] = cached
                 data["detailed"] = cached_detail
@@ -281,7 +311,8 @@ def polish(data, force=False):
     # Deliberately outside the try above: a failure here should surface, not be
     # swallowed by that bare except. The work HAS changed at this point, we are
     # only declining to re-summarise it quite so often.
-    if cached and not force and _polished_recently(cache_path):
+    # A provider or model switch is not "the work changed": skip the floor so it shows now.
+    if cached and not force and cached_model == model and _polished_recently(cache_path):
         data["highlights"] = cached
         data["detailed"] = cached_detail
         return
@@ -318,7 +349,10 @@ def polish(data, force=False):
         return
 
     with open(cache_path, "w") as fh:
-        json.dump({"key": key, "highlights": highlights, "detailed": detailed}, fh)
+        entry = {"key": key, "highlights": highlights, "detailed": detailed}
+        if model:
+            entry["model"] = model
+        json.dump(entry, fh)
     data["highlights"] = highlights
     data["detailed"] = detailed
 
@@ -351,7 +385,7 @@ def polish_weekly(data, force=False):
         return
     raw = "\n".join("## " + pretty_date(d) + "\n" + "\n".join("- " + h for h in hl)
                     for d, hl in data["days"])
-    key = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    key = _cache_key(raw, model)
     cache_path = os.path.join(CACHE, "weekly-" + data["week_start"] + ".json")
     try:
         with open(cache_path) as fh:

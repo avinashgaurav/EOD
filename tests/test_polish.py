@@ -354,17 +354,142 @@ class TestOllamaProvider(unittest.TestCase):
         self.assertEqual(w["highlights"], ["tue thing"])
 
     def test_polish_off_beats_ollama_txt(self):
-        flag = os.path.join(os.path.dirname(EXTRACT), "polish.off")
-        created = not os.path.exists(flag)
-        open(flag, "a").close()
-        try:
+        cfg = next(m for m in self.ex._mods if m.__name__ == "eod.config")
+        cfg.APP_DIR = self.tmp                 # a temp app dir: never touch the checkout
+        open(os.path.join(self.tmp, "polish.off"), "w").close()
+        d = self._day()
+        self.ex.polish(d)
+        self.assertEqual(self.requests, [])
+        self.assertNotIn("highlights", d)
+
+    def test_timeout_is_logged_as_a_timeout(self):
+        import socket, urllib.error
+        for err in (socket.timeout("timed out"), urllib.error.URLError(socket.timeout("timed out"))):
+            self._serve(err)
             d = self._day()
-            self.ex.polish(d)
-            self.assertEqual(self.requests, [])
+            self.ex.polish(d, force=True)
             self.assertNotIn("highlights", d)
-        finally:
-            if created:
-                os.remove(flag)
+        log = self._log()
+        self.assertEqual(log.count("ollama timed out after 300s"), 2, log)
+        self.assertNotIn("not reachable", log)
+
+    def test_switching_from_claude_to_ollama_takes_effect_without_regenerate(self):
+        """A fresh claude summary of the same work is not reused once ollama.txt
+        exists: the key differs and the 30 minute floor does not apply."""
+        d = self._day()
+        raw = self.p._polish_input(d)
+        with open(os.path.join(self.tmp, "polish-2026-08-06.json"), "w") as f:
+            json.dump({"key": self.p._cache_key(raw, None),
+                       "highlights": ["from claude"], "detailed": []}, f)
+        self._serve(ollama_reply('{"highlights": ["from ollama"], "detailed": []}'))
+        self.ex.polish(d)
+        self.assertEqual(d["highlights"], ["from ollama"])
+        # And the Ollama summary is then reused while nothing changes.
+        self._serve(AssertionError("should have used the cache"))
+        again = self._day()
+        self.ex.polish(again)
+        self.assertEqual(again["highlights"], ["from ollama"])
+
+    def test_switching_model_takes_effect_without_regenerate(self):
+        self._serve(ollama_reply('{"highlights": ["qwen says"], "detailed": []}'))
+        self.ex.polish(self._day())
+        self.ex.load_ollama_model = lambda: "llama3.2"
+        self._serve(ollama_reply('{"highlights": ["llama says"], "detailed": []}'))
+        d = self._day()
+        self.ex.polish(d)
+        self.assertEqual(d["highlights"], ["llama says"])
+
+    def test_weekly_cache_key_includes_the_model(self):
+        w = {"week_start": "2026-08-03", "days": [("2026-08-04", ["mon thing"])]}
+        self._serve(ollama_reply('{"highlights": ["qwen week"], "detailed": []}'))
+        self.ex.polish_weekly(w)
+        self.ex.load_ollama_model = lambda: "llama3.2"
+        self._serve(ollama_reply('{"highlights": ["llama week"], "detailed": []}'))
+        w = {"week_start": "2026-08-03", "days": [("2026-08-04", ["mon thing"])]}
+        self.ex.polish_weekly(w)
+        self.assertEqual(w["highlights"], ["llama week"])
+
+
+class TestLoopbackGuard(unittest.TestCase):
+    """_open_local's runtime checks, exercised for real rather than read as text."""
+
+    def setUp(self):
+        import importlib
+        ex = load_extract()
+        # A fresh module, so the harness stub under _open_local is gone.
+        self.p = importlib.reload(next(m for m in ex._mods if m.__name__ == "eod.polish"))
+        self.tmp = tempfile.mkdtemp(prefix="eod-guard-")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _polish_log(self):
+        p = os.path.join(self.tmp, "polish-error.log")
+        if not os.path.exists(p):
+            return ""
+        with open(p) as fh:
+            return fh.read()
+
+    def test_a_non_loopback_url_is_refused_and_falls_back(self):
+        import urllib.request
+        from unittest import mock
+        req = urllib.request.Request("http://example.com:11434/api/generate", data=b"{}")
+        with self.assertRaises(ValueError):
+            self.p._open_local(req, 1)
+        built = []
+        with mock.patch.object(self.p, "OLLAMA_URL", "http://10.0.0.5:11434/api/generate"), \
+             mock.patch.object(self.p, "_local_opener", lambda: built.append(1)), \
+             mock.patch.object(self.p, "load_ollama_model", lambda: "llama3.2"), \
+             mock.patch.object(self.p, "CACHE", self.tmp):
+            d = {"date": "2026-08-06", "projects": [],
+                 "commits": [{"repo": "r", "subject": "some work happened"}]}
+            self.p.polish(d, force=True)
+        self.assertEqual(built, [], "no opener should be built for a remote host")
+        self.assertNotIn("highlights", d)
+        self.assertIn("refusing a non-loopback", self._polish_log())
+
+    def test_the_opener_has_no_proxies_and_no_redirects(self):
+        """With a proxy in the environment, a default opener would route through
+        it. ProxyHandler({}) has no protocols, so urllib registers no proxy
+        handler at all and drops the default env-reading one."""
+        import urllib.request
+        from unittest import mock
+        env = {"HTTP_PROXY": "http://proxy.example:3128", "http_proxy": "http://proxy.example:3128"}
+        with mock.patch.dict(os.environ, env):
+            default = urllib.request.build_opener()
+            self.assertTrue(any(isinstance(h, urllib.request.ProxyHandler) for h in default.handlers),
+                            "sanity: the default opener does pick the proxy up")
+            opener = self.p._local_opener()
+        proxies = [h for h in opener.handlers if isinstance(h, urllib.request.ProxyHandler)]
+        self.assertEqual(proxies, [])
+        redirects = [h for h in opener.handlers if isinstance(h, urllib.request.HTTPRedirectHandler)]
+        self.assertEqual([type(h) for h in redirects], [self.p._NoRedirect])
+
+    def test_a_redirect_becomes_an_http_error_logged_and_falls_back(self):
+        """A 302 from the local port is not followed: urllib raises HTTPError and
+        polish logs it. The socket layer is faked; the opener is the real one."""
+        import email.message, io, urllib.request, urllib.response
+        from unittest import mock
+        followed = []
+
+        def fake_http_open(handler, req):
+            if req.full_url != self.p.OLLAMA_URL:
+                followed.append(req.full_url)
+            hdrs = email.message.Message()
+            hdrs["Location"] = "http://example.com/steal"
+            resp = urllib.response.addinfourl(io.BytesIO(b""), hdrs, req.full_url, 302)
+            resp.msg = "Found"
+            return resp
+
+        with mock.patch.object(urllib.request.HTTPHandler, "http_open", fake_http_open), \
+             mock.patch.object(self.p, "load_ollama_model", lambda: "llama3.2"), \
+             mock.patch.object(self.p, "CACHE", self.tmp):
+            d = {"date": "2026-08-06", "projects": [],
+                 "commits": [{"repo": "r", "subject": "some work happened"}]}
+            self.p.polish(d, force=True)
+        self.assertEqual(followed, [], "the redirect must not be followed")
+        self.assertNotIn("highlights", d)
+        self.assertIn("ollama HTTP 302", self._polish_log())
 
 
 class TestProviderChoice(unittest.TestCase):
@@ -393,6 +518,29 @@ class TestProviderChoice(unittest.TestCase):
     def test_first_line_names_the_model(self):
         self._write("  qwen2.5:7b  \nignored\n")
         self.assertEqual(self.cfg.load_ollama_model(), "qwen2.5:7b")
+
+    def test_comment_and_blank_lines_are_skipped(self):
+        self._write("# pick a model\n\n  # another\nqwen2.5:7b\n")
+        self.assertEqual(self.cfg.load_ollama_model(), "qwen2.5:7b")
+
+    def test_only_comments_means_the_default_model(self):
+        self._write("# nothing chosen yet\n")
+        self.assertEqual(self.cfg.load_ollama_model(), self.cfg.OLLAMA_DEFAULT_MODEL)
+
+    def test_a_non_utf8_file_cannot_crash_the_build(self):
+        with open(os.path.join(self.tmp, "ollama.txt"), "wb") as f:
+            f.write(b"\xff\xfe\x00bad")
+        self.assertEqual(self.cfg.load_ollama_model(), self.cfg.OLLAMA_DEFAULT_MODEL)
+
+    def test_the_claude_cache_key_is_unchanged(self):
+        """Existing caches stay valid: no model means the plain hash of the input."""
+        import hashlib
+        p = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        self.assertEqual(p._cache_key("some input", None),
+                         hashlib.sha1(b"some input").hexdigest())
+        keys = {p._cache_key("some input", None), p._cache_key("some input", "llama3.2"),
+                p._cache_key("some input", "qwen2.5:7b")}
+        self.assertEqual(len(keys), 3)
 
     def test_default_provider_is_byte_identical_claude(self):
         """No ollama.txt: the CLI gets exactly the argv and prompt it always got,

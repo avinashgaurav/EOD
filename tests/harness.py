@@ -102,9 +102,10 @@ def load_extract():
         if m.__name__ != "eod.config" and hasattr(m, "load_ollama_model"):
             m.load_ollama_model = lambda: None
 
-    def _no_http(req, timeout):
+    # The stub sits under _open_local, so its loopback guard stays real and testable.
+    def _no_http():
         raise AssertionError("a test reached the real Ollama HTTP call")
-    ex._open_local = _no_http
+    ex._local_opener = _no_http
     return ex
 
 

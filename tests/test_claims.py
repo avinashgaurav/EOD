@@ -55,6 +55,31 @@ register(Linear())
 
 BROKEN = "import a_module_that_certainly_does_not_exist\n"
 
+# Files allowed to import a network module, and which ones. Everything else in
+# eod/ may import none of NETWORK_MODULES, anywhere in the file.
+NETWORK_ALLOWED = {"eod/polish.py": {"urllib.request", "urllib.error"}}
+
+NETWORK_MODULES = ("urllib.request", "urllib.error", "http.client", "socket", "ssl",
+                   "smtplib", "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio")
+
+
+def _network_imports(node):
+    """The network modules an Import/ImportFrom node pulls in, e.g. both
+    `import urllib.request` and `from urllib import request` give urllib.request."""
+    import ast
+    if isinstance(node, ast.Import):
+        names = [a.name for a in node.names]
+    elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+        names = [node.module] + [node.module + "." + a.name for a in node.names]
+    else:
+        return set()
+    hits = set()
+    for n in names:
+        for m in NETWORK_MODULES:
+            if n == m or n.startswith(m + "."):
+                hits.add(m)
+    return hits
+
 
 class FakeRun:
     returncode = 0
@@ -230,25 +255,31 @@ class TestPrivacyClaims(ClaimCase):
     def test_the_engine_makes_no_network_calls(self):
         """README: 'no telemetry', 'nothing leaves your Mac'. The only outbound
         path is the claude CLI subprocess, which polish.off disables. The one
-        HTTP client is polish.py's call to Ollama, and that is pinned to loopback
-        with proxies off, so it is not an outbound path either."""
+        HTTP client is polish.py's call to Ollama, which is held to loopback at
+        runtime by _open_local (tested in test_polish.py)."""
+        import ast
         import glob
         from urllib.parse import urlparse
-        polish_py = os.path.join("eod", "polish.py")
-        for p in glob.glob(os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eod", "**", "*.py"),
-                recursive=True):
-            with open(p) as f:
-                src = f.read()
-            banned = ["import requests", "urlopen(", "http.client", "import socket"]
-            if not p.endswith(polish_py):
-                banned += ["urllib.request"]
-            for b in banned:
-                self.assertNotIn(b, src, "%s in %s would be an outbound path" % (b, p))
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for path in sorted(glob.glob(os.path.join(root, "eod", "**", "*.py"), recursive=True)):
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
+            allowed = NETWORK_ALLOWED.get(rel, set())
+            with open(path, encoding="utf-8") as f:
+                tree = ast.parse(f.read(), rel)
+            for node in ast.walk(tree):
+                for mod in _network_imports(node):
+                    self.assertIn(mod, allowed, "%s imports %s, an outbound path (line %s)"
+                                  % (rel, mod, node.lineno))
+        # The one allowed file: exactly one opener, used from exactly one place.
+        polish_path = os.path.join(root, "eod", "polish.py")
+        with open(polish_path, encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+        calls = [n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", None)
+                 for n in ast.walk(tree) if isinstance(n, ast.Call)]
+        self.assertEqual(calls.count("build_opener"), 1, "polish.py should build one opener")
+        self.assertEqual(calls.count("_open_local"), 1, "only _run_ollama should open a URL")
         polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
         self.assertEqual(urlparse(polish_mod.OLLAMA_URL).hostname, "127.0.0.1")
-        with open(polish_mod.__file__) as f:
-            self.assertIn("ProxyHandler({})", f.read())
 
     CLAIM_ollama_stays_local = "ollama-stays-local"
 

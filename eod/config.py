@@ -97,16 +97,21 @@ def load_ollama_model():
     """The local model AI-polish should use, or None to keep the claude CLI.
 
     `ollama.txt` next to this script switches polish to Ollama on this Mac. Its
-    first line names the model; an empty file means OLLAMA_DEFAULT_MODEL. Read
+    first line that is not blank or a # comment names the model; otherwise
+    OLLAMA_DEFAULT_MODEL. Read
     on every run, not at import, so the switch needs no reload.
     """
     try:
         with open(app_path("ollama.txt")) as fh:
-            return fh.readline().strip() or OLLAMA_DEFAULT_MODEL
+            for line in fh:
+                s = line.strip()
+                if s and not s.startswith("#"):
+                    return s
+        return OLLAMA_DEFAULT_MODEL
     except FileNotFoundError:
         return None
-    except OSError:
-        return OLLAMA_DEFAULT_MODEL   # there but unreadable: the user asked for local, never fall back to the cloud
+    except (OSError, ValueError):     # unreadable or not UTF-8
+        return OLLAMA_DEFAULT_MODEL   # the user asked for local, never fall back to the cloud
 
 
 def _sig_html():
