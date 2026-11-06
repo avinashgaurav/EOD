@@ -1,6 +1,6 @@
 """Entry point. Argument handling and writing the cache."""
 
-import json, os, glob, sys, html
+import json, os, glob, re, sys, html
 from datetime import datetime
 
 from .util import pretty_date
@@ -8,7 +8,8 @@ from .config import CACHE, SEND_FILE, app_path, load_ollama_model, send_labels
 from .pipeline import build
 from .polish import OLLAMA_URL, _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
-from .render.html import to_html, to_html_full, to_html_weekly
+from .render.html import SHARE_H, SHARE_W, to_html, to_html_full, to_html_share, to_html_weekly
+from .render.image import html_to_png
 from .weekly import build_weekly
 
 
@@ -35,12 +36,42 @@ def write_history():
         pass
 
 
+def _valid_date(s):
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", s or ""):
+        return False
+    try:
+        datetime.strptime(s, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def share_image(data):
+    """Draw the share card to cache/<date>-share.png and print its path."""
+    try:
+        with open(os.path.join(CACHE, "polish-" + data["date"] + ".json")) as fh:
+            hl = json.load(fh).get("highlights")
+        if isinstance(hl, list):
+            data["highlights"] = [h for h in hl if isinstance(h, str) and h.strip()]
+    except Exception:
+        pass                           # never polished: the card shows totals only
+    base = os.path.join(CACHE, data["date"])
+    with open(base + "-share.html", "w") as f:
+        f.write(to_html_share(data))
+    why = html_to_png(base + "-share.html", base + "-share.png", SHARE_W, SHARE_H)
+    if why:
+        sys.stderr.write("EOD: no share image: %s\n" % why)
+        raise SystemExit(1)
+    print("SHARE " + base + "-share.png")
+
+
 def main():
     date = None
     do_print = False
     repolish = False
     weekly = False
     show_payload = False
+    share = False
     do_send = False
     args = sys.argv[1:]
     for i, a in enumerate(args):
@@ -54,10 +85,15 @@ def main():
             weekly = True
         elif a == "--show-polish-payload":
             show_payload = True
+        elif a == "--share":
+            share = True
         elif a == "--send":
             do_send = True
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
+    if share and not _valid_date(date):
+        sys.stderr.write("EOD: --date wants YYYY-MM-DD, got %r\n" % date)
+        raise SystemExit(2)
 
     os.makedirs(CACHE, exist_ok=True)
 
@@ -92,6 +128,13 @@ def main():
         return
 
     data = build(date)
+
+    if share:
+        # Before polish on purpose: a press of the share button must never send
+        # anything to claude or rewrite the history file. It uses whatever
+        # summary the panel already has (cached or hand-edited), or none.
+        share_image(data)
+        return
 
     if show_payload:
         # Print the exact text the polish step would send, and send nothing.

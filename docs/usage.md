@@ -8,6 +8,7 @@ For EOD the Claude Code CLI is the production path, so these runs used the real 
 - **Multi-source**: Claude Code + Codex sessions, git commits, documents, browsing, and screen time on one receipt.
 - **Daily receipt + weekly recap**: one keystroke from the menu bar.
 - **Copy all** or per-project **copy**, straight to the clipboard.
+- **Share as an image**: **⇪** copies the day as a 16:9 PNG (2400×1350) for X or LinkedIn, with a small "made with EOD" footer. Highlights and totals only, no prompts.
 - **Edit inline**: fix a line, **＋ add** one, or **✕ delete** one before you copy. On the **weekly recap** your hand-edits stick and survive a re-summarize (unless you force one with **⟳**).
 - **◀ ▶ browse previous days** for back-filling a sheet.
 - **Frameless + transparent**: only the cream paper shows on your wallpaper; drag it by the masthead. Floats over full-screen apps.
@@ -21,6 +22,7 @@ For EOD the Claude Code CLI is the production path, so these runs used the real 
 | Move it | drag the **EOD** masthead |
 | Copy the day | **⎙ Copy all** |
 | Copy one project | the **⧉** on that project |
+| Share the day as an image | **⇪** (the PNG is on your clipboard and in `cache/<date>-share.png`) |
 | Edit lines | **✎** on the WORK / weekly header, then **💾** to save |
 | Add a line | **＋** on the WORK / weekly header |
 | Delete a line | the **✕** beside a line (while editing) |

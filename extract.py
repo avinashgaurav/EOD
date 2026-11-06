@@ -7,6 +7,7 @@ install has it sitting in ~/.hammerspoon, so moving it would break them silently
 
     python3 extract.py --date 2026-08-06
     python3 extract.py --weekly
+    python3 extract.py --date 2026-08-06 --share   # the day as a PNG, prints its path
     python3 extract.py --show-polish-payload     # prints the payload, sends nothing
 
 The star imports are deliberate. They preserve the flat namespace this module

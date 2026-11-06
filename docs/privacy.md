@@ -33,6 +33,13 @@ nothing from the full bill. It posts the card as it is and never asks the
 Your webhook URLs and Linear key stay in that file; EOD never prints or logs
 them.
 
+<!--claim:share-image-no-prompts-->
+**The share image** (the **⇪** on the receipt) is drawn on your Mac by the WebKit
+that ships with macOS and lands in `cache/` and on your clipboard; nothing is
+uploaded unless you post it, and making it never calls the AI-polish step. It
+carries the highlights you already have (cached or hand-edited) and the day's
+totals. Never prompts, session titles, project names, sites or app names.
+
 <details>
 <summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>
 

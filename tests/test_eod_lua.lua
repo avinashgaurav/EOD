@@ -2,7 +2,8 @@
 --
 -- eod.lua touches no hs.* at module load, so it can be required outside
 -- Hammerspoon and its callbacks invoked directly. That is enough to cover the
--- part that matters here: what showWeekly() does when the engine fails.
+-- part that matters here: what showWeekly() does when the engine fails, and
+-- what the share button does with the engine's answer.
 --
 -- Before 0df01ac both failure paths ended in silence. The task exit code was
 -- accepted and never read, and output that did not parse simply skipped the
@@ -25,8 +26,10 @@ local function check(ok, msg)
 end
 
 -- ── the smallest hs that eod.lua's weekly path needs ────────────────────────
-local lastTask
+local lastTask, lastCallback, lastJS
 local logged = {}
+local pasted = {}
+local imageLoads, fileExists = true, false
 local jsRun = {}                                 -- every evaluateJavaScript call, in order
 local msgCallback                                -- the page->Lua bridge eod.lua registers
 local timers = {}                                -- every hs.timer.doAfter, so a test can fire one
@@ -43,7 +46,7 @@ local function stubHs()
       w[m] = chain
     end
     w.show = function() shownWebviews[#shownWebviews + 1] = true; return w end
-    w.evaluateJavaScript = function(_, js) jsRun[#jsRun + 1] = js; return w end
+    w.evaluateJavaScript = function(_, js) lastJS = js; jsRun[#jsRun + 1] = js; return w end
     w.asHSWindow = function() return nil end
     return w
   end
@@ -63,7 +66,7 @@ local function stubHs()
     webview = {
       new = function() return webview() end,
       usercontent = { new = function()
-        return { setCallback = function(s, cb) msgCallback = cb; return s end }
+        return { setCallback = function(s, cb) lastCallback = cb; msgCallback = cb; return s end }
       end },
       windowMasks = { borderless = 1 },
     },
@@ -82,7 +85,10 @@ local function stubHs()
               end,
               doEvery = function() return { stop = function() end } end,
               secondsSinceLastInput = function() return 0 end },
-    pasteboard = { setContents = function() end },
+    pasteboard = { setContents = function() end,
+                   writeObjects = function(o) pasted[#pasted + 1] = o; return true end },
+    image = { imageFromPath = function(p) return imageLoads and { path = p } or nil end },
+    json = { encode = function(t) return '["' .. tostring(t[1]) .. '"]' end },
     hotkey = { bind = function() end },
     menubar = { new = function() return {
       setTitle = function(s) return s end, setMenu = function(s) return s end,
@@ -92,7 +98,7 @@ local function stubHs()
     eventtap = { new = function() return { start = function() end, stop = function() end } end,
                  event = { types = {} } },
     mouse = { absolutePosition = function() return { x = 0, y = 0 } end },
-    fs = { attributes = function() return nil end, mkdir = function() end },
+    fs = { attributes = function() return fileExists and {} or nil end, mkdir = function() end },
     execute = function() return "" end,
     alert = { show = function() end },
     shownWebviews = shownWebviews,
@@ -140,6 +146,46 @@ M.showWeekly(false)
 lastTask.cb(0, "WEEKLY /tmp/cache/weekly-2026-08-03.html")
 check(#hs.shownWebviews > before, "a good build still shows the recap")
 check(table.concat(logged, "\n") == "", "the happy path logs nothing")
+
+-- 4. the share button: the engine is asked for that day's image, the image
+-- itself lands on the clipboard, and a failure says so instead of going quiet
+io.write("\neod.lua share image\n")
+M.show(false)
+check(lastCallback ~= nil, "the panel registers a message handler")
+lastCallback({ body = { action = "share" } })
+local a = table.concat(lastTask.args or {}, " ")
+check(a:find("%-%-share") and a:find("%-%-date %d%d%d%d%-%d%d%-%d%d"), "share runs the engine with --date and --share")
+logged, pasted, lastJS = {}, {}, nil
+lastTask.cb(0, "SHARE /tmp/cache/2026-08-06-share.png\n", "")
+check(#pasted == 1 and pasted[1].path == "/tmp/cache/2026-08-06-share.png", "the PNG is put on the clipboard")
+check(lastJS and lastJS:find("2026%-08%-06%-share%.png"), "the toast names the file")
+logged, pasted = {}, {}
+lastCallback({ body = { action = "share" } })
+lastTask.cb(1, "", "EOD: no share image: the share image needs macOS")
+check(#pasted == 0, "a failed build copies nothing")
+check(table.concat(logged, "\n"):find("share image failed"), "a failed build is logged")
+check(lastJS and lastJS:find("No image"), "a failed build is toasted")
+
+-- one drawing at a time: a second press while the first runs only says so
+lastCallback({ body = { action = "share" } })
+local first = lastTask
+lastJS = nil
+lastCallback({ body = { action = "share" } })
+check(lastTask == first, "a second press does not spawn another engine")
+check(lastJS and lastJS:find("Already drawing"), "a second press is toasted")
+first.cb(0, "SHARE /tmp/cache/2026-08-06-share.png", "")
+lastCallback({ body = { action = "share" } })
+check(lastTask ~= first, "the guard clears once the first drawing is back")
+
+-- a PNG that cannot be loaded as an image is still a saved file, and says so
+imageLoads, fileExists, pasted, lastJS = false, true, {}, nil
+lastTask.cb(0, "SHARE /tmp/cache/2026-08-06-share.png", "")
+check(#pasted == 0 and lastJS and lastJS:find("Saved, not copied"), "an unloadable image is saved, not copied")
+lastCallback({ body = { action = "share" } })
+imageLoads, fileExists, lastJS = false, false, nil
+lastTask.cb(0, "SHARE /tmp/cache/2026-08-06-share.png", "")
+check(lastJS and lastJS:find("No image"), "a missing file is reported")
+imageLoads = true
 
 -- ── the Send button ───────────────────────────────────────────────────────────
 io.write("\neod.lua send button\n")

@@ -75,6 +75,9 @@ class TestSnapshot(TranscriptCase):
     def test_full_html_receipt(self):
         self._check("day-full.html", self.ex.to_html_full(self._fixed_day()))
 
+    def test_share_card(self):
+        self._check("day-share.html", self.ex.to_html_share(self._fixed_day()))
+
     def test_the_day_itself(self):
         """The parsed shape, before any rendering."""
         import json
