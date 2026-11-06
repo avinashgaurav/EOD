@@ -4,7 +4,7 @@ import json, os, glob, sys, html
 from datetime import datetime
 
 from .util import pretty_date
-from .config import CACHE, app_path, load_ollama_model
+from .config import CACHE, SEND_FILE, app_path, load_ollama_model, send_labels
 from .pipeline import build
 from .polish import OLLAMA_URL, _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
@@ -41,6 +41,7 @@ def main():
     repolish = False
     weekly = False
     show_payload = False
+    do_send = False
     args = sys.argv[1:]
     for i, a in enumerate(args):
         if a == "--date" and i + 1 < len(args):
@@ -53,6 +54,8 @@ def main():
             weekly = True
         elif a == "--show-polish-payload":
             show_payload = True
+        elif a == "--send":
+            do_send = True
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
@@ -66,6 +69,26 @@ def main():
         with open(wbase + ".txt", "w") as f:
             f.write(to_text_weekly(wd))
         print("WEEKLY " + wbase + ".html")
+        return
+
+    if do_send:
+        # The Send button. Imported here, not at the top, so the only module that
+        # opens a connection is never even loaded on an ordinary run. It posts
+        # what the card already shows and never runs the claude CLI.
+        from .send import card_data, send_day
+        try:
+            if os.stat(SEND_FILE).st_mode & 0o077:
+                sys.stderr.write("warning: send.txt is readable by other users; chmod 600 send.txt\n")
+        except OSError:
+            pass
+        sent, failed = send_day(card_data(date, build))
+        if failed:
+            msg = "; ".join(failed)
+            if sent:
+                msg = "Sent to %s, but %s" % (", ".join(sent), msg)
+            sys.stderr.write(msg + "\n")
+            sys.exit(1)
+        print("SENT " + ", ".join(sent))
         return
 
     data = build(date)
@@ -102,6 +125,17 @@ def main():
         except Exception:
             changed = True
 
+    # The Send button exists only while send.txt does. Adding or removing that
+    # file changes nothing in the day itself, so without this check the button
+    # would not appear (or go away) until some unrelated activity came in.
+    send_to = send_labels()
+    if not changed:
+        try:
+            with open(base + ".html") as fh:
+                changed = ("id='sendBtn'" in fh.read()) != bool(send_to)
+        except OSError:
+            changed = True
+
     if changed:
         # Written whole, then swapped in: the weekly reads this file, and a
         # half-written one would quietly drop that day's source failures.
@@ -109,7 +143,7 @@ def main():
             json.dump(data, f)
         os.replace(base + ".json.tmp", base + ".json")
         with open(base + ".html", "w") as f:
-            f.write(to_html(data))
+            f.write(to_html(data, send_to=send_to))
         with open(base + "-full.html", "w") as f:
             f.write(to_html_full(data))
         with open(base + ".txt", "w") as f:

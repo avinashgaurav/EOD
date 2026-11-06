@@ -51,7 +51,7 @@ top-right. (Already have an `init.lua`? Don't overwrite it; see INSTALL.md.)
 
 - [How it works](docs/how-it-works.md): where each section comes from, and the engine behind the widget
 - [Privacy](docs/privacy.md): requirements, permissions, and exactly what the optional AI step sends
-- [Configuration](docs/configuration.md): `exclude.txt`, `repos.txt`, `polish.off`, `ollama.txt`, `signature.txt`
+- [Configuration](docs/configuration.md): `exclude.txt`, `repos.txt`, `polish.off`, `ollama.txt`, `signature.txt`, `send.txt`
 - [Using EOD](docs/usage.md): features, controls and the `bin/eod` command line
 - [Adding a source](docs/plugins.md): one file in `~/.eod/sources/`, no fork
 - [Tests](docs/testing.md): the built-in test suite and the automatic checks that run on every change; each `claim:` marker in these docs has a test that must pass

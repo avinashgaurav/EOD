@@ -281,3 +281,22 @@ def to_markdown(data):
         L += ["- `%s` %s" % (c["repo"], c["subject"]) for c in data["commits"]]
         L.append("")
     return "\n".join(L).rstrip() + "\n"
+
+
+def to_standup(data, bullet="• "):
+    """The day's work as a standup message, for the Send button.
+
+    Work only: the highlights, or the per-project items when there are none.
+    Screen time and browsing stay on the Mac; a channel does not need them.
+    Returns None for a day with no work to report.
+    """
+    if data.get("highlights"):
+        items = list(data["highlights"])
+    else:
+        items = ["%s: %s" % (p["name"], it["text"])
+                 for p in data.get("projects") or [] for it in display_items(p)]
+    if not items:
+        return None
+    L = ["Daily update: %s" % pretty_date(data["date"]), ""]
+    L += [bullet + t for t in items]
+    return "\n".join(L) + "\n"

@@ -166,6 +166,63 @@ local function saveWeeklyEdits(items)
   M.showWeekly()   -- re-render (extract --weekly now honours the edited flag)
 end
 
+-- ── Send button: post the day to Slack / Teams / Linear ──────────────────────────
+-- extract.py --send does the posting (destinations live in send.txt, which this
+-- file never reads). The engine prints "SENT <names>" on success and one safe
+-- line on stderr on failure; either way the result is toasted on the receipt.
+local sending = false                          -- one send at a time; a double press is ignored
+local SEND_TIMEOUT = 90                        -- seconds before a hung send is killed
+
+local function jsString(s)
+  s = tostring(s or "")
+  s = s:gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", "\\n"):gsub("\r", ""):gsub("</", "<\\/")
+  return '"' .. s .. '"'
+end
+
+local function sendResult(msg)
+  if wv then wv:evaluateJavaScript("window.sendResult&&sendResult(" .. jsString(msg) .. ")") end
+end
+
+local function postUpdate(date)
+  if not date then return end
+  if sending then sendResult("Already sending"); return end
+  sending = true
+  local guard, timedOut
+  local t
+  t = hs.task.new(CFG.python, function(code, out, err)
+    -- A send the guard already killed and reported: a newer send may be in
+    -- flight by now, so touch nothing.
+    if timedOut then return end
+    if guard then guard:stop(); guard = nil end
+    sending = false
+    local msg
+    if code == 0 then
+      local names = (out or ""):match("SENT%s+([^\n]+)")
+      msg = "Sent to " .. (names or "chat") .. " ✓"
+    else
+      -- Only the last line: the engine's one safe summary. Anything above it
+      -- (a traceback) stays out of the Hammerspoon console.
+      local last
+      for line in tostring(err or ""):gmatch("[^\n]+") do last = line end
+      log("send failed (" .. tostring(code) .. "): " .. tostring(last))
+      msg = last or ("Send failed (exit " .. tostring(code) .. ")")
+    end
+    sendResult(msg)
+  end, { CFG.script, "--date", date, "--send" })
+  if not t then sending = false; log("could not spawn python to send"); return end
+  t:setEnvironment(CFG.env)
+  t:start()
+  guard = hs.timer.doAfter(SEND_TIMEOUT, function()
+    guard = nil
+    if not sending then return end
+    timedOut = true
+    sending = false
+    pcall(function() t:terminate() end)
+    log("send timed out after " .. SEND_TIMEOUT .. "s")
+    sendResult("Send timed out")
+  end)
+end
+
 -- ── clipboard / nav bridge (messages posted from the page's JS) ──────────────────
 -- Drag a borderless window by following the mouse (no native title bar to grab).
 local function startDrag(win)
@@ -208,6 +265,8 @@ local function onMessage(msg)
     rebuild(curDate, true, false, true)        -- force a fresh AI summary
   elseif action == "saveEdits" then
     saveEdits(b.items)
+  elseif action == "post" then
+    postUpdate(curDate)
   elseif action == "nav" then
     local delta = tonumber(b.delta) or 0
     -- shift curDate by delta days, but never past today

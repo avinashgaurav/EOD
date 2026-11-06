@@ -119,6 +119,58 @@ def _sig_html():
     return (" · <span class='sig'>%s</span>" % html.escape(SIG)) if SIG else ""
 
 
+# Where the receipt's Send button posts: a Slack or Teams incoming webhook, or a
+# comment on a Linear issue. One destination per line in send.txt next to this
+# script. It holds secrets (webhook URLs, an API key), so it is gitignored and
+# nothing in EOD ever prints it. No file means no button, and nothing leaves the
+# Mac this way. Read on every call, so adding the file needs no restart.
+#
+#   slack  https://hooks.slack.com/services/...
+#   teams  https://example.webhook.office.com/...
+#   linear lin_api_...  ENG-123
+SEND_FILE = app_path("send.txt")
+
+
+SEND_LABELS = {"slack": "Slack", "teams": "Teams", "linear": "Linear"}
+
+
+def load_send_targets():
+    """Every line of send.txt, parsed. A line that does not parse is kept as
+    {'bad': line_number} so the send can say which line to fix, without ever
+    echoing what is on it."""
+    try:
+        with open(SEND_FILE) as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return []
+    out = []
+    for n, line in enumerate(lines, 1):
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        kind = parts[0].lower()
+        if kind in ("slack", "teams") and len(parts) == 2:
+            out.append({"kind": kind, "url": parts[1]})
+        elif kind == "linear" and len(parts) == 3:
+            out.append({"kind": kind, "key": parts[1], "issue": parts[2]})
+        else:
+            out.append({"kind": None, "bad": n})
+    return out
+
+
+def send_labels():
+    """Display names of the configured destinations, for the button's tooltip.
+    A send.txt with only broken lines still shows the button, so pressing it
+    can say what is wrong rather than the button silently not being there."""
+    seen = []
+    for t in load_send_targets():
+        name = SEND_LABELS.get(t["kind"], "send.txt")
+        if name not in seen:
+            seen.append(name)
+    return seen
+
+
 # ── extra sources: app usage + browser history (all local) ─────────────────────
 APP_MAX         = 30     # most apps to retain (full card lists all of these)
 

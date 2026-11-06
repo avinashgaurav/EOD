@@ -27,6 +27,7 @@ For EOD the Claude Code CLI is the production path, so these runs used the real 
 | Re-summarize | **⟳** (on the weekly recap this re-polishes, discarding hand-edits) |
 | Previous / next day | **◀ ▶** |
 | Refresh | **↻** |
+| Post to Slack / Teams / Linear | **↗ Send**, twice (shown once you set up `send.txt`, see [Configuration](configuration.md)) |
 
 ## Command line
 

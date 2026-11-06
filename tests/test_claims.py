@@ -16,6 +16,7 @@ Add a claim => add a test here. Delete a claim => delete its test.
 
 import json
 import os
+import re
 import shutil
 import tempfile
 import types
@@ -56,30 +57,76 @@ register(Linear())
 
 BROKEN = "import a_module_that_certainly_does_not_exist\n"
 
-# Files allowed to import a network module, and which ones. Everything else in
-# eod/ may import none of NETWORK_MODULES, anywhere in the file.
-NETWORK_ALLOWED = {"eod/polish.py": {"urllib.request", "urllib.error"}}
+# The only places the engine may open a connection, and with what: polish.py
+# for the loopback-only Ollama call, send.py for the Send button. Everything
+# else in eod/ may import none of NETWORK_MODULES, anywhere in the file.
+NETWORK_ALLOWED = {
+    "eod/polish.py": {"urllib.request", "urllib.error"},
+    "eod/send.py": {"urllib.request", "urllib.error"},
+}
 
-NETWORK_MODULES = ("urllib.request", "urllib.error", "http.client", "socket", "ssl",
-                   "smtplib", "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio")
+NETWORK_MODULES = {"urllib.request", "urllib.error", "http.client", "socket", "ssl",
+                   "smtplib", "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio"}
 
 
-def _network_imports(node):
-    """The network modules an Import/ImportFrom node pulls in, e.g. both
-    `import urllib.request` and `from urllib import request` give urllib.request."""
+def _is_network(mod):
+    return any(mod == m or mod.startswith(m + ".") for m in NETWORK_MODULES) \
+        or mod.split(".")[0] in {"urllib3", "requests", "httpx", "aiohttp", "asyncio"}
+
+
+def _imports(tree):
+    """(module, node) for every import anywhere in the tree. `from urllib
+    import request` is reported as urllib.request, which is what it loads."""
     import ast
-    if isinstance(node, ast.Import):
-        names = [a.name for a in node.names]
-    elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-        names = [node.module] + [node.module + "." + a.name for a in node.names]
-    else:
-        return set()
-    hits = set()
-    for n in names:
-        for m in NETWORK_MODULES:
-            if n == m or n.startswith(m + "."):
-                hits.add(m)
-    return hits
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                yield a.name, node
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            yield node.module, node
+            if not _is_network(node.module):      # `from urllib import request`
+                for a in node.names:
+                    yield node.module + "." + a.name, node
+
+
+def _send_imports(tree, rel):
+    """(node, inside_a_function) for every way of loading eod.send: relative
+    or absolute import statements, and importlib / __import__ calls."""
+    import ast
+    parents = {}
+    for p in ast.walk(tree):
+        for c in ast.iter_child_nodes(p):
+            parents[c] = p
+
+    def in_func(n):
+        while n in parents:
+            n = parents[n]
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                return True
+        return False
+
+    in_eod = rel.startswith("eod/")
+    for node in ast.walk(tree):
+        hit = False
+        if isinstance(node, ast.Import):
+            hit = any(a.name == "eod.send" or a.name.startswith("eod.send.") for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if node.level == 0:
+                hit = mod == "eod.send" or (mod == "eod" and any(a.name == "send" for a in node.names))
+            elif in_eod:
+                # From inside the package, ".send" (or "..send" from a subpackage)
+                # and "from . import send" all reach it.
+                pkg_root = node.level == (rel.count("/"))
+                hit = pkg_root and (mod == "send" or (mod == "" and any(a.name == "send" for a in node.names)))
+        elif isinstance(node, ast.Call):
+            f = node.func
+            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+            if name in ("import_module", "__import__"):
+                hit = any(isinstance(a, ast.Constant) and isinstance(a.value, str)
+                          and re.search(r"(^|\.)send$", a.value) for a in node.args)
+        if hit:
+            yield node, in_func(node)
 
 
 class FakeRun:
@@ -255,25 +302,45 @@ class TestPrivacyClaims(ClaimCase):
 
     def test_the_engine_makes_no_network_calls(self):
         """README: 'no telemetry', 'nothing leaves your Mac'. The only outbound
-        path is the claude CLI subprocess, which polish.off disables. The one
-        HTTP client is polish.py's call to Ollama, which is held to loopback at
-        runtime by _open_local (tested in test_polish.py)."""
-        import ast
-        import glob
-        from urllib.parse import urlparse
+        paths are the claude CLI subprocess, which polish.off disables; polish.py's
+        call to Ollama, held to loopback at runtime by _open_local (tested in
+        test_polish.py); and eod/send.py, the Send button, which only the --send
+        branch imports.
+
+        An AST walk over every node, not a text search: an import inside a
+        function, an aliased one or an importlib call all count."""
+        import ast, glob, re
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        for path in sorted(glob.glob(os.path.join(root, "eod", "**", "*.py"), recursive=True)):
+        files = glob.glob(os.path.join(root, "eod", "**", "*.py"), recursive=True)
+        files += [os.path.join(root, "extract.py"), os.path.join(root, "bin", "eod")]
+        for path in files:
             rel = os.path.relpath(path, root).replace(os.sep, "/")
+            with open(path) as f:
+                tree = ast.parse(f.read(), path)
             allowed = NETWORK_ALLOWED.get(rel, set())
-            with open(path, encoding="utf-8") as f:
-                tree = ast.parse(f.read(), rel)
-            for node in ast.walk(tree):
-                for mod in _network_imports(node):
-                    self.assertIn(mod, allowed, "%s imports %s, an outbound path (line %s)"
+            for mod, node in _imports(tree):
+                if _is_network(mod):
+                    self.assertIn(mod, allowed, "%s imports %s, an outbound path (line %d)"
                                   % (rel, mod, node.lineno))
-        # The one allowed file: exactly one opener, used from exactly one place.
-        polish_path = os.path.join(root, "eod", "polish.py")
-        with open(polish_path, encoding="utf-8") as f:
+            for node, in_func in _send_imports(tree, rel):
+                self.assertTrue(rel == "eod/cli.py" and in_func,
+                                "%s imports eod.send at line %d; only a function in "
+                                "eod/cli.py (the --send branch) may" % (rel, node.lineno))
+
+        # And the module that may connect only connects where it is told: the
+        # one URL it knows is Linear's API (plus the Adaptive Card schema id,
+        # which is a label inside the payload, never fetched).
+        with open(os.path.join(root, "eod", "send.py")) as f:
+            tree = ast.parse(f.read())
+        urls = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)
+                and isinstance(n.value, str) and re.search(r"https?://[A-Za-z0-9]", n.value)}
+        self.assertEqual(urls, {"https://api.linear.app/graphql",
+                                "http://adaptivecards.io/schemas/adaptive-card.json"})
+
+
+        # polish.py: exactly one opener, used from exactly one place, on loopback.
+        from urllib.parse import urlparse
+        with open(os.path.join(root, "eod", "polish.py"), encoding="utf-8") as f:
             tree = ast.parse(f.read())
         calls = [n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", None)
                  for n in ast.walk(tree) if isinstance(n, ast.Call)]
@@ -281,6 +348,54 @@ class TestPrivacyClaims(ClaimCase):
         self.assertEqual(calls.count("_open_local"), 1, "only _run_ollama should open a URL")
         polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
         self.assertEqual(urlparse(polish_mod.OLLAMA_URL).hostname, "127.0.0.1")
+
+    CLAIM_send_only_on_press = "send-only-on-press"
+
+    def test_send_posts_only_when_pressed_and_only_work_lines(self):
+        """docs/privacy.md: building and refreshing never sends; the press does,
+        with the WORK lines only."""
+        import contextlib, io, json, sys
+        calls = []
+
+        class Reply:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b"ok"
+        self.ex.urlopen = lambda req, timeout=None: (calls.append(req), Reply())[1]
+        self.ex.SEND_FILE = os.path.join(self.tmp, "send.txt")
+        with open(self.ex.SEND_FILE, "w") as f:
+            f.write("slack https://hooks.slack.com/services/x\n")
+        self.a_normal_day()
+
+        def run(*extra):
+            old = sys.argv
+            sys.argv = ["extract.py", "--date", DAY] + list(extra)
+            try:
+                with contextlib.redirect_stdout(io.StringIO()), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    self.ex.main()
+            except SystemExit:
+                pass
+            finally:
+                sys.argv = old
+
+        run(); run(); run("--repolish")
+        self.assertEqual(calls, [], "building the receipt must never post")
+        run("--send")
+        self.assertEqual(len(calls), 1)
+        text = json.loads(calls[0].data.decode("utf-8"))["text"]
+        self.assertIn("Fixed the rounding bug", text)
+        self.assertNotIn("my secret prompt", text)
+
+    CLAIM_send_txt_button = "send-txt-button"
+
+    def test_no_send_txt_no_button(self):
+        """docs/configuration.md: 'No file, no button.'"""
+        _, data = self.a_normal_day()
+        self.assertNotIn("sendBtn", self.ex.to_html(data))
+        self.assertIn("id='sendBtn'", self.ex.to_html(data, send_to=["Slack"]))
+        self.ex.SEND_FILE = os.path.join(self.tmp, "absent.txt")
+        self.assertEqual(self.ex.send_labels(), [])
 
     CLAIM_ollama_stays_local = "ollama-stays-local"
 
