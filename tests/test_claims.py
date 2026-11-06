@@ -15,6 +15,7 @@ Add a claim => add a test here. Delete a claim => delete its test.
 """
 
 import os
+import re
 import shutil
 import tempfile
 import types
@@ -54,6 +55,74 @@ register(Linear())
 '''
 
 BROKEN = "import a_module_that_certainly_does_not_exist\n"
+
+
+# The one place the engine may open a connection, and with what. Shared with
+# the #27 branch, which extends this same test.
+NETWORK_ALLOWED = {"eod/send.py": {"urllib.request", "urllib.error"}}
+
+NETWORK_MODULES = {"urllib.request", "http.client", "socket", "ssl", "smtplib",
+                   "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio"}
+
+
+def _is_network(mod):
+    return any(mod == m or mod.startswith(m + ".") for m in NETWORK_MODULES) \
+        or mod.split(".")[0] in {"urllib3", "requests", "httpx", "aiohttp", "asyncio"}
+
+
+def _imports(tree):
+    """(module, node) for every import anywhere in the tree. `from urllib
+    import request` is reported as urllib.request, which is what it loads."""
+    import ast
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                yield a.name, node
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            yield node.module, node
+            if not _is_network(node.module):      # `from urllib import request`
+                for a in node.names:
+                    yield node.module + "." + a.name, node
+
+
+def _send_imports(tree, rel):
+    """(node, inside_a_function) for every way of loading eod.send: relative
+    or absolute import statements, and importlib / __import__ calls."""
+    import ast
+    parents = {}
+    for p in ast.walk(tree):
+        for c in ast.iter_child_nodes(p):
+            parents[c] = p
+
+    def in_func(n):
+        while n in parents:
+            n = parents[n]
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                return True
+        return False
+
+    in_eod = rel.startswith("eod/")
+    for node in ast.walk(tree):
+        hit = False
+        if isinstance(node, ast.Import):
+            hit = any(a.name == "eod.send" or a.name.startswith("eod.send.") for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if node.level == 0:
+                hit = mod == "eod.send" or (mod == "eod" and any(a.name == "send" for a in node.names))
+            elif in_eod:
+                # From inside the package, ".send" (or "..send" from a subpackage)
+                # and "from . import send" all reach it.
+                pkg_root = node.level == (rel.count("/"))
+                hit = pkg_root and (mod == "send" or (mod == "" and any(a.name == "send" for a in node.names)))
+        elif isinstance(node, ast.Call):
+            f = node.func
+            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+            if name in ("import_module", "__import__"):
+                hit = any(isinstance(a, ast.Constant) and isinstance(a.value, str)
+                          and re.search(r"(^|\.)send$", a.value) for a in node.args)
+        if hit:
+            yield node, in_func(node)
 
 
 class FakeRun:
@@ -230,23 +299,37 @@ class TestPrivacyClaims(ClaimCase):
     def test_the_engine_makes_no_network_calls(self):
         """README: 'no telemetry', 'nothing leaves your Mac'. The only outbound
         paths are the claude CLI subprocess, which polish.off disables, and
-        eod/send.py, the Send button, which nothing imports at load time."""
-        import ast, glob
-        pkg = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eod")
-        for p in glob.glob(os.path.join(pkg, "**", "*.py"), recursive=True):
-            if os.path.relpath(p, pkg) == "send.py":
-                continue
-            with open(p) as f:
-                src = f.read()
-            for banned in ("import requests", "import urllib.request", "from urllib.request",
-                           "urlopen(", "http.client", "import socket"):
-                self.assertNotIn(banned, src, "%s in %s would be an outbound path" % (banned, p))
-            # send.py may only be imported inside a function (the --send branch),
-            # never at module level where every ordinary run would load it.
-            for node in ast.parse(src).body:
-                if isinstance(node, ast.ImportFrom):
-                    self.assertNotIn("send", (node.module or "").split("."),
-                                     "%s imports the send module at load time" % p)
+        eod/send.py, the Send button, which only the --send branch imports.
+
+        An AST walk over every node, not a text search: an import inside a
+        function, an aliased one or an importlib call all count."""
+        import ast, glob, re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        files = glob.glob(os.path.join(root, "eod", "**", "*.py"), recursive=True)
+        files += [os.path.join(root, "extract.py"), os.path.join(root, "bin", "eod")]
+        for path in files:
+            rel = os.path.relpath(path, root).replace(os.sep, "/")
+            with open(path) as f:
+                tree = ast.parse(f.read(), path)
+            allowed = NETWORK_ALLOWED.get(rel, set())
+            for mod, node in _imports(tree):
+                if _is_network(mod):
+                    self.assertIn(mod, allowed, "%s imports %s, an outbound path (line %d)"
+                                  % (rel, mod, node.lineno))
+            for node, in_func in _send_imports(tree, rel):
+                self.assertTrue(rel == "eod/cli.py" and in_func,
+                                "%s imports eod.send at line %d; only a function in "
+                                "eod/cli.py (the --send branch) may" % (rel, node.lineno))
+
+        # And the module that may connect only connects where it is told: the
+        # one URL it knows is Linear's API (plus the Adaptive Card schema id,
+        # which is a label inside the payload, never fetched).
+        with open(os.path.join(root, "eod", "send.py")) as f:
+            tree = ast.parse(f.read())
+        urls = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)
+                and isinstance(n.value, str) and re.search(r"https?://[A-Za-z0-9]", n.value)}
+        self.assertEqual(urls, {"https://api.linear.app/graphql",
+                                "http://adaptivecards.io/schemas/adaptive-card.json"})
 
     CLAIM_send_only_on_press = "send-only-on-press"
 

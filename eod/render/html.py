@@ -202,6 +202,7 @@ window.playOut=function(){var h=document.documentElement;h.classList.remove('ani
 # Added to the page only when send.txt exists, so a receipt without it is
 # byte-for-byte what it always was. Send posts to a shared channel, so the first
 # press only arms the button; the second, within a few seconds, sends.
+# The button then stays disabled until eod.lua reports back through sendResult.
 SEND_JS = """
 function postUpdate(b){
   var l=document.getElementById('workList');
@@ -211,8 +212,9 @@ function postUpdate(b){
     clearTimeout(window._st);window._st=setTimeout(function(){b.setAttribute('data-armed','0');b.textContent='↗ Send'},3000);
     return}
   clearTimeout(window._st);b.setAttribute('data-armed','0');b.textContent='↗ Send';
-  if(send({action:'post'}))toast('Sending…');else toast('Send works from the widget')}
-function sendResult(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+  if(send({action:'post'})){b.disabled=true;toast('Sending…')}else toast('Send works from the widget')}
+function sendResult(t){var b=document.getElementById('sendBtn');if(b)b.disabled=false;
+var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
 clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},4000)}
 """
 

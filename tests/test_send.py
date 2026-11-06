@@ -13,7 +13,7 @@ from harness import TranscriptCase, title_line, user_line
 
 DAY = "2026-08-06"
 SLACK = "https://hooks.slack.com/services/T000/B000/SECRETslack"
-TEAMS = "https://example.webhook.office.com/webhookb2/SECRETteams"
+TEAMS = "https://prod-00.westus.logic.azure.com:443/workflows/SECRETteams/triggers/manual/paths/invoke?sig=x"
 LINEAR_KEY = "lin_api_SECRETkey"
 
 
@@ -53,6 +53,7 @@ class SendCase(TranscriptCase):
     def configure(self, *lines):
         with open(self.ex.SEND_FILE, "w") as f:
             f.write("\n".join(lines) + "\n")
+        os.chmod(self.ex.SEND_FILE, 0o600)
 
     def a_day(self):
         self.write_session("-Users-me-work-alpha", "s.jsonl", [
@@ -112,26 +113,49 @@ class TestPayloads(SendCase):
         self.assertTrue(c["json"]["text"].startswith("Daily update: "))
         self.assertIsNotNone(c["timeout"])
 
-    def test_teams_gets_a_markdown_list(self):
+    def test_teams_gets_an_adaptive_card_for_a_workflows_webhook(self):
         self.configure("teams " + TEAMS)
-        self.ex.send_day(self.a_day())
+        sent, failed = self.ex.send_day(self.a_day())
+        self.assertEqual((sent, failed), (["Teams"], []))
         c, = self.calls
         self.assertEqual(c["url"], TEAMS)
-        self.assertEqual(list(c["json"]), ["text"])
-        self.assertIn("\n- Reviewed PR 501", c["json"]["text"])
+        self.assertEqual(c["json"]["type"], "message")
+        att, = c["json"]["attachments"]
+        self.assertEqual(att["contentType"], "application/vnd.microsoft.card.adaptive")
+        card = att["content"]
+        self.assertEqual((card["type"], card["version"]), ("AdaptiveCard", "1.4"))
+        self.assertEqual(card["$schema"], "http://adaptivecards.io/schemas/adaptive-card.json")
+        block, = card["body"]
+        self.assertEqual((block["type"], block["wrap"]), ("TextBlock", True))
+        # A TextBlock folds single newlines, so every line is its own paragraph.
+        self.assertIn("\n\n- Fixed the <rounding> bug & shipped it\n\n- Reviewed PR 501",
+                      block["text"])
 
-    def test_linear_gets_a_comment_create_mutation(self):
+    def test_linear_resolves_the_identifier_then_comments_on_the_uuid(self):
         self.configure("linear %s ENG-123" % LINEAR_KEY)
-        self.replies = ['{"data": {"commentCreate": {"success": true}}}']
+        self.replies = ['{"data": {"issue": {"id": "uuid-0001"}}}',
+                        '{"data": {"commentCreate": {"success": true}}}']
         sent, failed = self.ex.send_day(self.a_day())
         self.assertEqual((sent, failed), (["Linear"], []))
-        c, = self.calls
-        self.assertEqual(c["url"], "https://api.linear.app/graphql")
-        self.assertEqual(c["headers"]["authorization"], LINEAR_KEY)
-        self.assertIn("commentCreate", c["json"]["query"])
-        inp = c["json"]["variables"]["input"]
-        self.assertEqual(inp["issueId"], "ENG-123")
+        look, post = self.calls
+        for c in (look, post):
+            self.assertEqual(c["url"], "https://api.linear.app/graphql")
+            # A personal API key goes in bare, with no "Bearer".
+            self.assertEqual(c["headers"]["authorization"], LINEAR_KEY)
+        self.assertIn("issue(id: $id)", look["json"]["query"])
+        self.assertEqual(look["json"]["variables"], {"id": "ENG-123"})
+        self.assertIn("commentCreate", post["json"]["query"])
+        inp = post["json"]["variables"]["input"]
+        self.assertEqual(inp["issueId"], "uuid-0001")
         self.assertIn("- Fixed the <rounding> bug & shipped it", inp["body"])
+
+    def test_linear_unknown_issue_posts_nothing(self):
+        self.configure("linear %s ENG-999" % LINEAR_KEY)
+        self.replies = ['{"data": {"issue": null}}']
+        sent, failed = self.ex.send_day(self.a_day())
+        self.assertEqual(sent, [])
+        self.assertEqual(failed, ["Linear: issue ENG-999 not found"])
+        self.assertEqual(len(self.calls), 1)
 
     def test_only_work_lines_are_sent(self):
         """Screen time and browsing stay on the Mac."""
@@ -176,11 +200,58 @@ class TestFailures(SendCase):
         self.assertEqual(failed, ["Slack: HTTP 404 no_service"])
         self.assertEqual(len(self.calls), 2)
 
-    def test_network_error_is_reported(self):
+    def test_network_error_is_reported_by_type(self):
         self.configure("teams " + TEAMS)
-        self.replies = [URLError("nodename nor servname provided")]
+        self.replies = [URLError(OSError("nodename nor servname provided"))]
         _, failed = self.ex.send_day(self.a_day())
-        self.assertEqual(failed, ["Teams: could not connect (nodename nor servname provided)"])
+        self.assertEqual(failed, ["Teams: could not connect (OSError)"])
+
+    def test_a_redirect_is_reported_not_followed(self):
+        self.configure("slack " + SLACK)
+        self.replies = [HTTPError(SLACK, 302, "Found", {}, io.BytesIO(b""))]
+        _, failed = self.ex.send_day(self.a_day())
+        self.assertEqual(failed, ["Slack: redirected (HTTP 302), not followed"])
+
+    def test_the_real_opener_never_follows_redirects(self):
+        h = self.ex._NoRedirect()
+        self.assertIsNone(h.redirect_request(None, None, 302, "Found", {}, "https://x.example/"))
+        self.assertTrue(any(isinstance(x, self.ex._NoRedirect) for x in self.ex._OPENER.handlers))
+        self.assertFalse(any(type(x).__name__ == "HTTPRedirectHandler"
+                             for x in self.ex._OPENER.handlers))
+
+    def test_errors_that_quote_the_url_never_leak_it(self):
+        """urllib's own messages quote the URL. Whatever it raises, the secret
+        must not reach the reply, and the next destination is still tried."""
+        import http.client
+        bad = "https://hooks.slack.com/services/SECRET\x7fctl"
+        self.configure("slack " + bad, "slack " + SLACK, "teams " + TEAMS,
+                       "linear %s ENG-1" % LINEAR_KEY)
+        self.replies = [http.client.InvalidURL("URL can't contain control characters. %r" % bad),
+                        ValueError("unknown url type: %r" % SLACK),
+                        RuntimeError("boom at " + TEAMS),
+                        http.client.RemoteDisconnected("closed " + LINEAR_KEY)]
+        sent, failed = self.ex.send_day(self.a_day())
+        self.assertEqual(sent, [])
+        self.assertEqual(failed, ["Slack: unexpected error (InvalidURL)",
+                                  "Slack: not a valid URL",
+                                  "Teams: unexpected error (RuntimeError)",
+                                  "Linear: network error (RemoteDisconnected)"])
+        self.assertEqual(len(self.calls), 4)
+        for secret in (bad, "SECRET", SLACK, TEAMS, LINEAR_KEY):
+            self.assertNotIn(secret, " ".join(failed))
+
+    def test_an_exception_outside_post_is_caught_by_type(self):
+        self.configure("slack " + SLACK, "teams " + TEAMS)
+        real = self.ex.payload_for
+
+        def boom(target, data):
+            if target["kind"] == "slack":
+                raise KeyError(SLACK)
+            return real(target, data)
+        self.ex.payload_for = boom
+        sent, failed = self.ex.send_day(self.a_day())
+        self.assertEqual(sent, ["Teams"])
+        self.assertEqual(failed, ["Slack: unexpected error (KeyError)"])
 
     def test_linear_refusal_inside_a_200_is_a_failure(self):
         self.configure("linear %s ENG-404" % LINEAR_KEY)
@@ -199,11 +270,16 @@ class TestFailures(SendCase):
     def test_plain_http_webhook_is_refused_before_any_connection(self):
         self.configure("slack http://hooks.slack.com/services/x")
         _, failed = self.ex.send_day(self.a_day())
-        self.assertIn("https://", failed[0])
+        self.assertIn("https", failed[0])
         self.assertEqual(self.calls, [])
 
 
 class TestCli(SendCase):
+    @staticmethod
+    def snap(path):
+        with open(path) as f:
+            return os.stat(path).st_mtime_ns, f.read()
+
     def test_send_success_prints_sent_and_exits_zero(self):
         self.a_day()
         self.configure("slack " + SLACK, "teams " + TEAMS)
@@ -215,10 +291,11 @@ class TestCli(SendCase):
     def test_send_failure_exits_nonzero_and_never_prints_a_secret(self):
         self.a_day()
         self.configure("slack " + SLACK, "linear %s ENG-1" % LINEAR_KEY)
-        self.replies = ["ok", HTTPError(LINEAR_KEY, 401, "Unauthorized", {}, io.BytesIO(b""))]
+        self.replies = ["ok", HTTPError("https://api.linear.app/graphql", 401, "Unauthorized",
+                                        {}, io.BytesIO(LINEAR_KEY.encode()))]
         code, out, err = self.run_cli("--send")
         self.assertEqual(code, 1)
-        self.assertEqual(err.strip(), "Sent to Slack, but Linear: HTTP 401")
+        self.assertEqual(err.strip(), "Sent to Slack, but Linear: HTTP 401 [hidden]")
         for secret in (SLACK, LINEAR_KEY):
             self.assertNotIn(secret, out + err)
 
@@ -234,6 +311,64 @@ class TestCli(SendCase):
         self.configure("slack " + SLACK)
         self.run_cli("--send")
         self.assertFalse(os.path.exists(os.path.join(self.ex.CACHE, DAY + ".html")))
+
+
+    def test_send_posts_the_card_and_never_runs_the_claude_cli(self):
+        """What the card shows, not a fresh summary: no claude call, no rewrite
+        of the polish cache, hand edits included."""
+        self.a_day()
+        claude = []
+        self.ex._claude_bin = lambda: "/usr/local/bin/claude"
+        self.ex._run_claude = lambda *a, **k: (claude.append(1), None)[1]
+        with open(os.path.join(self.ex.CACHE, DAY + ".json"), "w") as f:
+            json.dump(dict(self.ex.build(DAY), highlights=["Line on the card"]), f)
+        pol = os.path.join(self.ex.CACHE, "polish-%s.json" % DAY)
+        with open(pol, "w") as f:
+            json.dump({"key": "stale", "highlights": ["Older summary"]}, f)
+        before = self.snap(pol)
+        self.configure("slack " + SLACK)
+
+        code, out, _ = self.run_cli("--send")
+        self.assertEqual(code, 0)
+        self.assertIn("• Line on the card", self.calls[-1]["json"]["text"])
+        self.assertNotIn("Older summary", self.calls[-1]["json"]["text"])
+
+        with open(pol, "w") as f:      # saved hand edits win, even before the card re-renders
+            json.dump({"key": "edited", "highlights": ["My edited line"], "edited": True}, f)
+        before = self.snap(pol)
+        self.run_cli("--send")
+        self.assertIn("• My edited line", self.calls[-1]["json"]["text"])
+        self.assertEqual(claude, [], "--send must never run the claude CLI")
+        self.assertEqual(self.snap(pol), before)
+
+    def test_without_a_cached_card_the_cached_summary_is_used(self):
+        self.a_day()
+        with open(os.path.join(self.ex.CACHE, "polish-%s.json" % DAY), "w") as f:
+            json.dump({"key": "k", "highlights": ["Cached summary line"]}, f)
+        self.ex._run_claude = lambda *a, **k: self.fail("claude CLI called")
+        self.configure("slack " + SLACK)
+        self.run_cli("--send")
+        self.assertIn("• Cached summary line", self.calls[0]["json"]["text"])
+
+    def test_a_secret_in_any_exception_never_reaches_the_output(self):
+        self.a_day()
+        self.configure("slack " + SLACK, "linear %s ENG-1" % LINEAR_KEY)
+        self.replies = [ValueError("bad " + SLACK), RuntimeError("bad " + LINEAR_KEY)]
+        code, out, err = self.run_cli("--send")
+        self.assertEqual(code, 1)
+        for secret in (SLACK, LINEAR_KEY, "SECRET"):
+            self.assertNotIn(secret, out + err)
+
+    def test_a_readable_send_txt_draws_a_one_line_warning(self):
+        self.a_day()
+        self.configure("slack " + SLACK)
+        os.chmod(self.ex.SEND_FILE, 0o644)
+        code, out, err = self.run_cli("--send")
+        self.assertEqual(code, 0)
+        self.assertEqual(err, "warning: send.txt is readable by other users; chmod 600 send.txt\n")
+        os.chmod(self.ex.SEND_FILE, 0o600)
+        _, _, err = self.run_cli("--send")
+        self.assertEqual(err, "")
 
 
 class TestButton(SendCase):

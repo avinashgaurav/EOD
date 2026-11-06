@@ -4,7 +4,7 @@ import json, os, glob, sys, html
 from datetime import datetime
 
 from .util import pretty_date
-from .config import CACHE, app_path, send_labels
+from .config import CACHE, SEND_FILE, app_path, send_labels
 from .pipeline import build
 from .polish import _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
@@ -71,6 +71,26 @@ def main():
         print("WEEKLY " + wbase + ".html")
         return
 
+    if do_send:
+        # The Send button. Imported here, not at the top, so the only module that
+        # opens a connection is never even loaded on an ordinary run. It posts
+        # what the card already shows and never runs the claude CLI.
+        from .send import card_data, send_day
+        try:
+            if os.stat(SEND_FILE).st_mode & 0o077:
+                sys.stderr.write("warning: send.txt is readable by other users; chmod 600 send.txt\n")
+        except OSError:
+            pass
+        sent, failed = send_day(card_data(date, build))
+        if failed:
+            msg = "; ".join(failed)
+            if sent:
+                msg = "Sent to %s, but %s" % (", ".join(sent), msg)
+            sys.stderr.write(msg + "\n")
+            sys.exit(1)
+        print("SENT " + ", ".join(sent))
+        return
+
     data = build(date)
 
     if show_payload:
@@ -85,21 +105,6 @@ def main():
             % (date, "polish.off is present, so the step is already disabled." if off
                else "The step is currently ENABLED.", len(payload)))
         print(payload)
-        return
-
-    if do_send:
-        # The Send button. Imported here, not at the top, so the only module that
-        # opens a connection is never even loaded on an ordinary run.
-        from .send import send_day
-        polish(data)                # the cached summary, i.e. what the receipt shows
-        sent, failed = send_day(data)
-        if failed:
-            msg = "; ".join(failed)
-            if sent:
-                msg = "Sent to %s, but %s" % (", ".join(sent), msg)
-            sys.stderr.write(msg + "\n")
-            sys.exit(1)
-        print("SENT " + ", ".join(sent))
         return
 
     polish(data, force=repolish)    # AI-rewrite items into manager bullets (cached; force = Regenerate)

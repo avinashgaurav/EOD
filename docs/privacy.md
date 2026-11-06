@@ -23,11 +23,13 @@ fully-offline cleanup.
 
 The second is the **↗ Send** button, and it sends only when you press it. It <!--claim:send-only-on-press-->
 exists only if you create a `send.txt` (see [Configuration](configuration.md)),
-and the first press only arms it; the second posts. What goes is the WORK lines
-on the card, to the Slack or Teams webhook or Linear issue you listed, and
-nothing else: no screen time, no browsing, no prompts, nothing from the full
-bill. Building and refreshing the receipt never sends. Your webhook URLs and
-Linear key stay in that file; EOD never prints or logs them.
+and the first press only arms it; the second posts. What goes is the same
+bullets shown on the card's WORK section, to the Slack or Teams webhook or
+Linear issue you listed, and nothing else: no screen time, no browsing,
+nothing from the full bill. It posts the card as it is and never asks the
+`claude` CLI for anything. Building and refreshing the receipt never sends.
+Your webhook URLs and Linear key stay in that file; EOD never prints or logs
+them.
 
 <details>
 <summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>

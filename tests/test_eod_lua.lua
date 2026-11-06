@@ -29,6 +29,7 @@ local lastTask
 local logged = {}
 local jsRun = {}                                 -- every evaluateJavaScript call, in order
 local msgCallback                                -- the page->Lua bridge eod.lua registers
+local timers = {}                                -- every hs.timer.doAfter, so a test can fire one
 
 local function stubHs()
   local shownWebviews = {}
@@ -50,9 +51,11 @@ local function stubHs()
   _G.hs = {
     task = {
       new = function(_bin, cb, args)
-        lastTask = { cb = cb, started = false, args = args }
+        lastTask = { cb = cb, started = false, args = args, terminated = false }
+        local task = lastTask
         return {
           setEnvironment = function() end,
+          terminate = function() task.terminated = true end,
           start = function() lastTask.started = true; return true end,
         }
       end,
@@ -72,7 +75,11 @@ local function stubHs()
     screen = { primaryScreen = function()
       return { frame = function() return { x = 0, y = 0, w = 1920, h = 1080 } end }
     end },
-    timer = { doAfter = function() return { stop = function() end } end,
+    timer = { doAfter = function(secs, fn)
+                local tm = { secs = secs, fn = fn, stopped = false }
+                timers[#timers + 1] = tm
+                return { stop = function() tm.stopped = true end }
+              end,
               doEvery = function() return { stop = function() end } end,
               secondsSinceLastInput = function() return 0 end },
     pasteboard = { setContents = function() end },
@@ -152,12 +159,20 @@ local sendTask = lastTask
 check(sendTask and hasArg(sendTask.args, "--send"), "a post message runs the engine with --send")
 check(sendTask and hasArg(sendTask.args, "--date"), "it sends the day on screen, not a guess")
 
--- 5. a second press while the first is in flight does not post twice
+-- 5. a second press while the first is in flight does not post twice, and says so
+jsRun = {}
 msgCallback({ body = { action = "post" } })
 check(lastTask == sendTask, "a double press does not start a second send")
+check(table.concat(jsRun, "\n"):find("Already sending", 1, true), "a double press is told why")
+local function guardFor()
+  for i = #timers, 1, -1 do if timers[i].secs == 90 then return timers[i] end end
+end
+local g1 = guardFor()
+check(g1 ~= nil, "a send arms a 90s guard")
 
 -- 6. success is toasted with the destinations the engine named
 sendTask.cb(0, "SENT Slack, Linear\n", "")
+check(g1 and g1.stopped, "a finished send disarms its guard")
 local js = table.concat(jsRun, "\n")
 check(js:find("sendResult", 1, true) and js:find("Sent to Slack, Linear", 1, true),
       "success toasts the destinations")
@@ -166,10 +181,29 @@ check(js:find("sendResult", 1, true) and js:find("Sent to Slack, Linear", 1, tru
 jsRun = {}; logged = {}
 msgCallback({ body = { action = "post" } })
 check(lastTask ~= sendTask, "the next press sends again once the first is done")
-lastTask.cb(1, "", 'Slack: HTTP 404 "no_service"\n')
+lastTask.cb(1, "", 'Traceback line with detail\nSlack: HTTP 404 "no_service"\n')
 js = table.concat(jsRun, "\n")
 check(js:find('Slack: HTTP 404 \\"no_service\\"', 1, true), "the failure reason is toasted, escaped")
-check(table.concat(logged, "\n"):find("send failed"), "a failed send is logged")
+local lg = table.concat(logged, "\n")
+check(lg:find("send failed (1)", 1, true) and lg:find("no_service", 1, true), "a failed send is logged with its exit code")
+check(not lg:find("Traceback line", 1, true), "only the last stderr line is logged")
+
+-- 8. a hung send is killed after 90s and the button is freed
+jsRun = {}; logged = {}
+msgCallback({ body = { action = "post" } })
+local hung = lastTask
+local g2 = guardFor()
+g2.fn()
+check(hung.terminated, "the guard terminates a hung send")
+check(table.concat(jsRun, "\n"):find("Send timed out", 1, true), "a timeout is toasted")
+msgCallback({ body = { action = "post" } })
+local after = lastTask
+check(after ~= hung, "after a timeout the next press sends again")
+jsRun = {}
+hung.cb(15, "", "killed\n")                     -- the killed task's own late callback
+check(table.concat(jsRun, "\n") == "", "the killed task does not toast a second time")
+msgCallback({ body = { action = "post" } })
+check(lastTask == after, "nor does it free the button while a newer send is in flight")
 
 io.write(string.format("\n%d checks, %d failures\n", checks, failures))
 os.exit(failures == 0 and 0 or 1)
