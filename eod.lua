@@ -166,6 +166,32 @@ local function saveWeeklyEdits(items)
   M.showWeekly()   -- re-render (extract --weekly now honours the edited flag)
 end
 
+-- Share: the engine draws the day as a 16:9 PNG (extract --share answers
+-- "SHARE <path>"); we put the image itself on the clipboard so it pastes
+-- straight into an X or LinkedIn post, and say where the file is.
+local function say(text)
+  if wv then wv:evaluateJavaScript("window.toast&&toast(" .. hs.json.encode({ text }):sub(2, -2) .. ")") end
+end
+
+local function shareImage()
+  local date = curDate or today()
+  local t = hs.task.new(CFG.python, function(code, out, err)
+    out = (out or ""):gsub("%s+$", "")
+    local tag, path = out:match("^(%S+)%s+(.+)$")
+    if code ~= 0 or tag ~= "SHARE" or not path then
+      log("share image failed (" .. tostring(code) .. "): " .. tostring(err ~= "" and err or out))
+      say("No image, see the Hammerspoon console")
+      return
+    end
+    local img = hs.image.imageFromPath(path)
+    if img then hs.pasteboard.writeObjects(img) end
+    say((img and "Image copied ✓ " or "Image saved ") .. "cache/" .. (path:match("[^/]+$") or path))
+  end, { CFG.script, "--date", date, "--share" })
+  if not t then log("could not spawn python for the share image"); return end
+  t:setEnvironment(CFG.env)
+  t:start()
+end
+
 -- ── clipboard / nav bridge (messages posted from the page's JS) ──────────────────
 -- Drag a borderless window by following the mouse (no native title bar to grab).
 local function startDrag(win)
@@ -202,6 +228,8 @@ local function onMessage(msg)
     M.hide()
   elseif action == "full" then
     M.showFull()
+  elseif action == "share" then
+    shareImage()
   elseif action == "refresh" then
     rebuild(curDate, true, false)
   elseif action == "regen" then

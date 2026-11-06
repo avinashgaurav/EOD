@@ -31,6 +31,7 @@ MODULES = [
     "eod.sources.meetings",
     "eod.sources.base", "eod.sources.builtin",
     "eod.pipeline", "eod.polish", "eod.render.text", "eod.render.html",
+    "eod.render.image",
     "eod.weekly", "eod.cli",
 ]
 

@@ -2,7 +2,8 @@
 --
 -- eod.lua touches no hs.* at module load, so it can be required outside
 -- Hammerspoon and its callbacks invoked directly. That is enough to cover the
--- part that matters here: what showWeekly() does when the engine fails.
+-- part that matters here: what showWeekly() does when the engine fails, and
+-- what the share button does with the engine's answer.
 --
 -- Before 0df01ac both failure paths ended in silence. The task exit code was
 -- accepted and never read, and output that did not parse simply skipped the
@@ -25,8 +26,9 @@ local function check(ok, msg)
 end
 
 -- ── the smallest hs that eod.lua's weekly path needs ────────────────────────
-local lastTask
+local lastTask, lastCallback, lastJS
 local logged = {}
+local pasted = {}
 
 local function stubHs()
   local shownWebviews = {}
@@ -40,15 +42,15 @@ local function stubHs()
       w[m] = chain
     end
     w.show = function() shownWebviews[#shownWebviews + 1] = true; return w end
-    w.evaluateJavaScript = chain
+    w.evaluateJavaScript = function(_, js) lastJS = js; return w end
     w.asHSWindow = function() return nil end
     return w
   end
 
   _G.hs = {
     task = {
-      new = function(_bin, cb, _args)
-        lastTask = { cb = cb, started = false }
+      new = function(_bin, cb, args)
+        lastTask = { cb = cb, args = args, started = false }
         return {
           setEnvironment = function() end,
           start = function() lastTask.started = true; return true end,
@@ -58,7 +60,7 @@ local function stubHs()
     webview = {
       new = function() return webview() end,
       usercontent = { new = function()
-        return { setCallback = function(s) return s end }
+        return { setCallback = function(s, cb) lastCallback = cb; return s end }
       end },
       windowMasks = { borderless = 1 },
     },
@@ -73,7 +75,10 @@ local function stubHs()
     timer = { doAfter = function() return { stop = function() end } end,
               doEvery = function() return { stop = function() end } end,
               secondsSinceLastInput = function() return 0 end },
-    pasteboard = { setContents = function() end },
+    pasteboard = { setContents = function() end,
+                   writeObjects = function(o) pasted[#pasted + 1] = o; return true end },
+    image = { imageFromPath = function(p) return { path = p } end },
+    json = { encode = function(t) return '["' .. tostring(t[1]) .. '"]' end },
     hotkey = { bind = function() end },
     menubar = { new = function() return {
       setTitle = function(s) return s end, setMenu = function(s) return s end,
@@ -131,6 +136,25 @@ M.showWeekly(false)
 lastTask.cb(0, "WEEKLY /tmp/cache/weekly-2026-08-03.html")
 check(#hs.shownWebviews > before, "a good build still shows the recap")
 check(table.concat(logged, "\n") == "", "the happy path logs nothing")
+
+-- 4. the share button: the engine is asked for that day's image, the image
+-- itself lands on the clipboard, and a failure says so instead of going quiet
+io.write("\neod.lua share image\n")
+M.show(false)
+check(lastCallback ~= nil, "the panel registers a message handler")
+lastCallback({ body = { action = "share" } })
+local a = table.concat(lastTask.args or {}, " ")
+check(a:find("%-%-share") and a:find("%-%-date %d%d%d%d%-%d%d%-%d%d"), "share runs the engine with --date and --share")
+logged, pasted, lastJS = {}, {}, nil
+lastTask.cb(0, "SHARE /tmp/cache/2026-08-06-share.png\n", "")
+check(#pasted == 1 and pasted[1].path == "/tmp/cache/2026-08-06-share.png", "the PNG is put on the clipboard")
+check(lastJS and lastJS:find("2026%-08%-06%-share%.png"), "the toast names the file")
+logged, pasted = {}, {}
+lastCallback({ body = { action = "share" } })
+lastTask.cb(1, "", "EOD: no share image: the share image needs macOS")
+check(#pasted == 0, "a failed build copies nothing")
+check(table.concat(logged, "\n"):find("share image failed"), "a failed build is logged")
+check(lastJS and lastJS:find("No image"), "a failed build is toasted")
 
 io.write(string.format("\n%d checks, %d failures\n", checks, failures))
 os.exit(failures == 0 and 0 or 1)

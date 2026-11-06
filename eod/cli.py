@@ -8,7 +8,8 @@ from .config import CACHE, app_path
 from .pipeline import build
 from .polish import _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
-from .render.html import to_html, to_html_full, to_html_weekly
+from .render.html import SHARE_H, SHARE_W, to_html, to_html_full, to_html_share, to_html_weekly
+from .render.image import html_to_png
 from .weekly import build_weekly
 
 
@@ -41,6 +42,7 @@ def main():
     repolish = False
     weekly = False
     show_payload = False
+    share = False
     args = sys.argv[1:]
     for i, a in enumerate(args):
         if a == "--date" and i + 1 < len(args):
@@ -53,6 +55,8 @@ def main():
             weekly = True
         elif a == "--show-polish-payload":
             show_payload = True
+        elif a == "--share":
+            share = True
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
@@ -87,6 +91,16 @@ def main():
     polish(data, force=repolish)    # AI-rewrite items into manager bullets (cached; force = Regenerate)
     write_history()                 # keep worklog-history.md current
     base = os.path.join(CACHE, date)
+
+    if share:                        # the share card, drawn to a PNG; print its path
+        with open(base + "-share.html", "w") as f:
+            f.write(to_html_share(data))
+        why = html_to_png(base + "-share.html", base + "-share.png", SHARE_W, SHARE_H)
+        if why:
+            sys.stderr.write("EOD: no share image: %s\n" % why)
+            raise SystemExit(1)
+        print("SHARE " + base + "-share.png")
+        return
 
     # Did anything actually change since last run? (ignore the timestamp)
     changed = True

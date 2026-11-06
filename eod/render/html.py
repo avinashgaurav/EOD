@@ -359,6 +359,8 @@ def to_html(data):
     P.append("<div class='actions'>"
              "<button class='copyall' onclick=\"copyEl('allText','Summary copied')\">⎙ Copy</button>"
              "<button class='copyall seeall' onclick=\"send({action:'full'})\">⊞ See full bill</button>"
+             "<button class='copyall' onclick=\"send({action:'share'});toast('Drawing the image…')\" "
+             "title='Copy the day as an image for X / LinkedIn'>⇪</button>"
              "</div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude{_sig_html()}</div>")
 
@@ -504,6 +506,105 @@ def to_html_full(data):
     P.append(f"<script>{JS}</script></body></html>")
     out = "".join(P)
     return out
+
+
+# The share card is drawn once, at a fixed size, by a WebKit nobody is looking at
+# (see image.py). 16:9 is the one shape both X and LinkedIn show whole in the
+# feed without cropping; a portrait card would be cut to a strip on X.
+SHARE_W, SHARE_H = 1200, 675
+SHARE_MAX_LINES = 5              # six two-line highlights outgrow the card (measured)
+
+SHARE_CSS = """
+:root{--surface:#14151a;--paper:#f3ecdd;--ink:#2a2620;--ink2:#9a8f7c;--line:#cdc2aa;--accent:#bf3d1f;
+  --mono:'SF Mono',ui-monospace,Menlo,'Courier New',monospace}
+*{box-sizing:border-box}
+html,body{margin:0;width:%CW%px;height:%CH%px;overflow:hidden}
+body{background:var(--surface);font-family:var(--mono);-webkit-font-smoothing:antialiased;
+  display:flex;align-items:center;justify-content:center;position:relative}
+.receipt{width:%W%px;max-height:%MH%px;overflow:hidden;background:var(--paper);color:var(--ink);
+  padding:26px 34px 22px;clip-path:%CLIP%;letter-spacing:.2px;
+  background-image:repeating-linear-gradient(0deg, rgba(0,0,0,.022) 0 1px, transparent 1px 3px)}
+.brand{text-align:center;font-size:30px;font-weight:700;letter-spacing:7px}
+.brand b{color:var(--accent)}
+.tag{text-align:center;font-size:12px;letter-spacing:4px;color:var(--ink2);margin-top:4px}
+.rule{border-top:1px dashed var(--line);margin:10px 0}
+.rule.double{border-top:2px double var(--ink)}
+.kv{display:flex;align-items:flex-end;font-size:14px;line-height:1.6}
+.kv .k{color:var(--ink2);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.kv .dots{flex:1;border-bottom:1px dotted var(--line);margin:0 6px 5px}
+.kv .v{white-space:nowrap;font-weight:700}
+.tots{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
+.sect{font-size:12px;letter-spacing:4px;color:var(--accent);font-weight:700;text-align:center;margin:0 0 6px}
+.item{display:flex;gap:10px;font-size:16px;line-height:1.4;margin:5px 0 0}
+.item b{color:var(--accent)}
+.item .t{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item .q{color:var(--ink2);white-space:nowrap}
+.more{color:var(--ink2);font-size:13px;letter-spacing:1px;margin:6px 0 0 20px}
+.empty{text-align:center;color:var(--ink2);font-size:15px;letter-spacing:3px;padding:40px 0}
+.end{text-align:center;font-size:13px;letter-spacing:4px;margin:4px 0 0}
+.barcode{height:30px;width:60%;margin:9px auto 4px;background-repeat:repeat-x;background-size:21px 100%;
+  background-image:repeating-linear-gradient(90deg,
+    var(--ink) 0 2px, transparent 2px 5px, var(--ink) 5px 6px, transparent 6px 11px,
+    var(--ink) 11px 14px, transparent 14px 16px, var(--ink) 16px 17px, transparent 17px 21px)}
+.bcnum{text-align:center;font-size:11px;letter-spacing:3px}
+.madewith{position:absolute;right:26px;bottom:18px;color:var(--ink2);font-size:12px;letter-spacing:3px}
+.madewith b{color:var(--paper);letter-spacing:4px}
+"""
+
+
+def to_html_share(data):
+    """The day as a social image: highlights and totals only, no controls.
+
+    Deliberately narrower than the brief receipt. The image leaves your Mac the
+    moment you post it, so it carries the curated highlights and nothing typed
+    by you: no prompts, no session titles (an untitled session is titled by its
+    first prompt), no sites, no app names, no warnings. Without highlights it
+    falls back to project names and counts. No timestamp either, so the same
+    day always draws the same picture."""
+    w = 700
+    css = (SHARE_CSS.replace("%CLIP%", clip_path(w)).replace("%W%", str(w))
+           .replace("%CW%", str(SHARE_W)).replace("%CH%", str(SHARE_H))
+           .replace("%MH%", str(SHARE_H - 60)))
+    esc = html.escape
+    apps = data.get("apps", [])
+    t0, t1 = time_window(data)
+
+    P = ["<!doctype html><html><head><meta charset='utf-8'>",
+         f"<style>{css}</style></head><body><div class='receipt'>",
+         "<div class='brand'>E<b>O</b>D</div>",
+         "<div class='tag'>DAILY WORK RECEIPT</div>",
+         "<div class='rule'></div>",
+         f"<div class='kv'><span class='k'>Date</span><span class='dots'></span>"
+         f"<span class='v'>{esc(pretty_date(data['date']))}</span></div>",
+         "<div class='rule double'></div>"]
+
+    if data.get("highlights"):
+        lines = [(h, "") for h in data["highlights"]]
+    else:
+        lines = [(p["name"], "×%d" % len(display_items(p))) for p in data["projects"]]
+    if not lines:
+        P.append("<div class='empty'>NO ACTIVITY LOGGED</div>")
+    else:
+        P.append("<div class='sect'>WORK</div>")
+        for txt, qty in lines[:SHARE_MAX_LINES]:
+            q = f"<span class='q'>{esc(qty)}</span>" if qty else ""
+            P.append(f"<div class='item'><b>•</b><span class='t'>{esc(txt)}</span>{q}</div>")
+        if len(lines) > SHARE_MAX_LINES:
+            P.append(f"<div class='more'>+ {len(lines) - SHARE_MAX_LINES} more</div>")
+
+    tots = [("Projects", str(data["project_count"])), ("Work items", str(work_item_count(data)))]
+    if apps:
+        tots.append(("Screen", fmt_dur(sum(a["secs"] for a in apps))))
+    tots.append(("Hours", f"{t0}–{t1}"))
+    P.append("<div class='rule'></div><div class='tots'>")
+    for k, v in tots:
+        P.append(f"<div class='kv'><span class='k'>{k}</span><span class='dots'></span>"
+                 f"<span class='v'>{esc(v)}</span></div>")
+    P.append("</div><div class='rule double'></div>")
+    P.append("<div class='end'>END OF DAY</div><div class='barcode'></div>")
+    P.append(f"<div class='bcnum'>{data['date'].replace('-','')}{' · ' + esc(SIG) if SIG else ''}</div>")
+    P.append("</div><div class='madewith'>made with <b>EOD</b></div></body></html>")
+    return "".join(P)
 
 
 def to_html_weekly(data):

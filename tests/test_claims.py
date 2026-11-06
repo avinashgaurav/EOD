@@ -108,6 +108,22 @@ class TestPrivacyClaims(ClaimCase):
         # and the full bill genuinely does, so the distinction is real and pinned
         self.assertIn("my secret prompt about acme corp", ex.to_html_full(data))
 
+    CLAIM_share_image_no_prompts = "share-image-no-prompts"
+
+    def test_share_image_carries_no_prompts_titles_sites_or_apps(self):
+        """docs/privacy.md: the share card never carries prompts, session
+        titles, sites or app names. It is the one surface meant to be posted."""
+        ex, data = self.a_normal_day()
+        data["web"] = [{"host": "jobs.example.com", "count": 3, "titles": [],
+                        "start": "10:00", "end": "11:00"}]
+        data["apps"] = [{"name": "SecretApp", "secs": 600}]
+        for highlights in ([], ["Shipped the rounding fix"]):
+            data["highlights"] = highlights
+            card = ex.to_html_share(data)
+            for private in ("my secret prompt about acme corp", "Fixed the rounding bug",
+                            "jobs.example.com", "SecretApp"):
+                self.assertNotIn(private, card)
+
     CLAIM_polish_sends_prompts = "polish-sends-prompts"
 
     def test_polish_payload_does_include_prompts(self):
