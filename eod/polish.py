@@ -1,10 +1,12 @@
-"""The optional AI step. The only part of EOD that leaves the machine."""
+"""The optional AI step. The only part of EOD that can leave the machine, and with
+ollama.txt it does not: the same prompt goes to Ollama on this Mac instead."""
 
 import json, os, re, time, subprocess, hashlib
+import urllib.error, urllib.request
 from datetime import datetime
 
 from .util import oneline, pretty_date
-from .config import CACHE, _full_env, app_path
+from .config import CACHE, _full_env, app_path, load_ollama_model
 
 
 # ── AI polish (optional) ──────────────────────────────────────────────────────
@@ -12,6 +14,8 @@ from .config import CACHE, _full_env, app_path
 # the LOCAL `claude` CLI (the user's existing login — no API key). Cached per day by
 # a content hash so Claude is only called when the work actually changed. If the CLI
 # is missing / errors / times out, we silently fall back to the offline cleanup.
+# With ollama.txt present, a local Ollama model takes the CLI's place (see below);
+# caching, parsing and the fallback are the same either way.
 POLISH_SENTINEL = "EOD-AUTO-SUMMARY"   # marks EOD's own claude calls so we never read them back as "work"
 
 
@@ -98,6 +102,52 @@ def _run_claude(cb, prompt, cwd):
         _polish_log("claude rejected an isolation flag, retrying without: %s" % (r.stderr or "").strip()[:200])
         r = run(CLAUDE_ARGS_LEGACY)
     return r
+
+
+# ── local provider: Ollama ─────────────────────────────────────────────────────
+# With ollama.txt present the same prompt goes to Ollama's HTTP API on this Mac
+# instead of the claude CLI. The host is fixed to loopback on purpose: a
+# configurable host would let "local" quietly mean someone else's server.
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
+OLLAMA_TIMEOUT = 300     # seconds; a laptop model is slower than the CLI, and Ollama loads it on first use
+OLLAMA_NUM_CTX = 16384   # Ollama's default window is a few thousand tokens and it drops the START
+                         # of a longer prompt, which is where the rules are
+
+
+def _open_local(req, timeout):
+    """urlopen without proxies. urllib honours HTTP_PROXY, which could route even a
+    loopback request through another machine; an empty ProxyHandler rules that out."""
+    return urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=timeout)
+
+
+def _run_ollama(model, prompt):
+    """One generate call. Returns the model's text, or raises with a reason worth logging."""
+    body = json.dumps({"model": model, "prompt": prompt, "stream": False, "format": "json",
+                       "options": {"num_ctx": OLLAMA_NUM_CTX}}).encode("utf-8")
+    req = urllib.request.Request(OLLAMA_URL, data=body,
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with _open_local(req, OLLAMA_TIMEOUT) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as e:
+        # A missing model is a 404 whose body says so; keep that, it is the useful part.
+        try:
+            detail = e.read().decode("utf-8", "replace")
+        except Exception:
+            detail = ""
+        finally:
+            e.close()
+        raise ValueError("ollama HTTP %s for model %r: %s" % (e.code, model, detail.strip()))
+    except (urllib.error.URLError, OSError) as e:
+        raise ValueError("ollama not reachable at %s (is it running?): %s"
+                         % (OLLAMA_URL, getattr(e, "reason", e)))
+    try:
+        reply = json.loads(raw.decode("utf-8"))
+    except ValueError:
+        raise ValueError("ollama reply was not JSON: %r" % raw[:300])
+    if not isinstance(reply, dict) or not isinstance(reply.get("response"), str):
+        raise ValueError("ollama reply has no response text: %r" % raw[:300])
+    return reply["response"]
 
 
 # Comms surfaces — kept in WEB display but NOT fed to the manager summary.
@@ -196,11 +246,13 @@ def _polish_log(msg):
 
 
 def polish(data, force=False):
-    """Curate the day into a short manager-ready highlights list via the local claude CLI.
+    """Curate the day into a short manager-ready highlights list via the local claude CLI
+    (or local Ollama, with ollama.txt).
     Honours user edits (won't overwrite) unless force=True (the Regenerate button)."""
     if os.path.exists(app_path("polish.off")):
         return
-    cb = _claude_bin()
+    model = load_ollama_model()
+    cb = None if model else _claude_bin()
     if not (data["projects"] or data.get("commits") or data.get("meetings")):
         return
     raw = _polish_input(data)
@@ -234,7 +286,7 @@ def polish(data, force=False):
         data["detailed"] = cached_detail
         return
 
-    if not cb:
+    if not (cb or model):
         _polish_log("no claude CLI found (looked in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin)")
         if cached:
             data["highlights"] = cached
@@ -246,14 +298,18 @@ def polish(data, force=False):
     except Exception:
         cwd = None
     try:
-        r = _run_claude(cb, POLISH_PROMPT + "\n\n" + raw, cwd)
-        if r.returncode != 0:
-            raise ValueError("claude exit %s: %s" % (r.returncode, (r.stderr or r.stdout or "").strip()))
-        obj = json.loads(_extract_json_obj(r.stdout.strip()))
+        if model:
+            out = _run_ollama(model, POLISH_PROMPT + "\n\n" + raw)
+        else:
+            r = _run_claude(cb, POLISH_PROMPT + "\n\n" + raw, cwd)
+            if r.returncode != 0:
+                raise ValueError("claude exit %s: %s" % (r.returncode, (r.stderr or r.stdout or "").strip()))
+            out = r.stdout
+        obj = json.loads(_extract_json_obj(out.strip()))
         highlights = [oneline(x, 140) for x in obj.get("highlights", []) if isinstance(x, str) and x.strip()]
         detailed = _clean_detailed(obj.get("detailed"))
         if not highlights:
-            raise ValueError("no highlights in output: " + r.stdout.strip()[:300])
+            raise ValueError("no highlights in output: " + out.strip()[:300])
     except Exception as e:
         _polish_log("%s: %s" % (type(e).__name__, e))
         if cached:                          # failure → keep the LAST GOOD summary, never the raw fallback
@@ -289,7 +345,8 @@ WEEKLY_PROMPT = (
 def polish_weekly(data, force=False):
     if os.path.exists(app_path("polish.off")):
         return
-    cb = _claude_bin()
+    model = load_ollama_model()
+    cb = None if model else _claude_bin()
     if not data["days"]:
         return
     raw = "\n".join("## " + pretty_date(d) + "\n" + "\n".join("- " + h for h in hl)
@@ -310,7 +367,7 @@ def polish_weekly(data, force=False):
             return
     except Exception:
         pass
-    if not cb:
+    if not (cb or model):
         # fallback: flatten by day
         data["detailed"] = [{"area": pretty_date(d), "items": hl} for d, hl in data["days"]]
         data["highlights"] = [h for _, hl in data["days"] for h in hl][:8]
@@ -321,8 +378,11 @@ def polish_weekly(data, force=False):
     except Exception:
         cwd = None
     try:
-        r = _run_claude(cb, WEEKLY_PROMPT + "\n\n" + raw, cwd)
-        obj = json.loads(_extract_json_obj(r.stdout.strip()))
+        if model:
+            out = _run_ollama(model, WEEKLY_PROMPT + "\n\n" + raw)
+        else:
+            out = _run_claude(cb, WEEKLY_PROMPT + "\n\n" + raw, cwd).stdout
+        obj = json.loads(_extract_json_obj(out.strip()))
         hl = [oneline(x, 140) for x in obj.get("highlights", []) if isinstance(x, str) and x.strip()]
         det = _clean_detailed(obj.get("detailed"))
         if not hl:

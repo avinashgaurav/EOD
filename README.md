@@ -32,7 +32,7 @@ The AI is deliberately minimal. Code does the work; a model only rewords it, and
 |---|---|---|
 | Reading transcripts, git, documents, browser history, calendar and screen time | Code | Plain file reads: local, repeatable and covered by tests. No model needed. |
 | Grouping, de-duping, noise filtering and `exclude.txt` | Code | Privacy rules have to hold every time, so they are rules, not prompts. |
-| Turning the day (and the week) into manager-ready bullets | Your `claude` CLI, optional | The one step where wording matters more than exactness. Skipped when nothing changed and never run with `polish.off`; the daily summary also runs at most once per 30 minutes on its own. |
+| Turning the day (and the week) into manager-ready bullets | Your `claude` CLI or a local Ollama model, optional | The one step where wording matters more than exactness. Skipped when nothing changed and never run with `polish.off`; the daily summary also runs at most once per 30 minutes on its own. |
 | Fallback when the model is off, missing or fails | Code | The receipt still builds offline; a failed daily call keeps the last good summary. |
 
 ## Install
@@ -51,7 +51,7 @@ top-right. (Already have an `init.lua`? Don't overwrite it; see INSTALL.md.)
 
 - [How it works](docs/how-it-works.md): where each section comes from, and the engine behind the widget
 - [Privacy](docs/privacy.md): requirements, permissions, and exactly what the optional AI step sends
-- [Configuration](docs/configuration.md): `exclude.txt`, `repos.txt`, `polish.off`, `signature.txt`
+- [Configuration](docs/configuration.md): `exclude.txt`, `repos.txt`, `polish.off`, `ollama.txt`, `signature.txt`
 - [Using EOD](docs/usage.md): features, controls and the `bin/eod` command line
 - [Adding a source](docs/plugins.md): one file in `~/.eod/sources/`, no fork
 - [Tests](docs/testing.md): the built-in test suite and the automatic checks that run on every change; each `claim:` marker in these docs has a test that must pass

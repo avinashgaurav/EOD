@@ -95,6 +95,16 @@ def load_extract():
     # polish() stays real; what is removed is its only route off the machine, so
     # no test can spawn the CLI or spend a token by accident.
     ex._claude_bin = lambda: None
+    # The same for the local provider: a developer's own ollama.txt must not
+    # switch the suite to Ollama, and no test may open a real socket.
+    # Patched where it is used, not in eod.config, so the reader itself stays testable.
+    for m in mods:
+        if m.__name__ != "eod.config" and hasattr(m, "load_ollama_model"):
+            m.load_ollama_model = lambda: None
+
+    def _no_http(req, timeout):
+        raise AssertionError("a test reached the real Ollama HTTP call")
+    ex._open_local = _no_http
     return ex
 
 

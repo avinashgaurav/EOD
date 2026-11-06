@@ -18,7 +18,10 @@ just determines what shows up on the receipt:
 receipt to its own `cache/` folder. The one exception is the **optional AI-polish**
 step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
 crisper, manager-ready bullets, through your **existing CLI login** (no API key).
-Missing CLI? It falls back to fully-offline cleanup.
+Missing CLI? It falls back to fully-offline cleanup. Want the polish without
+anything leaving the Mac? Create `ollama.txt` and the same step runs on a local
+[Ollama](https://ollama.com) model at `127.0.0.1:11434` instead (see
+[Configuration](configuration.md)).
 
 <details>
 <summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>
@@ -36,7 +39,8 @@ Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
 
 Two things worth knowing. Your prompts do go, and prompts sometimes contain
 paths, hostnames or pasted snippets. And this is your own Claude account via
-your own CLI login, not a third party.
+your own CLI login, not a third party. With `ollama.txt` the same text goes to
+Ollama on your own Mac instead, so none of it leaves the machine.
 
 The call itself is sealed off: EOD runs `claude -p` with no tools, none of your <!--claim:polish-cli-isolated-->
 settings, hooks, MCP servers or CLAUDE.md, and without saving a session, so the
@@ -49,7 +53,7 @@ is written to `polish-error.log`. Update the CLI to keep every call sealed off.
 See it for yourself before trusting any of the above:
 
 ```sh
-python3 extract.py --show-polish-payload      # prints the exact text, sends nothing
+python3 extract.py --show-polish-payload      # prints the exact text and where it would go, sends nothing
 touch polish.off                              # never run this step again
 ```
 
