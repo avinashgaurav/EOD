@@ -229,17 +229,72 @@ class TestPrivacyClaims(ClaimCase):
 
     def test_the_engine_makes_no_network_calls(self):
         """README: 'no telemetry', 'nothing leaves your Mac'. The only outbound
-        path is the claude CLI subprocess, which polish.off disables."""
-        import glob
-        src = ""
-        for p in glob.glob(os.path.join(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eod", "**", "*.py"),
-                recursive=True):
+        paths are the claude CLI subprocess, which polish.off disables, and
+        eod/send.py, the Send button, which nothing imports at load time."""
+        import ast, glob
+        pkg = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eod")
+        for p in glob.glob(os.path.join(pkg, "**", "*.py"), recursive=True):
+            if os.path.relpath(p, pkg) == "send.py":
+                continue
             with open(p) as f:
-                src += f.read()
-        for banned in ("import requests", "import urllib.request", "urlopen(",
-                       "http.client", "import socket"):
-            self.assertNotIn(banned, src, "%s would be an outbound path" % banned)
+                src = f.read()
+            for banned in ("import requests", "import urllib.request", "from urllib.request",
+                           "urlopen(", "http.client", "import socket"):
+                self.assertNotIn(banned, src, "%s in %s would be an outbound path" % (banned, p))
+            # send.py may only be imported inside a function (the --send branch),
+            # never at module level where every ordinary run would load it.
+            for node in ast.parse(src).body:
+                if isinstance(node, ast.ImportFrom):
+                    self.assertNotIn("send", (node.module or "").split("."),
+                                     "%s imports the send module at load time" % p)
+
+    CLAIM_send_only_on_press = "send-only-on-press"
+
+    def test_send_posts_only_when_pressed_and_only_work_lines(self):
+        """docs/privacy.md: building and refreshing never sends; the press does,
+        with the WORK lines only."""
+        import contextlib, io, json, sys
+        calls = []
+
+        class Reply:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return b"ok"
+        self.ex.urlopen = lambda req, timeout=None: (calls.append(req), Reply())[1]
+        self.ex.SEND_FILE = os.path.join(self.tmp, "send.txt")
+        with open(self.ex.SEND_FILE, "w") as f:
+            f.write("slack https://hooks.slack.com/services/x\n")
+        self.a_normal_day()
+
+        def run(*extra):
+            old = sys.argv
+            sys.argv = ["extract.py", "--date", DAY] + list(extra)
+            try:
+                with contextlib.redirect_stdout(io.StringIO()), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    self.ex.main()
+            except SystemExit:
+                pass
+            finally:
+                sys.argv = old
+
+        run(); run(); run("--repolish")
+        self.assertEqual(calls, [], "building the receipt must never post")
+        run("--send")
+        self.assertEqual(len(calls), 1)
+        text = json.loads(calls[0].data.decode("utf-8"))["text"]
+        self.assertIn("Fixed the rounding bug", text)
+        self.assertNotIn("my secret prompt", text)
+
+    CLAIM_send_txt_button = "send-txt-button"
+
+    def test_no_send_txt_no_button(self):
+        """docs/configuration.md: 'No file, no button.'"""
+        _, data = self.a_normal_day()
+        self.assertNotIn("sendBtn", self.ex.to_html(data))
+        self.assertIn("id='sendBtn'", self.ex.to_html(data, send_to=["Slack"]))
+        self.ex.SEND_FILE = os.path.join(self.tmp, "absent.txt")
+        self.assertEqual(self.ex.send_labels(), [])
 
 
 class TestSourceContractClaims(ClaimCase):

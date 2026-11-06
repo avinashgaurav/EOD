@@ -15,15 +15,25 @@ just determines what shows up on the receipt:
 | Browser history | Powers the WEB section (Chrome / Brave automatic). | Safari history may need **Full Disk Access** for the Hammerspoon process. |
 
 **Local-first, no API keys, no telemetry.** EOD reads local files and writes a <!--claim:no-network-->
-receipt to its own `cache/` folder. The one exception is the **optional AI-polish**
-step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
-crisper, manager-ready bullets, through your **existing CLI login** (no API key).
-Missing CLI? It falls back to fully-offline cleanup.
+receipt to its own `cache/` folder. There are two exceptions, both yours to switch
+on. The first is the **optional AI-polish** step: if your `claude` CLI is logged
+in, EOD asks it to rewrite the day into crisper, manager-ready bullets, through
+your **existing CLI login** (no API key). Missing CLI? It falls back to
+fully-offline cleanup.
+
+The second is the **↗ Send** button, and it sends only when you press it. It <!--claim:send-only-on-press-->
+exists only if you create a `send.txt` (see [Configuration](configuration.md)),
+and the first press only arms it; the second posts. What goes is the WORK lines
+on the card, to the Slack or Teams webhook or Linear issue you listed, and
+nothing else: no screen time, no browsing, no prompts, nothing from the full
+bill. Building and refreshing the receipt never sends. Your webhook URLs and
+Linear key stay in that file; EOD never prints or logs them.
 
 <details>
 <summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>
 
-Nothing else in EOD leaves your Mac. When AI-polish runs, it sends:
+Apart from the Send button above, nothing else in EOD leaves your Mac. When
+AI-polish runs, it sends:
 
 | Sent | Not sent |
 |---|---|

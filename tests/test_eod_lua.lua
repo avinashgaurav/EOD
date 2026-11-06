@@ -1,4 +1,4 @@
--- Drives eod.lua's weekly path in plain Lua, with the Hammerspoon API stubbed.
+-- Drives eod.lua's weekly path and Send button in plain Lua, with the Hammerspoon API stubbed.
 --
 -- eod.lua touches no hs.* at module load, so it can be required outside
 -- Hammerspoon and its callbacks invoked directly. That is enough to cover the
@@ -27,6 +27,8 @@ end
 -- ── the smallest hs that eod.lua's weekly path needs ────────────────────────
 local lastTask
 local logged = {}
+local jsRun = {}                                 -- every evaluateJavaScript call, in order
+local msgCallback                                -- the page->Lua bridge eod.lua registers
 
 local function stubHs()
   local shownWebviews = {}
@@ -40,15 +42,15 @@ local function stubHs()
       w[m] = chain
     end
     w.show = function() shownWebviews[#shownWebviews + 1] = true; return w end
-    w.evaluateJavaScript = chain
+    w.evaluateJavaScript = function(_, js) jsRun[#jsRun + 1] = js; return w end
     w.asHSWindow = function() return nil end
     return w
   end
 
   _G.hs = {
     task = {
-      new = function(_bin, cb, _args)
-        lastTask = { cb = cb, started = false }
+      new = function(_bin, cb, args)
+        lastTask = { cb = cb, started = false, args = args }
         return {
           setEnvironment = function() end,
           start = function() lastTask.started = true; return true end,
@@ -58,7 +60,7 @@ local function stubHs()
     webview = {
       new = function() return webview() end,
       usercontent = { new = function()
-        return { setCallback = function(s) return s end }
+        return { setCallback = function(s, cb) msgCallback = cb; return s end }
       end },
       windowMasks = { borderless = 1 },
     },
@@ -131,6 +133,43 @@ M.showWeekly(false)
 lastTask.cb(0, "WEEKLY /tmp/cache/weekly-2026-08-03.html")
 check(#hs.shownWebviews > before, "a good build still shows the recap")
 check(table.concat(logged, "\n") == "", "the happy path logs nothing")
+
+-- ── the Send button ───────────────────────────────────────────────────────────
+io.write("\neod.lua send button\n")
+
+local function hasArg(args, want)
+  for _, a in ipairs(args or {}) do if a == want then return true end end
+  return false
+end
+
+M.show(false)                                    -- builds the brief card and registers the bridge
+check(msgCallback ~= nil, "the brief card registers a message handler")
+
+-- 4. pressing Send runs the engine with --send for the day on screen
+jsRun = {}
+msgCallback({ body = { action = "post" } })
+local sendTask = lastTask
+check(sendTask and hasArg(sendTask.args, "--send"), "a post message runs the engine with --send")
+check(sendTask and hasArg(sendTask.args, "--date"), "it sends the day on screen, not a guess")
+
+-- 5. a second press while the first is in flight does not post twice
+msgCallback({ body = { action = "post" } })
+check(lastTask == sendTask, "a double press does not start a second send")
+
+-- 6. success is toasted with the destinations the engine named
+sendTask.cb(0, "SENT Slack, Linear\n", "")
+local js = table.concat(jsRun, "\n")
+check(js:find("sendResult", 1, true) and js:find("Sent to Slack, Linear", 1, true),
+      "success toasts the destinations")
+
+-- 7. failure is toasted and logged, with quotes that cannot break the JS
+jsRun = {}; logged = {}
+msgCallback({ body = { action = "post" } })
+check(lastTask ~= sendTask, "the next press sends again once the first is done")
+lastTask.cb(1, "", 'Slack: HTTP 404 "no_service"\n')
+js = table.concat(jsRun, "\n")
+check(js:find('Slack: HTTP 404 \\"no_service\\"', 1, true), "the failure reason is toasted, escaped")
+check(table.concat(logged, "\n"):find("send failed"), "a failed send is logged")
 
 io.write(string.format("\n%d checks, %d failures\n", checks, failures))
 os.exit(failures == 0 and 0 or 1)

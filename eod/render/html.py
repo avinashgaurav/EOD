@@ -199,6 +199,24 @@ window.playOut=function(){var h=document.documentElement;h.classList.remove('ani
 """
 
 
+# Added to the page only when send.txt exists, so a receipt without it is
+# byte-for-byte what it always was. Send posts to a shared channel, so the first
+# press only arms the button; the second, within a few seconds, sends.
+SEND_JS = """
+function postUpdate(b){
+  var l=document.getElementById('workList');
+  if(l&&l.getAttribute('data-edit')==='1'){toast('Save your edits first');return}
+  if(b.getAttribute('data-armed')!=='1'){
+    b.setAttribute('data-armed','1');b.textContent='↗ Sure?';
+    clearTimeout(window._st);window._st=setTimeout(function(){b.setAttribute('data-armed','0');b.textContent='↗ Send'},3000);
+    return}
+  clearTimeout(window._st);b.setAttribute('data-armed','0');b.textContent='↗ Send';
+  if(send({action:'post'}))toast('Sending…');else toast('Send works from the widget')}
+function sendResult(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},4000)}
+"""
+
+
 def clip_path(w=340, step=10, depth=6):
     """A torn-paper silhouette: zigzag top & bottom edges, straight sides."""
     n = w // step
@@ -208,7 +226,9 @@ def clip_path(w=340, step=10, depth=6):
     return "polygon(" + ", ".join(top + bot) + ")"
 
 
-def to_html(data):
+def to_html(data, send_to=()):
+    """The brief card. `send_to` names the destinations in send.txt; empty
+    means no Send button and no trace of it in the page."""
     css = CSS.replace("%CLIP%", clip_path(340)).replace("%W%", "340")
     esc = html.escape
     pcount = data["project_count"]
@@ -359,13 +379,17 @@ def to_html(data):
     P.append("<div class='actions'>"
              "<button class='copyall' onclick=\"copyEl('allText','Summary copied')\">⎙ Copy</button>"
              "<button class='copyall seeall' onclick=\"send({action:'full'})\">⊞ See full bill</button>"
+             + (f"<button id='sendBtn' onclick='postUpdate(this)' "
+                f"title='Post the work update to {esc(', '.join(send_to))}'>↗ Send</button>"
+                if send_to else "") +
              "</div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude{_sig_html()}</div>")
 
     P.append(f"<div id='allText' style='display:none'>{esc(to_text(data))}</div>")
     P.append("</div></div></div>")  # receipt, roll, surface
     P.append("<div class='toast' id='toast'></div>")
-    P.append(f"<script>{JS}</script></body></html>")
+    P.append(f"<script>{JS}</script>" + (f"<script>{SEND_JS}</script>" if send_to else "")
+             + "</body></html>")
     out = "".join(P)
     return out
 

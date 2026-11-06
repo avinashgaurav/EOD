@@ -4,7 +4,7 @@ import json, os, glob, sys, html
 from datetime import datetime
 
 from .util import pretty_date
-from .config import CACHE, app_path
+from .config import CACHE, app_path, send_labels
 from .pipeline import build
 from .polish import _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
@@ -41,6 +41,7 @@ def main():
     repolish = False
     weekly = False
     show_payload = False
+    do_send = False
     args = sys.argv[1:]
     for i, a in enumerate(args):
         if a == "--date" and i + 1 < len(args):
@@ -53,6 +54,8 @@ def main():
             weekly = True
         elif a == "--show-polish-payload":
             show_payload = True
+        elif a == "--send":
+            do_send = True
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
 
@@ -84,6 +87,21 @@ def main():
         print(payload)
         return
 
+    if do_send:
+        # The Send button. Imported here, not at the top, so the only module that
+        # opens a connection is never even loaded on an ordinary run.
+        from .send import send_day
+        polish(data)                # the cached summary, i.e. what the receipt shows
+        sent, failed = send_day(data)
+        if failed:
+            msg = "; ".join(failed)
+            if sent:
+                msg = "Sent to %s, but %s" % (", ".join(sent), msg)
+            sys.stderr.write(msg + "\n")
+            sys.exit(1)
+        print("SENT " + ", ".join(sent))
+        return
+
     polish(data, force=repolish)    # AI-rewrite items into manager bullets (cached; force = Regenerate)
     write_history()                 # keep worklog-history.md current
     base = os.path.join(CACHE, date)
@@ -99,11 +117,22 @@ def main():
         except Exception:
             changed = True
 
+    # The Send button exists only while send.txt does. Adding or removing that
+    # file changes nothing in the day itself, so without this check the button
+    # would not appear (or go away) until some unrelated activity came in.
+    send_to = send_labels()
+    if not changed:
+        try:
+            with open(base + ".html") as fh:
+                changed = ("id='sendBtn'" in fh.read()) != bool(send_to)
+        except OSError:
+            changed = True
+
     if changed:
         with open(base + ".json", "w") as f:
             json.dump(data, f)
         with open(base + ".html", "w") as f:
-            f.write(to_html(data))
+            f.write(to_html(data, send_to=send_to))
         with open(base + "-full.html", "w") as f:
             f.write(to_html_full(data))
         with open(base + ".txt", "w") as f:

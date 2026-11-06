@@ -4,6 +4,9 @@ cache/
 # Local project-hiding list (keep the .example in git)
 exclude.txt
 
+# Send-button destinations: webhook URLs and API keys, never commit
+send.txt
+
 # macOS
 .DS_Store
 

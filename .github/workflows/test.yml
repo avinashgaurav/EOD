@@ -31,11 +31,11 @@ jobs:
       - name: Check the docs still match the code
         run: |
           # These files are read at runtime but easy to rename without noticing.
-          for f in exclude.txt repos.txt polish.off signature.txt; do
+          for f in exclude.txt repos.txt polish.off signature.txt send.txt; do
             grep -rq "$f" eod/    || { echo "::error::$f is documented but no longer read by the engine"; exit 1; }
             grep -q  "$f" docs/configuration.md || { echo "::error::$f is read by the engine but missing from docs/configuration.md"; exit 1; }
           done
-          echo "all four config files are both read and documented"
+          echo "all five config files are both read and documented"
 
       - name: Check no hardcoded author mark crept back in
         run: |
