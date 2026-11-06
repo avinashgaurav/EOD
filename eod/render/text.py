@@ -3,7 +3,7 @@
 import time
 from datetime import datetime
 
-from ..util import clean_title, fmt_dur, oneline, pretty_date
+from ..util import clean_title, fmt_dur, oneline, pretty_date, split_problem
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB
 
 
@@ -70,7 +70,7 @@ def source_warnings(data):
     """
     out = []
     for p in data.get("source_problems") or []:
-        name, _, detail = str(p).partition(": ")
+        name, detail = split_problem(p)
         out.append("%s unavailable: %s" % (name, oneline(detail or "failed", 70)))
     return out
 

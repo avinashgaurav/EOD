@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from .config import CACHE
 from .polish import polish_weekly
+from .util import split_problem
 
 
 def _week_dates(date):
@@ -49,7 +50,7 @@ def week_source_problems(dates):
     seen = {}
     for d in dates:
         for p in _day_problems(d):
-            name, _, detail = p.partition(": ")
+            name, detail = split_problem(p)
             entry = seen.setdefault(name, {"source": name, "detail": "", "days": []})
             entry["detail"] = detail or "failed"
             if d not in entry["days"]:
