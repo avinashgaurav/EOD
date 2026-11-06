@@ -112,16 +112,17 @@ class TestPrivacyClaims(ClaimCase):
 
     def test_share_image_carries_no_prompts_titles_sites_or_apps(self):
         """docs/privacy.md: the share card never carries prompts, session
-        titles, sites or app names. It is the one surface meant to be posted."""
+        titles, project names, sites or app names. It is the one surface meant
+        to be posted. (That it never calls AI-polish: test_share.py.)"""
         ex, data = self.a_normal_day()
         data["web"] = [{"host": "jobs.example.com", "count": 3, "titles": [],
                         "start": "10:00", "end": "11:00"}]
         data["apps"] = [{"name": "SecretApp", "secs": 600}]
         for highlights in ([], ["Shipped the rounding fix"]):
             data["highlights"] = highlights
-            card = ex.to_html_share(data)
-            for private in ("my secret prompt about acme corp", "Fixed the rounding bug",
-                            "jobs.example.com", "SecretApp"):
+            card = ex.to_html_share(data).lower()
+            for private in ("my secret prompt about acme corp", "fixed the rounding bug",
+                            "jobs.example.com", "secretapp", "alpha", "users me"):
                 self.assertNotIn(private, card)
 
     CLAIM_polish_sends_prompts = "polish-sends-prompts"

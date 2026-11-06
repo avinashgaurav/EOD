@@ -20,11 +20,12 @@ step: if your `claude` CLI is logged in, EOD asks it to rewrite the day into
 crisper, manager-ready bullets, through your **existing CLI login** (no API key).
 Missing CLI? It falls back to fully-offline cleanup.
 
+<!--claim:share-image-no-prompts-->
 **The share image** (the **⇪** on the receipt) is drawn on your Mac by the WebKit
 that ships with macOS and lands in `cache/` and on your clipboard; nothing is
-uploaded unless you post it. It carries the AI highlights (or, without them,
-project names and counts) and the day's totals. Never prompts, session titles, <!--claim:share-image-no-prompts-->
-sites or app names.
+uploaded unless you post it, and making it never calls the AI-polish step. It
+carries the highlights you already have (cached or hand-edited) and the day's
+totals. Never prompts, session titles, project names, sites or app names.
 
 <details>
 <summary><b>Exactly what that one step sends, so you can decide for yourself.</b></summary>

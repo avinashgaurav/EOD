@@ -24,14 +24,16 @@ function run(argv){
   $.NSApplication.sharedApplication.setActivationPolicy(2);   // prohibited: no Dock icon
   var loop = $.NSRunLoop.currentRunLoop;
   function spin(until){ var t0 = Date.now();
-    while (!until() && Date.now() - t0 < 15000) loop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.05)); }
+    while (!until() && Date.now() - t0 < 10000) loop.runUntilDate($.NSDate.dateWithTimeIntervalSinceNow(0.05)); }
   var rect = $.NSMakeRect(0, 0, w, h);
-  var wv = $.WKWebView.alloc.initWithFrameConfiguration(rect, $.WKWebViewConfiguration.alloc.init);
+  var conf = $.WKWebViewConfiguration.alloc.init;
+  conf.defaultWebpagePreferences.allowsContentJavaScript = false;  // the card's own scripts never run
+  var wv = $.WKWebView.alloc.initWithFrameConfiguration(rect, conf);
   var win = $.NSWindow.alloc.initWithContentRectStyleMaskBackingDefer(
     $.NSMakeRect(-20000, -20000, w, h), 0, 2, false);           // never ordered on screen
   win.contentView = wv;
   var url = $.NSURL.fileURLWithPath(src);
-  wv.loadFileURLAllowingReadAccessToURL(url, url.URLByDeletingLastPathComponent);
+  wv.loadFileURLAllowingReadAccessToURL(url, url);                // that one file, not the cache
   // isLoading is still false straight after the call, and the blank page that
   // comes first is already 'complete', so wait for OUR document to be complete
   var ready = false, asked = false;
@@ -59,7 +61,7 @@ function run(argv){
 """
 
 
-def html_to_png(html_path, png_path, w, h, scale=SCALE, timeout=60):
+def html_to_png(html_path, png_path, w, h, scale=SCALE, timeout=30):
     """Draw html_path to png_path at w*scale x h*scale pixels.
     Returns None on success, or a one-line reason it did not happen."""
     if sys.platform != "darwin" or not os.path.exists(OSASCRIPT):
@@ -70,6 +72,8 @@ def html_to_png(html_path, png_path, w, h, scale=SCALE, timeout=60):
                             str(w), str(h), str(scale)],
                            input=SNAPSHOT_JXA, capture_output=True, text=True,
                            timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return "drawing the image timed out after %ds" % timeout
     except (OSError, subprocess.SubprocessError) as e:
         return "osascript did not run: %s" % e
     said = (r.stdout or "").strip()

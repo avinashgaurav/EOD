@@ -29,6 +29,7 @@ end
 local lastTask, lastCallback, lastJS
 local logged = {}
 local pasted = {}
+local imageLoads, fileExists = true, false
 
 local function stubHs()
   local shownWebviews = {}
@@ -77,7 +78,7 @@ local function stubHs()
               secondsSinceLastInput = function() return 0 end },
     pasteboard = { setContents = function() end,
                    writeObjects = function(o) pasted[#pasted + 1] = o; return true end },
-    image = { imageFromPath = function(p) return { path = p } end },
+    image = { imageFromPath = function(p) return imageLoads and { path = p } or nil end },
     json = { encode = function(t) return '["' .. tostring(t[1]) .. '"]' end },
     hotkey = { bind = function() end },
     menubar = { new = function() return {
@@ -88,7 +89,7 @@ local function stubHs()
     eventtap = { new = function() return { start = function() end, stop = function() end } end,
                  event = { types = {} } },
     mouse = { absolutePosition = function() return { x = 0, y = 0 } end },
-    fs = { attributes = function() return nil end, mkdir = function() end },
+    fs = { attributes = function() return fileExists and {} or nil end, mkdir = function() end },
     execute = function() return "" end,
     alert = { show = function() end },
     shownWebviews = shownWebviews,
@@ -155,6 +156,27 @@ lastTask.cb(1, "", "EOD: no share image: the share image needs macOS")
 check(#pasted == 0, "a failed build copies nothing")
 check(table.concat(logged, "\n"):find("share image failed"), "a failed build is logged")
 check(lastJS and lastJS:find("No image"), "a failed build is toasted")
+
+-- one drawing at a time: a second press while the first runs only says so
+lastCallback({ body = { action = "share" } })
+local first = lastTask
+lastJS = nil
+lastCallback({ body = { action = "share" } })
+check(lastTask == first, "a second press does not spawn another engine")
+check(lastJS and lastJS:find("Already drawing"), "a second press is toasted")
+first.cb(0, "SHARE /tmp/cache/2026-08-06-share.png", "")
+lastCallback({ body = { action = "share" } })
+check(lastTask ~= first, "the guard clears once the first drawing is back")
+
+-- a PNG that cannot be loaded as an image is still a saved file, and says so
+imageLoads, fileExists, pasted, lastJS = false, true, {}, nil
+lastTask.cb(0, "SHARE /tmp/cache/2026-08-06-share.png", "")
+check(#pasted == 0 and lastJS and lastJS:find("Saved, not copied"), "an unloadable image is saved, not copied")
+lastCallback({ body = { action = "share" } })
+imageLoads, fileExists, lastJS = false, false, nil
+lastTask.cb(0, "SHARE /tmp/cache/2026-08-06-share.png", "")
+check(lastJS and lastJS:find("No image"), "a missing file is reported")
+imageLoads = true
 
 io.write(string.format("\n%d checks, %d failures\n", checks, failures))
 os.exit(failures == 0 and 0 or 1)

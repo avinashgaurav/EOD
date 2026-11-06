@@ -360,7 +360,7 @@ def to_html(data):
              "<button class='copyall' onclick=\"copyEl('allText','Summary copied')\">⎙ Copy</button>"
              "<button class='copyall seeall' onclick=\"send({action:'full'})\">⊞ See full bill</button>"
              "<button class='copyall' onclick=\"send({action:'share'});toast('Drawing the image…')\" "
-             "title='Copy the day as an image for X / LinkedIn'>⇪</button>"
+             "title='Copy the day as an image for X / LinkedIn' aria-label='Share as image'>⇪</button>"
              "</div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude{_sig_html()}</div>")
 
@@ -538,7 +538,6 @@ body{background:var(--surface);font-family:var(--mono);-webkit-font-smoothing:an
 .item{display:flex;gap:10px;font-size:16px;line-height:1.4;margin:5px 0 0}
 .item b{color:var(--accent)}
 .item .t{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.item .q{color:var(--ink2);white-space:nowrap}
 .more{color:var(--ink2);font-size:13px;letter-spacing:1px;margin:6px 0 0 20px}
 .empty{text-align:center;color:var(--ink2);font-size:15px;letter-spacing:3px;padding:40px 0}
 .end{text-align:center;font-size:13px;letter-spacing:4px;margin:4px 0 0}
@@ -547,7 +546,7 @@ body{background:var(--surface);font-family:var(--mono);-webkit-font-smoothing:an
     var(--ink) 0 2px, transparent 2px 5px, var(--ink) 5px 6px, transparent 6px 11px,
     var(--ink) 11px 14px, transparent 14px 16px, var(--ink) 16px 17px, transparent 17px 21px)}
 .bcnum{text-align:center;font-size:11px;letter-spacing:3px}
-.madewith{position:absolute;right:26px;bottom:18px;color:var(--ink2);font-size:12px;letter-spacing:3px}
+.madewith{position:absolute;right:26px;bottom:18px;color:var(--line);font-size:12px;letter-spacing:3px}
 .madewith b{color:var(--paper);letter-spacing:4px}
 """
 
@@ -559,8 +558,9 @@ def to_html_share(data):
     moment you post it, so it carries the curated highlights and nothing typed
     by you: no prompts, no session titles (an untitled session is titled by its
     first prompt), no sites, no app names, no warnings. Without highlights it
-    falls back to project names and counts. No timestamp either, so the same
-    day always draws the same picture."""
+    shows the totals alone: project names are folder paths, and a path can
+    carry your macOS username. No timestamp either, so the same day always
+    draws the same picture. No script runs on it, and the CSP says so."""
     w = 700
     css = (SHARE_CSS.replace("%CLIP%", clip_path(w)).replace("%W%", str(w))
            .replace("%CW%", str(SHARE_W)).replace("%CH%", str(SHARE_H))
@@ -570,6 +570,7 @@ def to_html_share(data):
     t0, t1 = time_window(data)
 
     P = ["<!doctype html><html><head><meta charset='utf-8'>",
+         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\">",
          f"<style>{css}</style></head><body><div class='receipt'>",
          "<div class='brand'>E<b>O</b>D</div>",
          "<div class='tag'>DAILY WORK RECEIPT</div>",
@@ -578,19 +579,15 @@ def to_html_share(data):
          f"<span class='v'>{esc(pretty_date(data['date']))}</span></div>",
          "<div class='rule double'></div>"]
 
-    if data.get("highlights"):
-        lines = [(h, "") for h in data["highlights"]]
-    else:
-        lines = [(p["name"], "×%d" % len(display_items(p))) for p in data["projects"]]
-    if not lines:
-        P.append("<div class='empty'>NO ACTIVITY LOGGED</div>")
-    else:
+    lines = data.get("highlights") or []
+    if lines:
         P.append("<div class='sect'>WORK</div>")
-        for txt, qty in lines[:SHARE_MAX_LINES]:
-            q = f"<span class='q'>{esc(qty)}</span>" if qty else ""
-            P.append(f"<div class='item'><b>•</b><span class='t'>{esc(txt)}</span>{q}</div>")
+        for txt in lines[:SHARE_MAX_LINES]:
+            P.append(f"<div class='item'><b>•</b><span class='t'>{esc(txt)}</span></div>")
         if len(lines) > SHARE_MAX_LINES:
             P.append(f"<div class='more'>+ {len(lines) - SHARE_MAX_LINES} more</div>")
+    elif not data["projects"]:
+        P.append("<div class='empty'>NO ACTIVITY LOGGED</div>")
 
     tots = [("Projects", str(data["project_count"])), ("Work items", str(work_item_count(data)))]
     if apps:
@@ -602,7 +599,7 @@ def to_html_share(data):
                  f"<span class='v'>{esc(v)}</span></div>")
     P.append("</div><div class='rule double'></div>")
     P.append("<div class='end'>END OF DAY</div><div class='barcode'></div>")
-    P.append(f"<div class='bcnum'>{data['date'].replace('-','')}{' · ' + esc(SIG) if SIG else ''}</div>")
+    P.append(f"<div class='bcnum'>{esc(data['date'].replace('-',''))}{' · ' + esc(SIG) if SIG else ''}</div>")
     P.append("</div><div class='madewith'>made with <b>EOD</b></div></body></html>")
     return "".join(P)
 

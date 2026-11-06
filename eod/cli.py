@@ -1,6 +1,6 @@
 """Entry point. Argument handling and writing the cache."""
 
-import json, os, glob, sys, html
+import json, os, glob, re, sys, html
 from datetime import datetime
 
 from .util import pretty_date
@@ -36,6 +36,35 @@ def write_history():
         pass
 
 
+def _valid_date(s):
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", s or ""):
+        return False
+    try:
+        datetime.strptime(s, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def share_image(data):
+    """Draw the share card to cache/<date>-share.png and print its path."""
+    try:
+        with open(os.path.join(CACHE, "polish-" + data["date"] + ".json")) as fh:
+            hl = json.load(fh).get("highlights")
+        if isinstance(hl, list):
+            data["highlights"] = [h for h in hl if isinstance(h, str) and h.strip()]
+    except Exception:
+        pass                           # never polished: the card shows totals only
+    base = os.path.join(CACHE, data["date"])
+    with open(base + "-share.html", "w") as f:
+        f.write(to_html_share(data))
+    why = html_to_png(base + "-share.html", base + "-share.png", SHARE_W, SHARE_H)
+    if why:
+        sys.stderr.write("EOD: no share image: %s\n" % why)
+        raise SystemExit(1)
+    print("SHARE " + base + "-share.png")
+
+
 def main():
     date = None
     do_print = False
@@ -59,6 +88,9 @@ def main():
             share = True
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
+    if share and not _valid_date(date):
+        sys.stderr.write("EOD: --date wants YYYY-MM-DD, got %r\n" % date)
+        raise SystemExit(2)
 
     os.makedirs(CACHE, exist_ok=True)
 
@@ -73,6 +105,13 @@ def main():
         return
 
     data = build(date)
+
+    if share:
+        # Before polish on purpose: a press of the share button must never send
+        # anything to claude or rewrite the history file. It uses whatever
+        # summary the panel already has (cached or hand-edited), or none.
+        share_image(data)
+        return
 
     if show_payload:
         # Print the exact text the polish step would send, and send nothing.
@@ -91,16 +130,6 @@ def main():
     polish(data, force=repolish)    # AI-rewrite items into manager bullets (cached; force = Regenerate)
     write_history()                 # keep worklog-history.md current
     base = os.path.join(CACHE, date)
-
-    if share:                        # the share card, drawn to a PNG; print its path
-        with open(base + "-share.html", "w") as f:
-            f.write(to_html_share(data))
-        why = html_to_png(base + "-share.html", base + "-share.png", SHARE_W, SHARE_H)
-        if why:
-            sys.stderr.write("EOD: no share image: %s\n" % why)
-            raise SystemExit(1)
-        print("SHARE " + base + "-share.png")
-        return
 
     # Did anything actually change since last run? (ignore the timestamp)
     changed = True

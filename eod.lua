@@ -173,9 +173,14 @@ local function say(text)
   if wv then wv:evaluateJavaScript("window.toast&&toast(" .. hs.json.encode({ text }):sub(2, -2) .. ")") end
 end
 
+local sharing = false                         -- one drawing at a time; a second press waits
+
 local function shareImage()
+  if sharing then say("Already drawing…"); return end
   local date = curDate or today()
+  sharing = true
   local t = hs.task.new(CFG.python, function(code, out, err)
+    sharing = false
     out = (out or ""):gsub("%s+$", "")
     local tag, path = out:match("^(%S+)%s+(.+)$")
     if code ~= 0 or tag ~= "SHARE" or not path then
@@ -183,11 +188,22 @@ local function shareImage()
       say("No image, see the Hammerspoon console")
       return
     end
+    local where = "cache/" .. (path:match("[^/]+$") or path)
     local img = hs.image.imageFromPath(path)
-    if img then hs.pasteboard.writeObjects(img) end
-    say((img and "Image copied ✓ " or "Image saved ") .. "cache/" .. (path:match("[^/]+$") or path))
+    if img then
+      hs.pasteboard.writeObjects(img)
+      say("Image copied ✓ " .. where)
+    elseif hs.fs.attributes(path) then
+      say("Saved, not copied: " .. where)
+    else
+      log("share image: engine named " .. path .. " but there is no file")
+      say("No image, see the Hammerspoon console")
+    end
   end, { CFG.script, "--date", date, "--share" })
-  if not t then log("could not spawn python for the share image"); return end
+  if not t then
+    sharing = false
+    log("could not spawn python for the share image"); return
+  end
   t:setEnvironment(CFG.env)
   t:start()
 end
