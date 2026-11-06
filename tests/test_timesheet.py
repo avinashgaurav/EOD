@@ -68,6 +68,48 @@ class TestDay(TranscriptCase):
         self.assertEqual(back[1][2], "codex")
 
 
+    def test_formula_like_project_names_are_defused(self):
+        sess = [{"start": "09:00", "end": "09:10", "source": "claude"}]
+        names = ["=HYPERLINK(1)", "+1", "-x", "@sum", "\tx", "\rx", "plain"]
+        rows = self.ex.day_rows({"date": THU, "projects": [
+            {"name": n, "sessions": sess} for n in names]})
+        got = {r[1] for r in rows}
+        self.assertEqual(got, {"'" + n for n in names[:-1]} | {"plain"})
+        # Only the project column: the date and times start with digits anyway,
+        # and the source column is never user-named.
+        self.assertTrue(all(r[2] == "claude" for r in rows))
+
+
+class TestDateValidation(TranscriptCase):
+    def _assert_refused(self, date, week=False):
+        out = os.path.join(self.tmp, "bad.csv")
+        with self.assertRaises(ValueError):
+            self.ex.export_csv(date, week=week, out=out)
+        self.assertFalse(os.path.exists(out), "a refused date must write nothing")
+        self.assertEqual([f for f in os.listdir(self.tmp) if f.startswith(".timesheet-")], [],
+                         "no temp file should be left behind")
+
+    def test_malformed_dates_are_refused(self):
+        for bad in ("2026-13-45", "2026-02-30", "yesterday", "", "2026-8-6x"):
+            self._assert_refused(bad)
+            self._assert_refused(bad, week=True)
+
+    def test_future_day_is_refused(self):
+        self._assert_refused("2999-01-01")
+
+    def test_week_that_has_not_started_is_refused(self):
+        self._assert_refused("2999-01-01", week=True)
+
+    def test_week_mode_does_not_run_the_other_sources(self):
+        """Seven full builds per export ran git, gh, browser history and the rest
+        for every day. Only the session readers should run now."""
+        called = []
+        self.ex.collect_sources = lambda target: (called.append(target), ({}, []))[1]
+        self.ex.export_csv(THU, week=True)
+        self.ex.export_csv(THU)
+        self.assertEqual(called, [])
+
+
 class TestWeek(TranscriptCase):
     def test_week_has_a_row_per_project_per_day(self):
         self.write_session("-Users-me-work-alpha", "mon.jsonl", [
@@ -106,6 +148,15 @@ class TestCli(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr[-800:])
             self.assertEqual(r.stdout.strip(), out)
             self.assertEqual(read_csv(out)[0], HEADER)
+
+            bad = os.path.join(tmp, "bad.csv")
+            r = subprocess.run([sys.executable, os.path.join(ROOT_DIR, "bin", "eod"),
+                                "timesheet", "--week", "--date", "2026-13-45", "--out", bad],
+                               cwd=tmp, capture_output=True, text=True, timeout=300)
+            self.assertEqual(r.returncode, 2, r.stderr[-800:])
+            self.assertIn("bad --date", r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
+            self.assertFalse(os.path.exists(bad))
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

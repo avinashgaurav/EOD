@@ -57,17 +57,27 @@ bin/eod timesheet --week --out ~/ts.csv  # write it somewhere else
 
 Columns: `date, project, source, start, end, minutes, sessions`. One row per
 project per source (`claude` or `codex`) per day, sorted by date, then project,
-then source. A day with no sessions writes the header row only.
+then source. A day with no sessions writes the header row only. Projects whose
+display names come out the same are merged into one row. A malformed or future
+`--date` is refused (exit 2) and nothing is written.
 
 How `minutes` is counted, so you can check it against the receipt:
 
-- Each session counts from its first prompt to its last prompt. Idle time in
-  between is counted; time after the last prompt is not.
+- Each session counts from its first prompt to its last distinct prompt. Idle
+  time in between is counted; time after the last prompt is not. Repeated
+  prompts and filler such as "continue" are dropped before this, so a trailing
+  "continue" adds nothing.
 - A session with a single prompt counts as 0 minutes.
 - Sessions that overlap are each counted in full, so a project's minutes can be
   more than the gap between its `start` and `end`.
+- Times are local clock times, so a session that spans a daylight-saving change
+  is off by up to 60 minutes.
 
-`--week` builds every day from Monday up to `--date` (never past today) from the
-transcripts, rather than reading old receipts from `cache/`, so it is slower than
-a single day but never stale. Rows stay per day; sum them in your spreadsheet if
-you want weekly totals.
+`--week` reads every day from Monday up to `--date` (never past today) straight
+from the Claude Code and Codex transcripts, rather than from old receipts in
+`cache/`, so it is never stale. It runs only the session readers, not git,
+browser history or the other sources. Rows stay per day; sum them in your
+spreadsheet if you want weekly totals.
+
+A project name starting with `=`, `+`, `-` or `@` gets a leading `'` so a
+spreadsheet shows it as text instead of running it as a formula.

@@ -107,7 +107,11 @@ def cmd_week(args):
 
 
 def cmd_timesheet(args):
-    print(export_csv(args.date or today_iso(), week=args.week, out=args.out))
+    try:
+        print(export_csv(args.date or today_iso(), week=args.week, out=args.out))
+    except ValueError as e:
+        sys.stderr.write("eod timesheet: bad --date: %s (want a past or current YYYY-MM-DD)\n" % e)
+        return 2
     return 0
 
 
@@ -136,7 +140,7 @@ def main(argv=None):
     ts = sub.add_parser("timesheet", help="time per project as CSV; prints the file's path")
     ts.add_argument("--date", help="YYYY-MM-DD (default: today)")
     ts.add_argument("--week", action="store_true",
-                    help="Monday through --date instead of one day")
+                    help="Monday through --date (never past today) instead of one day")
     ts.add_argument("--out", help="where to write it (default: cache/timesheet-*.csv)")
 
     sub.add_parser("sources", help="what is set up on this machine")

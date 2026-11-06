@@ -5,7 +5,11 @@ time is its last prompt minus its first prompt, nothing cleverer. That means:
 
   - idle time inside a session is counted (lunch between two prompts is work),
   - time after the last prompt is not (the receipt only sees what you typed),
+  - the last prompt is the last DISTINCT one: the source readers drop repeats
+    and filler such as "continue", so a trailing "continue" adds nothing,
   - a session with a single prompt is 0 minutes,
+  - times are local HH:MM, so a session spanning a DST change is off by up to
+    60 minutes,
   - two sessions running side by side are both counted in full, so a project's
     total can exceed the wall-clock time it spanned.
 
@@ -13,13 +17,38 @@ A guess at "real" focus time would be harder to trust than a rule you can
 recompute from the receipt itself.
 """
 
-import csv, io, os
+import csv, io, os, tempfile
+from datetime import datetime
 
 from .config import CACHE
-from .pipeline import build
+from .pipeline import build_projects
 from .weekly import _week_dates
 
 COLUMNS = ["date", "project", "source", "start", "end", "minutes", "sessions"]
+
+
+# A cell starting with one of these is run as a formula by Excel and Sheets.
+# Project names come from folder names, which anyone can choose.
+_FORMULA_LEAD = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _safe_cell(s):
+    return "'" + s if s.startswith(_FORMULA_LEAD) else s
+
+
+def check_date(date, week=False):
+    """Raise ValueError for a malformed or future date, before anything is written.
+
+    A bad date used to produce a convincing header-only file, which reads as
+    "no work that day" rather than as a typo. In week mode a later day of the
+    current week is fine (the week stops at today); a week that has not started
+    is not.
+    """
+    d = datetime.strptime(date, "%Y-%m-%d").date()
+    today = datetime.now().astimezone().date()
+    first = datetime.strptime(_week_dates(date)[0], "%Y-%m-%d").date() if week else d
+    if first > today:
+        raise ValueError("%s is in the future" % date)
 
 
 def _minutes(hm):
@@ -46,22 +75,27 @@ def day_rows(data):
             # rather than subtract from the project.
             r["minutes"] += max(0, _minutes(s["end"]) - _minutes(s["start"]))
             r["sessions"] += 1
-    return [[data["date"], name, src, r["start"], r["end"], r["minutes"], r["sessions"]]
+    return [[data["date"], _safe_cell(name), src, r["start"], r["end"], r["minutes"], r["sessions"]]
             for (name, src), r in sorted(acc.items())]
 
 
 def week_rows(date):
-    """Rows for Monday..date (never past today), each day built fresh.
+    """Rows for Monday..date (never past today), each day read fresh.
 
-    Built rather than read from CACHE/<date>.json: that file only exists for
-    days the widget happened to render, and it can be stale for today. The
-    transcripts are the source of truth, so the export reads them.
+    Read from the transcripts rather than from CACHE/<date>.json: that file only
+    exists for days the widget happened to render, and it can be stale for
+    today. Only the session readers run, not git, browser history and the rest,
+    so a week costs about seven reads of the transcript folders.
     """
     _, _, dates = _week_dates(date)
     rows = []
     for d in dates:
-        rows.extend(day_rows(build(d)))
+        rows.extend(_day(d))
     return rows
+
+
+def _day(date):
+    return day_rows({"date": date, "projects": build_projects(date)[0]})
 
 
 def to_csv(rows):
@@ -75,16 +109,31 @@ def to_csv(rows):
 def export_csv(date, week=False, out=None):
     """Write the CSV and return its path. Default path is in CACHE, beside the
     receipts, named for the day or for the week's Monday."""
+    check_date(date, week)
     if week:
         rows = week_rows(date)
         name = "timesheet-week-%s.csv" % _week_dates(date)[0]
     else:
-        rows = day_rows(build(date))
+        rows = _day(date)
         name = "timesheet-%s.csv" % date
     path = out or os.path.join(CACHE, name)
-    d = os.path.dirname(path)
-    if d:
-        os.makedirs(d, exist_ok=True)
-    with open(path, "w", newline="") as f:
-        f.write(to_csv(rows))
+    d = os.path.dirname(os.path.abspath(path))
+    os.makedirs(d, exist_ok=True)
+    # Temp file then rename, so an interrupted run never leaves half a CSV
+    # where a spreadsheet import would pick it up.
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=".timesheet-", suffix=".csv")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(to_csv(rows))
+        # mkstemp creates 0600; give the file the permissions a plain open() would.
+        um = os.umask(0)
+        os.umask(um)
+        os.chmod(tmp, 0o666 & ~um)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     return path
