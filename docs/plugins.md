@@ -31,7 +31,8 @@ The split between `available()` and `read()` is the whole point. A source that
 is not configured says nothing. A source that **is** configured and then fails is <!--claim:source-absent-silent-->
 reported on the receipt, because those two used to look identical from the <!--claim:source-failure-visible-->
 outside, and that is how a broken section can sit there for days looking like a
-quiet one.
+quiet one. The weekly recap lists every source that failed on any day of the <!--claim:weekly-source-failure-visible-->
+week, once each, with the days it failed on.
 
 Items under a `key` the renderers do not know are kept in `data["extra"]` rather <!--claim:plugin-extra-kept-->
 than dropped. A plugin that blows up on import is reported and skipped: a <!--claim:broken-plugin-skipped-->

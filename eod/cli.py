@@ -100,8 +100,11 @@ def main():
             changed = True
 
     if changed:
-        with open(base + ".json", "w") as f:
+        # Written whole, then swapped in: the weekly reads this file, and a
+        # half-written one would quietly drop that day's source failures.
+        with open(base + ".json.tmp", "w") as f:
             json.dump(data, f)
+        os.replace(base + ".json.tmp", base + ".json")
         with open(base + ".html", "w") as f:
             f.write(to_html(data))
         with open(base + "-full.html", "w") as f:
