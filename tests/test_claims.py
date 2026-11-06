@@ -14,6 +14,7 @@ cannot quietly drop the behaviour without a red test.
 Add a claim => add a test here. Delete a claim => delete its test.
 """
 
+import json
 import os
 import re
 import shutil
@@ -56,13 +57,16 @@ register(Linear())
 
 BROKEN = "import a_module_that_certainly_does_not_exist\n"
 
+# The only places the engine may open a connection, and with what: polish.py
+# for the loopback-only Ollama call, send.py for the Send button. Everything
+# else in eod/ may import none of NETWORK_MODULES, anywhere in the file.
+NETWORK_ALLOWED = {
+    "eod/polish.py": {"urllib.request", "urllib.error"},
+    "eod/send.py": {"urllib.request", "urllib.error"},
+}
 
-# The one place the engine may open a connection, and with what. Shared with
-# the #27 branch, which extends this same test.
-NETWORK_ALLOWED = {"eod/send.py": {"urllib.request", "urllib.error"}}
-
-NETWORK_MODULES = {"urllib.request", "http.client", "socket", "ssl", "smtplib",
-                   "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio"}
+NETWORK_MODULES = {"urllib.request", "urllib.error", "http.client", "socket", "ssl",
+                   "smtplib", "ftplib", "urllib3", "requests", "httpx", "aiohttp", "asyncio"}
 
 
 def _is_network(mod):
@@ -298,8 +302,10 @@ class TestPrivacyClaims(ClaimCase):
 
     def test_the_engine_makes_no_network_calls(self):
         """README: 'no telemetry', 'nothing leaves your Mac'. The only outbound
-        paths are the claude CLI subprocess, which polish.off disables, and
-        eod/send.py, the Send button, which only the --send branch imports.
+        paths are the claude CLI subprocess, which polish.off disables; polish.py's
+        call to Ollama, held to loopback at runtime by _open_local (tested in
+        test_polish.py); and eod/send.py, the Send button, which only the --send
+        branch imports.
 
         An AST walk over every node, not a text search: an import inside a
         function, an aliased one or an importlib call all count."""
@@ -330,6 +336,18 @@ class TestPrivacyClaims(ClaimCase):
                 and isinstance(n.value, str) and re.search(r"https?://[A-Za-z0-9]", n.value)}
         self.assertEqual(urls, {"https://api.linear.app/graphql",
                                 "http://adaptivecards.io/schemas/adaptive-card.json"})
+
+
+        # polish.py: exactly one opener, used from exactly one place, on loopback.
+        from urllib.parse import urlparse
+        with open(os.path.join(root, "eod", "polish.py"), encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+        calls = [n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", None)
+                 for n in ast.walk(tree) if isinstance(n, ast.Call)]
+        self.assertEqual(calls.count("build_opener"), 1, "polish.py should build one opener")
+        self.assertEqual(calls.count("_open_local"), 1, "only _run_ollama should open a URL")
+        polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        self.assertEqual(urlparse(polish_mod.OLLAMA_URL).hostname, "127.0.0.1")
 
     CLAIM_send_only_on_press = "send-only-on-press"
 
@@ -379,6 +397,43 @@ class TestPrivacyClaims(ClaimCase):
         self.ex.SEND_FILE = os.path.join(self.tmp, "absent.txt")
         self.assertEqual(self.ex.send_labels(), [])
 
+    CLAIM_ollama_stays_local = "ollama-stays-local"
+
+    def test_ollama_txt_sends_the_day_to_loopback_and_never_the_cli(self):
+        """configuration.md: ollama.txt runs polish on local Ollama instead of the
+        claude CLI, only on 127.0.0.1:11434, and a failure falls back like the CLI."""
+        from urllib.parse import urlparse
+        polish_mod = next(m for m in self.ex._mods if m.__name__ == "eod.polish")
+        cli_calls, urls = [], []
+
+        class Resp:
+            def __init__(self, body): self.body = body
+            def read(self): return self.body
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        def fake_open(req, timeout):
+            urls.append(req.full_url)
+            return Resp(b'{"response": "{\\"highlights\\": [\\"local bullet\\"], \\"detailed\\": []}"}')
+
+        cache = tempfile.mkdtemp(prefix="eod-ollama-claim-")
+        try:
+            with mock.patch.object(polish_mod, "load_ollama_model", lambda: "llama3.2"), \
+                 mock.patch.object(polish_mod, "_claude_bin", lambda: "/fake/claude"), \
+                 mock.patch.object(polish_mod, "subprocess", fake_subprocess(cli_calls, FakeRun())), \
+                 mock.patch.object(polish_mod, "_open_local", fake_open), \
+                 mock.patch.object(polish_mod, "CACHE", cache):
+                data = {"date": DAY, "projects": [],
+                        "commits": [{"repo": "r", "subject": "did some work"}]}
+                self.ex.polish(data, force=True)
+        finally:
+            shutil.rmtree(cache, ignore_errors=True)
+        self.assertEqual(cli_calls, [], "the claude CLI must not run when ollama.txt is set")
+        self.assertEqual(data["highlights"], ["local bullet"])
+        self.assertEqual(len(urls), 1)
+        u = urlparse(urls[0])
+        self.assertEqual((u.hostname, u.port), ("127.0.0.1", 11434))
+
 
 class TestSourceContractClaims(ClaimCase):
 
@@ -424,6 +479,70 @@ class TestSourceContractClaims(ClaimCase):
         _, data = self.a_normal_day(ex)
         self.assertTrue(data["projects"], "the day must still build")
         self.assertTrue(any("broken.py" in p for p in data["source_problems"]))
+
+
+class TestWeeklySourceClaims(ClaimCase):
+    """The weekly is built from cached days, so it has to read their failures
+    back rather than inherit them. It used to not, and could not say so."""
+
+    WEEK = ["2026-10-05", "2026-10-06", "2026-10-07"]
+
+    def cache_day(self, ex, date, highlights, problems=()):
+        with open(os.path.join(ex.CACHE, "polish-%s.json" % date), "w") as fh:
+            json.dump({"highlights": highlights}, fh)
+        with open(os.path.join(ex.CACHE, "%s.json" % date), "w") as fh:
+            json.dump({"date": date, "source_problems": list(problems)}, fh)
+
+    def weekly(self, ex):
+        ex._claude_bin = lambda: None      # fallback path: no model, no network
+        return ex.build_weekly(self.WEEK[-1])
+
+    CLAIM_weekly_source_failure_visible = "weekly-source-failure-visible"
+
+    def test_a_week_with_a_failed_source_says_so_on_both_surfaces(self):
+        ex = self.ex
+        self.cache_day(ex, self.WEEK[0], ["shipped the parser"])
+        self.cache_day(ex, self.WEEK[1], ["fixed the cache"], ["boomsource: token expired"])
+        self.cache_day(ex, self.WEEK[2], ["wrote docs"],
+                       ["boomsource: HTTP 401", "calendar: no access"])
+        data = self.weekly(ex)
+        self.assertEqual(data["source_problems"], [
+            {"source": "boomsource", "detail": "HTTP 401",
+             "days": ["2026-10-06", "2026-10-07"]},
+            {"source": "calendar", "detail": "no access", "days": ["2026-10-07"]},
+        ])
+        text = ex.to_text_weekly(data)
+        self.assertIn("! boomsource unavailable on Tue, Wed: HTTP 401", text)
+        self.assertIn("! calendar unavailable on Wed: no access", text)
+        page = ex.to_html_weekly(data)
+        self.assertIn("boomsource unavailable on Tue, Wed: HTTP 401", page)
+        self.assertEqual(page.count("<div class='warn'>"), 2)
+
+    def test_a_failure_is_shown_even_when_the_week_has_no_highlights(self):
+        ex = self.ex
+        self.cache_day(ex, self.WEEK[0], [], ["boomsource: token expired"])
+        data = self.weekly(ex)
+        self.assertIn("boomsource", ex.to_text_weekly(data))
+        self.assertIn("boomsource", ex.to_html_weekly(data))
+
+    def test_a_healthy_week_renders_exactly_as_before(self):
+        ex = self.ex
+        for d in self.WEEK:
+            self.cache_day(ex, d, ["did a thing on " + d])
+        data = self.weekly(ex)
+        self.assertEqual(data["source_problems"], [])
+        legacy = dict(data)
+        del legacy["source_problems"]
+        self.assertEqual(ex.to_text_weekly(data), ex.to_text_weekly(legacy))
+        self.assertEqual(ex.to_html_weekly(data), ex.to_html_weekly(legacy))
+        self.assertNotIn("unavailable", ex.to_text_weekly(data))
+
+    def test_a_missing_or_corrupt_day_cache_is_not_a_failure(self):
+        ex = self.ex
+        self.cache_day(ex, self.WEEK[0], ["shipped"])
+        with open(os.path.join(ex.CACHE, "%s.json" % self.WEEK[1]), "w") as fh:
+            fh.write("{not json")
+        self.assertEqual(self.weekly(ex)["source_problems"], [])
 
 
 class TestConfigClaims(ClaimCase):

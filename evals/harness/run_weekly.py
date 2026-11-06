@@ -23,6 +23,8 @@ TMP = tempfile.mkdtemp(prefix="eod-eval-weekly-")
 CALL_LOG = os.path.join(TMP, "calls.jsonl")
 P.CACHE = TMP
 P._claude_bin = lambda: os.path.join(HERE, "claude_wrapper.py")
+# A developer's own ollama.txt must not turn a Claude-labelled eval into an Ollama one.
+P.load_ollama_model = lambda: None
 _orig_env = P._full_env
 P._full_env = lambda: dict(_orig_env(), EVAL_LABEL="weekly", EVAL_CALL_LOG=CALL_LOG)
 assert not os.path.exists(P.app_path("polish.off")), "polish.off present; polish_weekly() would skip"

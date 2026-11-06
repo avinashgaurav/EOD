@@ -5,7 +5,7 @@ from datetime import datetime
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB, SIG, _sig_html
-from .text import extra_lines, source_warnings, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
+from .text import extra_lines, source_warnings, weekly_source_warnings, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
 
 
 CSS = """
@@ -547,6 +547,10 @@ def to_html_weekly(data):
     P.append("<div class='rule'></div>")
     P.append(f"<div class='kv'><span class='k'>Week</span><span class='dots'></span>"
              f"<span class='v'>{esc(pretty_date(data['week_start']))} → {esc(pretty_date(data['week_end']))}</span></div>")
+    # Same promise as the daily: a source that failed this week is said out loud,
+    # not left to look like a quiet week.
+    for _sw in weekly_source_warnings(data):
+        P.append("<div class='warn'>! " + esc(_sw) + "</div>")
     P.append("<div class='rule double'></div>")
     if not data.get("highlights"):
         P.append("<div class='empty'>— NO ACTIVITY THIS WEEK —</div>")

@@ -40,8 +40,45 @@ bin/eod today --md         # markdown, for a PR description or doc
 bin/eod today --json       # the whole day
 bin/eod day 2026-08-01     # any past day
 bin/eod week               # the weekly recap
+bin/eod timesheet          # time per project as CSV; prints the file's path
 bin/eod sources            # what is set up on this machine, and what is not
 bin/eod payload            # what AI-polish would send, without sending it
 ```
 
 `--raw` skips the AI-polish step even when it is configured.
+
+### Timesheet CSV
+
+```sh
+bin/eod timesheet                        # today -> cache/timesheet-YYYY-MM-DD.csv
+bin/eod timesheet --date 2026-08-01      # any past day
+bin/eod timesheet --week                 # Monday to today -> cache/timesheet-week-<Monday>.csv
+bin/eod timesheet --week --out ~/ts.csv  # write it somewhere else
+```
+
+Columns: `date, project, source, start, end, minutes, sessions`. One row per
+project per source (`claude` or `codex`) per day, sorted by date, then project,
+then source. A day with no sessions writes the header row only. Projects whose
+display names come out the same are merged into one row. A malformed or future
+`--date` is refused (exit 2) and nothing is written.
+
+How `minutes` is counted, so you can check it against the receipt:
+
+- Each session counts from its first prompt to its last distinct prompt. Idle
+  time in between is counted; time after the last prompt is not. Repeated
+  prompts and filler such as "continue" are dropped before this, so a trailing
+  "continue" adds nothing.
+- A session with a single prompt counts as 0 minutes.
+- Sessions that overlap are each counted in full, so a project's minutes can be
+  more than the gap between its `start` and `end`.
+- Times are local clock times, so a session that spans a daylight-saving change
+  is off by up to 60 minutes.
+
+`--week` reads every day from Monday up to `--date` (never past today) straight
+from the Claude Code and Codex transcripts, rather than from old receipts in
+`cache/`, so it is never stale. It runs only the session readers, not git,
+browser history or the other sources. Rows stay per day; sum them in your
+spreadsheet if you want weekly totals.
+
+A project name starting with `=`, `+`, `-` or `@` gets a leading `'` so a
+spreadsheet shows it as text instead of running it as a formula.

@@ -213,11 +213,14 @@ class TestFailures(SendCase):
         self.assertEqual(failed, ["Slack: redirected (HTTP 302), not followed"])
 
     def test_the_real_opener_never_follows_redirects(self):
-        h = self.ex._NoRedirect()
+        # Read from eod.send itself: polish.py has its own _NoRedirect, and the
+        # facade would hand back whichever module it finds first.
+        send = next(m for m in self.ex._mods if m.__name__ == "eod.send")
+        h = send._NoRedirect()
         self.assertIsNone(h.redirect_request(None, None, 302, "Found", {}, "https://x.example/"))
-        self.assertTrue(any(isinstance(x, self.ex._NoRedirect) for x in self.ex._OPENER.handlers))
+        self.assertTrue(any(isinstance(x, send._NoRedirect) for x in send._OPENER.handlers))
         self.assertFalse(any(type(x).__name__ == "HTTPRedirectHandler"
-                             for x in self.ex._OPENER.handlers))
+                             for x in send._OPENER.handlers))
 
     def test_errors_that_quote_the_url_never_leak_it(self):
         """urllib's own messages quote the URL. Whatever it raises, the secret

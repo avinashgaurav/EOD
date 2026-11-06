@@ -10,6 +10,7 @@ job, anything.
     eod today --md            markdown, for pasting into a doc or PR
     eod day 2026-08-01        any past day
     eod week                  the weekly recap
+    eod timesheet [--week]    time per project as CSV, for a day or a week
     eod sources               what is set up, what is not, what broke
     eod payload               exactly what AI-polish would send, sending nothing
 
@@ -33,6 +34,7 @@ from eod.polish import polish, _polish_input                # noqa: E402
 from eod.render.text import to_text, to_text_full, to_markdown, to_text_weekly  # noqa: E402
 from eod.sources import base as registry                    # noqa: E402
 from eod.weekly import build_weekly                          # noqa: E402
+from eod.timesheet import export_csv                         # noqa: E402
 from datetime import datetime                                # noqa: E402
 
 
@@ -104,6 +106,15 @@ def cmd_week(args):
     return 0
 
 
+def cmd_timesheet(args):
+    try:
+        print(export_csv(args.date or today_iso(), week=args.week, out=args.out))
+    except ValueError as e:
+        sys.stderr.write("eod timesheet: bad --date: %s (want a past or current YYYY-MM-DD)\n" % e)
+        return 2
+    return 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="eod", description=__doc__.split("\n")[0])
     sub = p.add_subparsers(dest="cmd")
@@ -126,6 +137,12 @@ def main(argv=None):
     w.add_argument("--date", help="any day in the week (default: today)")
     w.add_argument("--json", action="store_true")
 
+    ts = sub.add_parser("timesheet", help="time per project as CSV; prints the file's path")
+    ts.add_argument("--date", help="YYYY-MM-DD (default: today)")
+    ts.add_argument("--week", action="store_true",
+                    help="Monday through --date (never past today) instead of one day")
+    ts.add_argument("--out", help="where to write it (default: cache/timesheet-*.csv)")
+
     sub.add_parser("sources", help="what is set up on this machine")
 
     pl = sub.add_parser("payload", help="what AI-polish would send, without sending it")
@@ -141,6 +158,8 @@ def main(argv=None):
         return emit_day(args.date, args)
     if args.cmd == "week":
         return cmd_week(args)
+    if args.cmd == "timesheet":
+        return cmd_timesheet(args)
     if args.cmd == "sources":
         return cmd_sources(args)
     if args.cmd == "payload":

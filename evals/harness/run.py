@@ -27,6 +27,8 @@ TMP = tempfile.mkdtemp(prefix="eod-eval-")
 CALL_LOG = os.path.join(TMP, "calls.jsonl")
 P.CACHE = TMP
 P._claude_bin = lambda: os.path.join(HERE, "claude_wrapper.py")
+# A developer's own ollama.txt must not turn a Claude-labelled eval into an Ollama one.
+P.load_ollama_model = lambda: None
 _tl = threading.local()
 _orig_env = P._full_env
 def _env():
