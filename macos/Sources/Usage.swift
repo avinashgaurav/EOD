@@ -35,6 +35,7 @@ final class UsageTracker {
     private func sample() {
         let d = Day.today()
         if d != date { flush(); date = d; secs = load(d) }      // crossed midnight
+        if SourceSwitch.off.contains("apps") { return }          // switched off: not even sampled
         let anyInput = CGEventType(rawValue: ~0)!
         if CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput) > idleLimit { return }
         guard let name = NSWorkspace.shared.frontmostApplication?.localizedName, !name.isEmpty else { return }
@@ -42,23 +43,34 @@ final class UsageTracker {
     }
 }
 
-/// ⌥⌃⌘W, registered with Carbon so it needs no Accessibility permission.
+/// Global shortcuts, registered with Carbon so they need no Accessibility
+/// permission: ⌥⌃⌘W shows or hides the receipt, ⌥⌃⌘C copies today's update.
 final class HotKey {
     private var ref: EventHotKeyRef?
     private(set) var ok = false
-    private static var action: (() -> Void)?
+    func unregister() { if let r = ref { UnregisterEventHotKey(r); ref = nil } }
+    private static var actions: [UInt32: () -> Void] = [:]
+    private static var installed = false
 
-    init(action: @escaping () -> Void) {
-        HotKey.action = action
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
-            DispatchQueue.main.async { HotKey.action?() }
-            return noErr
-        }, 1, &spec, nil, nil)
-        let id = EventHotKeyID(signature: OSType(0x454F4420), id: 1)   // "EOD "
-        let st = RegisterEventHotKey(UInt32(kVK_ANSI_W), UInt32(cmdKey | optionKey | controlKey), id,
+    init(key: Int, id: UInt32, name: String, action: @escaping () -> Void) {
+        HotKey.actions[id] = action
+        if !HotKey.installed {
+            HotKey.installed = true
+            var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+            InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+                var hk = EventHotKeyID()
+                let st = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                                           nil, MemoryLayout<EventHotKeyID>.size, nil, &hk)
+                guard st == noErr, hk.signature == OSType(0x454F4420) else { return OSStatus(eventNotHandledErr) }
+                let id = hk.id
+                DispatchQueue.main.async { HotKey.actions[id]?() }
+                return noErr
+            }, 1, &spec, nil, nil)
+        }
+        let hid = EventHotKeyID(signature: OSType(0x454F4420), id: id)   // "EOD "
+        let st = RegisterEventHotKey(UInt32(key), UInt32(cmdKey | optionKey | controlKey), hid,
                                      GetApplicationEventTarget(), 0, &ref)
         ok = (st == noErr)
-        if !ok { Log.write("⌥⌃⌘W is taken by another app (status \(st)); use the menu-bar icon") }
+        if !ok { Log.write("\(name) is taken by another app (status \(st)); use the menu-bar icon") }
     }
 }

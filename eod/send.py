@@ -16,6 +16,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .config import CACHE, SEND_LABELS, app_path, load_send_targets
+from .hide import apply_hide
+from .features import redact
 from .render.text import to_standup
 
 TIMEOUT = 15
@@ -94,23 +96,47 @@ def _teams_card(text):
         }}]}
 
 
+def _text(data, bullet="• "):
+    """What to post: a given text (the weekly report exactly as previewed), or
+    the day's standup."""
+    t = data.get("_send_text")
+    if t is not None:
+        t = t.strip()
+        if not t:
+            return None
+        lines = [(bullet + x[2:]) if x.startswith("\u2022 ") else x for x in t.split("\n")]
+        return redact("\n".join(lines) + "\n")
+    out = to_standup(data, bullet=bullet)
+    return redact(out) if out else out
+
+
 def payload_for(target, data):
     """(url, json payload, extra headers) for one destination's post. Pure, so
     the tests can check the exact shape each service is sent. For Linear this
     is the comment itself; `target["issue_uuid"]` must already be resolved."""
     kind = target["kind"]
+    if target.get("format") == "markdown" and kind != "slack":
+        t = _text(data, bullet="- ")
+        if t:
+            lines = t.split("\n")
+            t = "\n".join(["**%s**" % lines[0]] + lines[1:])
+        if kind == "teams":
+            return target["url"], _teams_card(t), {}
+        if kind == "linear":
+            return LINEAR_API, {"query": LINEAR_MUTATION, "variables": {"input": {
+                "issueId": target.get("issue_uuid", target["issue"]), "body": t}}}, {"Authorization": target["key"]}
     if kind == "slack":
         # Slack reads &, < and > as markup, so a highlight mentioning <div>
         # would vanish without this.
-        text = to_standup(data)
+        text = _text(data)
         text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         return target["url"], {"text": text}, {}
     if kind == "teams":
-        return target["url"], _teams_card(to_standup(data, bullet="- ")), {}
+        return target["url"], _teams_card(_text(data, bullet="- ")), {}
     if kind == "linear":
         body = {"query": LINEAR_MUTATION,
                 "variables": {"input": {"issueId": target.get("issue_uuid", target["issue"]),
-                                        "body": to_standup(data, bullet="- ")}}}
+                                        "body": _text(data, bullet="- ")}}}
         return LINEAR_API, body, {"Authorization": target["key"]}
     raise ValueError(kind)
 
@@ -150,6 +176,10 @@ def _send_one(target, data):
 
 
 def card_data(date, build):
+    return apply_hide(_card_data(date, build))   # what is sent matches the preview, rules included
+
+
+def _card_data(date, build):
     """The day exactly as the card shows it, without asking the claude CLI for
     anything: the cached day (cache/<date>.json, written with the card), with
     hand edits saved since then laid over it. With no cached day, a fresh build
@@ -186,10 +216,20 @@ def send_day(data, targets=None):
     targets = load_send_targets() if targets is None else targets
     if not targets:
         return [], ["nothing to send to: add a destination to send.txt"]
-    if to_standup(data) is None:
+    if data.get("_send_text") is None:
+        data = apply_hide(data)
+    if _text(data) is None:
         return [], ["no work recorded for this day, nothing sent"]
     sent, failed = [], []
     for t in targets:
+        if t.get("kind") == "email":
+            # Not sent by EOD: the app opens a draft. Printed as a mailto: line.
+            from urllib.parse import quote
+            body = (_text(data, bullet="- ") or "")[:1800]      # mail apps drop very long mailto: links
+            subject = body.split("\n", 1)[0] if body else "Work update"
+            print("MAILTO mailto:%s?subject=%s&body=%s" % (quote(t["to"], safe="@"), quote(subject), quote(body)))
+            sent.append("Email draft")
+            continue
         if t.get("bad"):
             failed.append("send.txt line %d not understood" % t["bad"])
             continue

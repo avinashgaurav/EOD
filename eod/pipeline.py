@@ -13,7 +13,7 @@ from .sources.docs import read_docs
 from .sources.meetings import read_meetings
 from .sources import base as source_registry
 from .sources.builtin import register_builtins
-from .config import app_path
+from .config import app_path, load_sources_off
 
 register_builtins()
 _PLUGIN_ERRORS = source_registry.load_plugins(
@@ -38,8 +38,9 @@ def collect_sources(target):
     the receipt needs to show.
     """
     items, problems, extra = {}, [], {}
+    off = load_sources_off()
     for src in source_registry.registry():
-        if getattr(src, "assembled_by_pipeline", False):
+        if getattr(src, "assembled_by_pipeline", False) or src.name.lower() in off:
             continue
         got, err = src.collect(target)
         if err:
@@ -66,10 +67,37 @@ def build_projects(target):
     git, browser history, screen time and the rest for every day of a week.
     Returns (projects, n_sessions, n_untitled, touched).
     """
-    projects, n_sessions, n_untitled, touched = read_sessions(target)
-    add_codex(projects, target)   # merge Codex sessions into the same project buckets
+    off = load_sources_off()
+    if "claude-code" in off:
+        projects, n_sessions, n_untitled, touched = {}, 0, 0, 0
+    else:
+        projects, n_sessions, n_untitled, touched = read_sessions(target)
+    if "codex" not in off:
+        add_codex(projects, target)   # merge Codex sessions into the same project buckets
 
     # shape output, ordered by busiest project
+    # B9: sessions you moved to another project (Full day timeline) go there,
+    # so the timesheet counts them where they belong.
+    from .features import ASSIGNED, load_assignments, norm_title
+    moves = load_assignments()
+    if moves:
+        def bucket(dest):
+            # Into an existing project of that name when there is one, so it merges.
+            for k in projects:
+                if (k[len(ASSIGNED):] if k.startswith(ASSIGNED) else pretty_project(k)) == dest:
+                    return k
+            return ASSIGNED + dest
+        for pn in list(projects):
+            keep = []
+            for s in projects[pn]:
+                dest = moves.get((target, s.get("start", ""), norm_title(s.get("title"))))
+                if dest and dest != pretty_project(pn):
+                    projects.setdefault(bucket(dest), []).append(s)
+                else:
+                    keep.append(s)
+            projects[pn] = keep
+        projects = {k: v for k, v in projects.items() if v}
+
     out_projects = []
     # Walk the raw project keys in sorted order so the stable sort below falls
     # back to the key itself when everything else ties: pretty names can collide.
@@ -77,7 +105,7 @@ def build_projects(target):
         sessions.sort(key=lambda s: s["start"])
         total = sum(len(s["prompts"]) for s in sessions)
         out_projects.append({
-            "name": pretty_project(pn), "total": total,
+            "name": pn[len("~assigned~"):] if pn.startswith("~assigned~") else pretty_project(pn), "total": total,  # see features.ASSIGNED
             "sessions": [{
                 "title": s["title"], "start": s["start"], "end": s["end"],
                 "source": s.get("source", "claude"),
@@ -91,6 +119,27 @@ def build_projects(target):
     # in the loop, so sessions[0] is the project's earliest session.
     out_projects.sort(key=lambda p: (-p["total"], p["sessions"][0]["start"], p["name"]))
     return out_projects, n_sessions, n_untitled, touched
+
+
+def sources_status(problems):
+    """One line per source for the receipt's footer chips (audit F32):
+    ok, off (switched off in Settings), failed, or missing (not set up)."""
+    off = load_sources_off()
+    failed = {str(p).split(":", 1)[0].strip() for p in problems}
+    out = []
+    for src in source_registry.registry():
+        n = src.name
+        if n.lower() in off:
+            state = "off"
+        elif n in failed:
+            state = "failed"
+        else:
+            try:
+                state = "ok" if src.available() else "missing"
+            except Exception:
+                state = "missing"
+        out.append({"name": n, "state": state})
+    return out
 
 
 def build(target):
@@ -121,5 +170,6 @@ def build(target):
         # A source that is configured and then fails is not the same as one that
         # is absent, and the receipt should be able to tell you which happened.
         "source_problems": problems + _PLUGIN_ERRORS,
+        "sources_status": sources_status(problems + _PLUGIN_ERRORS),
         "extra": collected.get("extra", {}),
     }

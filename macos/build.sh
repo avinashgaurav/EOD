@@ -15,7 +15,7 @@ rm -rf "$OUT"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/engine"
 
 for arch in arm64 x86_64; do
   swiftc -O -swift-version 5 -target "$arch-apple-macos13.0" \
-    -framework AppKit -framework WebKit -framework ServiceManagement -framework UserNotifications -framework Carbon \
+    -framework AppKit -framework WebKit -framework ServiceManagement -framework UserNotifications -framework Carbon -framework Security -framework EventKit \
     Sources/*.swift -o "$OUT/EOD-$arch"
 done
 lipo -create "$OUT/EOD-arm64" "$OUT/EOD-x86_64" -output "$APP/Contents/MacOS/EOD"
@@ -35,6 +35,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>$VERSION.$BUILD</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
+  <key>NSCalendarsUsageDescription</key><string>EOD reads today's meeting titles and times to put them on your receipt. Attendee names are never read.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key><string>EOD reads today's meeting titles and times to put them on your receipt. Attendee names are never read.</string>
   <key>NSHumanReadableCopyright</key><string>MIT licensed</string>
 </dict></plist>
 PLIST

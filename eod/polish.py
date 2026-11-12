@@ -142,10 +142,13 @@ def _open_local(req, timeout):
     return _local_opener().open(req, timeout=timeout)
 
 
-def _run_ollama(model, prompt):
-    """One generate call. Returns the model's text, or raises with a reason worth logging."""
-    body = json.dumps({"model": model, "prompt": prompt, "stream": False, "format": "json",
-                       "options": {"num_ctx": OLLAMA_NUM_CTX}}).encode("utf-8")
+def _run_ollama(model, prompt, raw=False):
+    """One generate call. Returns the model's text, or raises with a reason worth logging.
+    raw=True asks for free text (brag doc, Ask) instead of a JSON object."""
+    req_body = {"model": model, "prompt": prompt, "stream": False, "options": {"num_ctx": OLLAMA_NUM_CTX}}
+    if not raw:
+        req_body["format"] = "json"
+    body = json.dumps(req_body).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=body,
                                  headers={"Content-Type": "application/json"})
     try:
@@ -207,7 +210,13 @@ def _clean_detailed(raw):
 
 
 def _polish_input(data):
-    """Compact, stable text of everything the curator should consider."""
+    """Compact, stable text of everything the curator should consider,
+    with secrets, emails, internal hosts and home paths redacted (B11)."""
+    from .features import redact
+    return redact(_polish_input_raw(data))
+
+
+def _polish_input_raw(data):
     lines = []
     for p in data["projects"]:
         lines.append("## " + p["name"])
@@ -280,16 +289,63 @@ def _polish_log(msg):
         pass
 
 
+def run_ai_text(prompt):
+    """One free-text AI call that follows the AI tidy-up choice: None when it is
+    off or no CLI is found, else the text from Ollama or the claude CLI."""
+    if os.path.exists(app_path("polish.off")):
+        return None
+    model = load_ollama_model()
+    if model:
+        return _run_ollama(model, prompt, raw=True)
+    cb = _claude_bin()
+    if not cb:
+        return None
+    cwd = os.path.join(CACHE, ".polish")
+    os.makedirs(cwd, exist_ok=True)
+    r = _run_claude(cb, POLISH_SENTINEL + " (automated task, ignore):\n" + prompt, cwd)
+    return r.stdout if r.returncode == 0 else None
+
+
+def friendly_reason(msg):
+    """One plain sentence for why the AI step did not run: the cause and what to do.
+    The full reason still goes to polish-error.log for anyone who wants it."""
+    m = (msg or "").lower()
+    if "no claude cli" in m:
+        return "Claude CLI not found. Install Claude Code, or set AI tidy-up to Ollama or Off."
+    if "log in" in m or "login" in m or "not logged" in m or "authenticat" in m or "api key" in m:
+        return "Claude CLI isn't logged in. Run claude once to log in, or set AI tidy-up to Ollama or Off."
+    if "refused" in m or "urlerror" in m or "11434" in m:
+        return "Ollama isn't running. Start Ollama, or set AI tidy-up to Claude or Off."
+    if "timed out" in m or "timeout" in m:
+        return "The AI step took too long. Press ⟳ to try again."
+    if "rate limit" in m or "usage limit" in m:
+        return "Claude's usage limit was reached. Try again later; the offline summary is shown."
+    return "The AI step didn't work this time. Press ⟳ to try again."
+
+
+def _now_hm():
+    return datetime.now().astimezone().strftime("%H:%M")
+
+
+def _mtime_hm(path):
+    try:
+        return datetime.fromtimestamp(os.path.getmtime(path)).strftime("%H:%M")
+    except OSError:
+        return ""
+
+
 def polish(data, force=False):
     """Curate the day into a short manager-ready highlights list via the local claude CLI
     (or local Ollama, with ollama.txt).
     Honours user edits (won't overwrite) unless force=True (the Regenerate button)."""
     if os.path.exists(app_path("polish.off")):
+        data["summary"] = {"by": "off"}
         return
     model = load_ollama_model()
     cb = None if model else _claude_bin()
     if not (data["projects"] or data.get("commits") or data.get("meetings")):
         return
+    by = "ollama" if model else "claude"
     raw = _polish_input(data)
     key = _cache_key(raw, model)
     cache_path = os.path.join(CACHE, "polish-" + data["date"] + ".json")
@@ -306,10 +362,12 @@ def polish(data, force=False):
                 data["highlights"] = cached
                 data["detailed"] = cached_detail
                 data["edited"] = True
+                data["summary"] = {"by": "edited", "at": _mtime_hm(cache_path)}
                 return
             if c.get("key") == key and not force:  # work unchanged → reuse, no claude call
                 data["highlights"] = cached
                 data["detailed"] = cached_detail
+                data["summary"] = {"by": c.get("by", by), "at": c.get("at") or _mtime_hm(cache_path)}
                 return
     except Exception:
         pass
@@ -321,13 +379,18 @@ def polish(data, force=False):
     if cached and not force and cached_model == model and _polished_recently(cache_path):
         data["highlights"] = cached
         data["detailed"] = cached_detail
+        data["summary"] = {"by": by, "at": _mtime_hm(cache_path), "pending": True}
         return
 
     if not (cb or model):
         _polish_log("no claude CLI found (looked in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin)")
+        note = friendly_reason("no claude cli")
         if cached:
             data["highlights"] = cached
             data["detailed"] = cached_detail
+            data["summary"] = {"by": "stale", "at": _mtime_hm(cache_path), "note": note}
+        else:
+            data["summary"] = {"by": "offline", "note": note}
         return
     cwd = os.path.join(CACHE, ".polish")
     try:
@@ -349,18 +412,23 @@ def polish(data, force=False):
             raise ValueError("no highlights in output: " + out.strip()[:300])
     except Exception as e:
         _polish_log("%s: %s" % (type(e).__name__, e))
+        note = friendly_reason("%s: %s" % (type(e).__name__, e))
         if cached:                          # failure → keep the LAST GOOD summary, never the raw fallback
             data["highlights"] = cached
             data["detailed"] = cached_detail
+            data["summary"] = {"by": "stale", "at": _mtime_hm(cache_path), "note": note}
+        else:
+            data["summary"] = {"by": "offline", "note": note}
         return
 
     with open(cache_path, "w") as fh:
-        entry = {"key": key, "highlights": highlights, "detailed": detailed}
+        entry = {"key": key, "highlights": highlights, "detailed": detailed, "by": by, "at": _now_hm()}
         if model:
             entry["model"] = model
         json.dump(entry, fh)
     data["highlights"] = highlights
     data["detailed"] = detailed
+    data["summary"] = {"by": by, "at": _now_hm()}
 
 
 # ── weekly rollup + history ─────────────────────────────────────────────────────
@@ -386,18 +454,22 @@ WEEKLY_PROMPT = (
     "- collaboration: who the person worked with, only names or teams that appear in the dailies. Empty if none.\n"
     "- next_steps: 2-4 lines, only for work the dailies show as started, in progress or handed over and not "
     "finished. Start each with a verb (Continue, Finish, Follow up on). Empty if nothing is open.\n"
-    "Return a JSON OBJECT: {\"highlights\": [4-8 top weekly lines], "
+    "- tldr: ONE sentence (max 25 words) a manager can read on a phone, the week's main outcome. Same truth rules.\n"
+    "Return a JSON OBJECT: {\"tldr\": \"...\", \"highlights\": [4-8 top weekly lines], "
     '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}], '
     '"progress": ["..."], "blockers": ["..."], "collaboration": ["..."], "next_steps": ["..."]}. '
     "Output ONLY the JSON object."
 )
 
 REPORT_KEYS = ("progress", "blockers", "collaboration", "next_steps")
+REPORT_TEXT_KEYS = ("tldr",)
 
 
 def _clean_report(obj):
     """The weekly report sections, each a short list of one-line strings."""
     out = {}
+    t = obj.get("tldr") if isinstance(obj, dict) else None
+    out["tldr"] = oneline(t, 200) if isinstance(t, str) and t.strip() else ""
     for k in REPORT_KEYS:
         v = obj.get(k) if isinstance(obj, dict) else None
         out[k] = [oneline(x, 160) for x in (v if isinstance(v, list) else []) if isinstance(x, str) and x.strip()][:4]

@@ -17,6 +17,8 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     private var dragMonitor: Any?
     private var dragOffset = NSPoint.zero
     private var pendingHide: DispatchWorkItem?
+    /// Script to run once the next page has loaded (a toast or an Undo bar).
+    var afterLoad: String?
     /// Where the person last left the panel; nil until they move it.
     var savedFrame: NSRect?
 
@@ -25,6 +27,9 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
                              backing: .buffered, defer: false)
         let cfg = WKWebViewConfiguration()
         let ucc = WKUserContentController()
+        // Tells the page it runs in the Mac app, so it shows controls only the app
+        // can act on (print, settings, weekly send, timesheet export).
+        ucc.addUserScript(WKUserScript(source: "window.EOD_APP=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController = ucc
         web = WKWebView(frame: NSRect(origin: .zero, size: frame.size), configuration: cfg)
         super.init()
@@ -49,21 +54,44 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
 
     /// Load a file from the data folder. A changing ?n= forces a real reload, and
     /// #in plays the print-down animation (a fragment change alone would not reload).
-    func load(path: String, animate: Bool) {
+    func load(path: String, animate: Bool, quick: Bool = false) {
         loadN += 1
         var c = URLComponents()
         c.scheme = "file"; c.path = path
         c.queryItems = [URLQueryItem(name: "n", value: String(loadN))]
-        if animate { c.fragment = "in" }
+        if animate { c.fragment = "in" } else if quick { c.fragment = "quick" }
         guard let url = c.url else { return }
-        web.loadFileURL(url, allowingReadAccessTo: Paths.support)
+        let nav = web.loadFileURL(url, allowingReadAccessTo: Paths.support)
+        afterLoadNav = afterLoad == nil ? nil : nav
     }
 
     func js(_ s: String) { web.evaluateJavaScript(s, completionHandler: nil) }
 
+    /// Whether the person is in the middle of editing lines on the page.
+    func isEditing(_ done: @escaping (Bool) -> Void) {
+        web.evaluateJavaScript("window.isEditing ? window.isEditing() : false") { v, _ in done((v as? Bool) ?? false) }
+    }
+
+    /// The navigation the pending script belongs to; any other load drops it.
+    private var afterLoadNav: WKNavigation?
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if let s = afterLoad, navigation === afterLoadNav { js(s) }
+        afterLoad = nil; afterLoadNav = nil
+    }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        afterLoad = nil; afterLoadNav = nil
+    }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        afterLoad = nil; afterLoadNav = nil
+    }
+
     func show(at frame: NSRect) {
         pendingHide?.cancel(); pendingHide = nil       // a show beats a roll-up still in flight
-        panel.setFrame(savedFrame ?? frame, display: true)
+        // A dragged position is kept, but only on the display it was dragged on.
+        let target = NSScreen.screens.first { $0.frame.intersects(frame) }
+        let saved = savedFrame.flatMap { f in NSScreen.screens.first { $0.frame.intersects(f) } == target ? f : nil }
+        panel.setFrame(saved ?? frame, display: true)
         panel.orderFrontRegardless()
     }
 
@@ -76,7 +104,7 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
             js("window.playOut&&playOut()")
             let w = DispatchWorkItem { [weak self] in self?.panel.orderOut(nil); self?.pendingHide = nil }
             pendingHide = w
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.46, execute: w)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: w)
         } else { panel.orderOut(nil) }
     }
 
