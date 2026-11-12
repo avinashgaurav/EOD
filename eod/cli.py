@@ -75,6 +75,7 @@ def main():
     show_payload = False
     share = False
     do_send = False
+    standup = False
     args = sys.argv[1:]
     skip = set()
     for i, a in enumerate(args):
@@ -96,17 +97,7 @@ def main():
         elif a == "--send":
             do_send = True
         elif a == "--standup":
-            # The work update as text, exactly what Copy update and Send share.
-            # Used by the app's one-key copy and the reminder's Copy action.
-            from .send import card_data
-            from .render.text import to_standup
-            d = args[args.index("--date") + 1] if "--date" in args else datetime.now().astimezone().strftime("%Y-%m-%d")
-            text = to_standup(apply_hide(card_data(d, build)))
-            if text is None:
-                sys.stderr.write("EOD: no work recorded for %s yet\n" % d)
-                raise SystemExit(3)
-            sys.stdout.write(text)
-            return
+            standup = True
         elif a == "--hide" and i + 2 < len(args):
             # Never show this: one rule into hide.txt, then rebuild as usual.
             skip.update((i + 1, i + 2))
@@ -116,6 +107,20 @@ def main():
                 raise SystemExit(2)
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
+    if standup:
+        # The work update as text, exactly what Copy update and Send share.
+        # Used by the app's one-key copy and the reminder's Copy action.
+        if not _valid_date(date):
+            sys.stderr.write("EOD: --date wants YYYY-MM-DD, got %r\n" % date)
+            raise SystemExit(2)
+        from .send import card_data
+        from .render.text import to_standup
+        text = to_standup(card_data(date, build))
+        if text is None:
+            sys.stderr.write("EOD: no work recorded for %s yet\n" % date)
+            raise SystemExit(3)
+        sys.stdout.write(text)
+        return
     if share and not _valid_date(date):
         sys.stderr.write("EOD: --date wants YYYY-MM-DD, got %r\n" % date)
         raise SystemExit(2)

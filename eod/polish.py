@@ -292,7 +292,7 @@ def friendly_reason(msg):
         return "Ollama isn't running. Start Ollama, or set AI tidy-up to Claude or Off."
     if "timed out" in m or "timeout" in m:
         return "The AI step took too long. Press ⟳ to try again."
-    if "rate" in m and "limit" in m or "usage limit" in m:
+    if "rate limit" in m or "usage limit" in m:
         return "Claude's usage limit was reached. Try again later; the offline summary is shown."
     return "The AI step didn't work this time. Press ⟳ to try again."
 

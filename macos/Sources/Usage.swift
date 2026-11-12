@@ -57,8 +57,9 @@ final class HotKey {
             var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
             InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
                 var hk = EventHotKeyID()
-                GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
-                                  nil, MemoryLayout<EventHotKeyID>.size, nil, &hk)
+                let st = GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                                           nil, MemoryLayout<EventHotKeyID>.size, nil, &hk)
+                guard st == noErr, hk.signature == OSType(0x454F4420) else { return OSStatus(eventNotHandledErr) }
                 let id = hk.id
                 DispatchQueue.main.async { HotKey.actions[id]?() }
                 return noErr

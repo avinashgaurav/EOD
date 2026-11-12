@@ -58,7 +58,8 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         c.queryItems = [URLQueryItem(name: "n", value: String(loadN))]
         if animate { c.fragment = "in" }
         guard let url = c.url else { return }
-        web.loadFileURL(url, allowingReadAccessTo: Paths.support)
+        let nav = web.loadFileURL(url, allowingReadAccessTo: Paths.support)
+        afterLoadNav = afterLoad == nil ? nil : nav
     }
 
     func js(_ s: String) { web.evaluateJavaScript(s, completionHandler: nil) }
@@ -68,8 +69,18 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         web.evaluateJavaScript("window.isEditing ? window.isEditing() : false") { v, _ in done((v as? Bool) ?? false) }
     }
 
+    /// The navigation the pending script belongs to; any other load drops it.
+    private var afterLoadNav: WKNavigation?
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        if let s = afterLoad { afterLoad = nil; js(s) }
+        if let s = afterLoad, navigation === afterLoadNav { js(s) }
+        afterLoad = nil; afterLoadNav = nil
+    }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        afterLoad = nil; afterLoadNav = nil
+    }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        afterLoad = nil; afterLoadNav = nil
     }
 
     func show(at frame: NSRect) {

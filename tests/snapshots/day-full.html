@@ -195,12 +195,14 @@ function _enterEdit(){
 // Esc throws the edits away, Backspace on an empty line deletes it.
 function _editKeys(e){
   var list=document.getElementById('workList');if(!list||list.getAttribute('data-edit')!=='1')return;
+  if(e.isComposing||e.keyCode===229)return;                       // IME: Enter confirms text, not a new line
+  if(!e.target.classList||!e.target.classList.contains('htext'))return;   // buttons keep their own keys
   var cur=e.target.closest&&e.target.closest('.item');
   if((e.metaKey||e.ctrlKey)&&(e.key==='Enter'||e.key==='s')){e.preventDefault();toggleEdit();return}
-  if(e.key==='Escape'){e.preventDefault();send({action:'refresh'});toast('Edits discarded');return}
+  if(e.key==='Escape'){e.preventDefault();send({action:'discard'});return}
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addLine(cur);return}
   if(e.key==='Backspace'&&cur&&!e.target.textContent.trim()){
-    e.preventDefault();var prev=cur.previousElementSibling;cur.remove();
+    e.preventDefault();var prev=cur.previousElementSibling;_removeWithUndo(cur);
     if(prev){var t=prev.querySelector('.htext');if(t){t.focus();document.getSelection().selectAllChildren(t);document.getSelection().collapseToEnd()}}}
 }
 function _collect(){
@@ -216,6 +218,8 @@ function toggleEdit(){
     toast('Enter adds a line, Cmd+Enter saves, Esc cancels');
   }else{
     var items=_collect();
+    if(!items.length){toast('Keep at least one line, or press ⟳ to re-summarize');return}
+    _undo=[];var ub=document.getElementById('undoBar');if(ub)ub.remove();
     list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='false';s.classList.remove('editing');});
     list.setAttribute('data-edit','0');if(b)b.textContent='Edit';
     send({action:'saveEdits',items:items});toast('Saved');
@@ -237,13 +241,19 @@ function showUndo(msg,fn){var old=document.getElementById('undoBar');if(old)old.
   b.onclick=function(){u.remove();fn()};u.appendChild(b);document.body.appendChild(u);
   clearTimeout(window._ut);window._ut=setTimeout(function(){u.remove()},6000)}
 window.showUndo=showUndo;
-function delLine(el){var it=el.closest('.item');if(!it)return;var parent=it.parentNode,next=it.nextSibling;it.remove();
-  showUndo('Line deleted.',function(){parent.insertBefore(it,next)})}
+// Deleted lines go on a stack, so several deletes can each be undone.
+var _undo=[];
+function _removeWithUndo(it){var parent=it.parentNode,next=it.nextSibling;it.remove();
+  _undo.push(function(){parent.insertBefore(it,next&&next.parentNode===parent?next:null)});
+  showUndo(_undoLabel(),_undoOne)}
+function _undoLabel(){return _undo.length>1?_undo.length+' lines deleted.':'Line deleted.'}
+function _undoOne(){var f=_undo.pop();if(f)f();if(_undo.length)showUndo(_undoLabel(),_undoOne)}
+function delLine(el){var it=el.closest('.item');if(it)_removeWithUndo(it)}
 function copyWork(){
   var list=document.getElementById('workList');
   if(list&&list.getAttribute('data-edit')==='1'){           // copy straight from your edits + persist
     var items=_collect();
-    copyText(items.map(function(t){return '\u2022 '+t}).join('\n'),'Work update copied');
+    copyText(items.map(function(t){return '\u2022 '+t}).join('\n'),'Work update copied','workText');
     send({action:'saveEdits',items:items});
   }else{copyEl('workText','Work update copied');}
 }

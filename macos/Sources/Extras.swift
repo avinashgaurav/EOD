@@ -58,6 +58,11 @@ enum ReminderSettings {
         a.accessoryView = stack
         a.addButton(withTitle: "Save"); a.addButton(withTitle: "Cancel")
         guard a.runModal() == .alertFirstButtonReturn else { return }
+        if !boxes.contains(where: { $0.state == .on }) {
+            let w = NSAlert(); w.messageText = "Pick at least one day"
+            w.informativeText = "To stop the reminder, turn off 'End-of-day reminder' in the menu instead."
+            w.runModal(); return
+        }
         let t = Calendar.current.dateComponents([.hour, .minute], from: picker.dateValue)
         d.set(t.hour ?? 18, forKey: "reminderHour"); d.set(t.minute ?? 30, forKey: "reminderMinute")
         d.set(boxes.enumerated().compactMap { $1.state == .on ? $0 + 1 : nil }, forKey: "reminderDays")
@@ -70,13 +75,13 @@ enum ReminderSettings {
 /// Manual update check against the latest GitHub release (audit F21). Nothing is
 /// checked in the background: the request happens only when the person asks.
 enum Updates {
-    static func check() {
+    static func check(done: @escaping () -> Void = {}) {
         guard let url = URL(string: "https://api.github.com/repos/avinashgaurav/EOD/releases/latest") else { return }
         var req = URLRequest(url: url); req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         req.timeoutInterval = 15
         URLSession.shared.dataTask(with: req) { data, _, err in
             let tag = (data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] })?["tag_name"] as? String
-            DispatchQueue.main.async { show(latest: tag, error: err) }
+            DispatchQueue.main.async { show(latest: tag, error: err); done() }
         }.resume()
     }
 

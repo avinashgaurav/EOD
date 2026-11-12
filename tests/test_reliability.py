@@ -49,7 +49,7 @@ class TestProvenance(unittest.TestCase):
 
     def test_edit_keys_and_undo_are_on_the_page(self):
         page = self.h.to_html(dict(self.day, highlights=["Fixed it."]))
-        for needle in ("_editKeys", "e.key==='Escape'", "showUndo('Line deleted.'", "window.setStatus", "window.isEditing"):
+        for needle in ("_editKeys", "e.key==='Escape'", "_removeWithUndo", "_undoOne", "isComposing", "window.setStatus", "window.isEditing"):
             self.assertIn(needle, page)
         self.assertNotIn("💾", page)
 

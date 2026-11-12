@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var refreshTimer: Timer?, midnightTimer: Timer?, reminderTimer: Timer?
     private let defaults = UserDefaults.standard
     private var manualRefresh = false
+    private var discarding = false
+    private var updateCheckRunning = false
     static func hm() -> String { let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: Date()) }
 
     private let receiptSize = NSSize(width: 396, height: 660)
@@ -207,7 +209,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     @objc private func editReminder() { ReminderSettings.edit { [weak self] in self?.scheduleReminder() } }
-    @objc private func checkUpdates() { Updates.check() }
+    @objc private func checkUpdates() {
+        guard !updateCheckRunning else { return }
+        updateCheckRunning = true
+        Updates.check { [weak self] in self?.updateCheckRunning = false }
+    }
     @objc private func showCounts() {
         _ = TextWindow(title: "Usage counts", body: Counts.summary(),
                        note: "Kept only on this Mac. EOD has no server and sends nothing. Copy these into feedback if you'd like to help.",
@@ -265,8 +271,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func show(animate: Bool) {
         Counts.activeToday()
         let path = Paths.cacheFile("\(curDate).html").path
-        if FileManager.default.fileExists(atPath: path) { receipt.load(path: path, animate: animate) }
-        else { rebuild(curDate, force: true, animate: animate) }
+        let exists = FileManager.default.fileExists(atPath: path)
+        // A page with unsaved edits is shown as it is, never reloaded (F14).
+        receipt.isEditing { [weak self] editing in
+            guard let self = self else { return }
+            if editing { return }
+            if exists { self.receipt.load(path: path, animate: animate) }
+            else { self.rebuild(self.curDate, force: true, animate: animate) }
+        }
         receipt.show(at: receipt.panel.isVisible ? receipt.panel.frame : receiptFrame())
         shown = true
         if curDate == Day.today() {           // refresh quietly after the print-down plays
@@ -304,7 +316,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             if let m = t.rest.range(of: #"weekly-(\d{4}-\d{2}-\d{2})"#, options: .regularExpression) {
                 self.weekStart = String(t.rest[m].dropFirst(7))
             }
-            if offerUndo { self.detail.afterLoad = "window.showUndo&&showUndo('Re-summarized.',function(){send({action:'undoRegen'})})" }
+            let bak = self.weekStart.map { FileManager.default.fileExists(atPath: Paths.cacheFile("weekly-\($0).json.bak").path) } ?? false
+            if offerUndo && bak { self.detail.afterLoad = "window.showUndo&&showUndo('Re-summarized.',function(){send({action:'undoRegen'})})" }
             self.detail.load(path: t.rest, animate: !offerUndo)
             self.detail.show(at: self.detailFrame())
         }
@@ -318,6 +331,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if repolish { args.append("--repolish") }
         Engine.run(args) { [weak self] r in
             guard let self = self else { return }
+            let wasManual = self.manualRefresh, wasDiscard = self.discarding
+            if force { self.manualRefresh = false; self.discarding = false }
             guard r.code == 0, let t = r.tagged else {
                 Log.write("extract failed (\(r.code)): \(r.err.suffix(600))")
                 if self.shown && !cacheOnly {        // say it on the receipt (F11), with a Retry
@@ -337,9 +352,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 }
                 return
             }
-            if repolish { self.receipt.afterLoad = "window.showUndo&&showUndo('Re-summarized.',function(){send({action:'undoRegen'})})" }
-            else if self.manualRefresh { self.receipt.afterLoad = "window.toast&&toast('Up to date \(Self.hm())')" }
-            self.manualRefresh = false
+            // Offer Undo only when there is something to go back to and the summary changed.
+            let hasBackup = FileManager.default.fileExists(atPath: Paths.cacheFile("polish-\(date).json.bak").path)
+            if repolish && hasBackup && t.tag == "CHANGED" {
+                self.receipt.afterLoad = "window.showUndo&&showUndo('Re-summarized.',function(){send({action:'undoRegen'})})"
+            } else if repolish && t.tag != "CHANGED" {
+                self.receipt.afterLoad = "window.toast&&toast('Same summary as before')"
+            } else if wasDiscard {
+                self.receipt.afterLoad = "window.toast&&toast('Edits discarded')"
+            } else if wasManual {
+                self.receipt.afterLoad = "window.toast&&toast('Up to date \(Self.hm())')"
+            }
             self.receipt.load(path: t.rest, animate: animate)
             if self.detailMode == "full", t.rest.hasSuffix(".html") {
                 self.detail.load(path: String(t.rest.dropLast(5)) + "-full.html", animate: false)
@@ -375,13 +398,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             guard let self = self else { return }
             let wd = Calendar.current.component(.weekday, from: Date())   // 1 = Sun, 7 = Sat
             let late = Date().timeIntervalSince(fire) > 1800              // the Mac slept through it
-            let shared = self.defaults.string(forKey: "sharedOn") == Day.today()
-            if ReminderSettings.days.contains(wd) && !late && !shared {
-                // Quiet on a day with no work: build first, then decide.
-                Engine.run(["--date", Day.today(), "--standup"]) { r in
-                    if r.code == 0 && !r.out.isEmpty { self.notify() }
-                }
-            }
+            if ReminderSettings.days.contains(wd) && !late { self.remindIfNeeded() }
             self.scheduleReminder()
         }
         RunLoop.main.add(reminderTimer!, forMode: .common)
@@ -417,13 +434,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     /// A one-line confirmation in the menu-bar button's tooltip area.
+    private var flashItem: DispatchWorkItem?
     private func flash(_ text: String) {
-        let old = status.button?.title ?? ""
+        flashItem?.cancel()
         status.button?.title = " " + text
         status.length = NSStatusItem.variableLength
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
-            self?.status.button?.title = old; self?.status.length = NSStatusItem.squareLength
+        let w = DispatchWorkItem { [weak self] in
+            self?.status.button?.title = ""; self?.status.length = NSStatusItem.squareLength
         }
+        flashItem = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6, execute: w)
     }
 
     func userNotificationCenter(_ c: UNUserNotificationCenter, willPresent n: UNNotification,
@@ -436,11 +456,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         DispatchQueue.main.async {
             switch r.actionIdentifier {
             case "copy": self.copyTodayUpdate()
-            case "snooze": self.notify(after: 1800)
+            case "snooze":
+                // Re-checked when it fires: no reminder if you copied or sent meanwhile.
+                self.snoozeTimer?.invalidate()
+                self.snoozeTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: false) { [weak self] _ in self?.remindIfNeeded() }
             default: self.curDate = Day.today(); self.show(animate: true)
             }
+            done()
         }
-        done()
     }
 
     // MARK: messages from the page
@@ -449,17 +472,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         switch b["action"] as? String ?? "" {
         case "copy":
             copy(b["text"] as? String ?? "")
-            if (b["what"] as? String) == "updText" { markShared() }
+            if ["updText", "workText"].contains(b["what"] as? String ?? "") { markShared() }
         case "dragStart": receipt.startDrag()
         case "hide": hide()
         case "full": showFull()
         case "share": shareImage()
         case "refresh": manualRefresh = true; rebuild(curDate, force: true)
+        case "discard": discarding = true; rebuild(curDate, force: true)
         case "regen":
             backup("polish-\(curDate).json")
             rebuild(curDate, force: true, repolish: true)
         case "undoRegen":
             if restore("polish-\(curDate).json") { rebuild(curDate, force: true) }
+            else { receipt.js("window.toast&&toast('Nothing to undo')") }
         case "saveEdits": saveEdits(b["items"], file: "polish-\(curDate).json", keep: ["detailed"]) {
             self.rebuild(self.curDate, force: true)
         }
@@ -499,7 +524,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 backup("weekly-\(ws).json"); showWeekly(force: true, offerUndo: true)
             }
         case "undoRegen":
-            if detailMode == "weekly", let ws = weekStart, restore("weekly-\(ws).json") { showWeekly(force: false) }
+            if detailMode == "weekly", let ws = weekStart {
+                if restore("weekly-\(ws).json") { showWeekly(force: false) } else { detail.js("window.toast&&toast('Nothing to undo')") }
+            }
         case "hide": hideDetail()
         default: break
         }
@@ -520,7 +547,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     /// The update left the Mac today (copied or sent): the reminder stays quiet.
-    private func markShared() { defaults.set(Day.today(), forKey: "sharedOn"); Counts.mark("firstCopy") }
+    private func markShared() {
+        defaults.set(Day.today(), forKey: "sharedOn"); Counts.mark("firstCopy")
+        snoozeTimer?.invalidate(); snoozeTimer = nil
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["eod-reminder"])
+    }
+    private var snoozeTimer: Timer?
+
+    /// Build today fresh, then remind only if there is work and it hasn't left the Mac yet.
+    private func remindIfNeeded() {
+        guard defaults.string(forKey: "sharedOn") != Day.today() else { return }
+        Engine.run(["--date", Day.today()]) { _ in
+            Engine.run(["--date", Day.today(), "--standup"]) { [weak self] r in
+                if r.code == 0 && !r.out.isEmpty { self?.notify() }
+            }
+        }
+    }
 
     private func copy(_ s: String) {
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(s, forType: .string)
