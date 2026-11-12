@@ -101,7 +101,10 @@ def _text(data, bullet="• "):
     t = data.get("_send_text")
     if t is not None:
         t = t.strip()
-        return (t.replace("\u2022 ", bullet) + "\n") if t else None
+        if not t:
+            return None
+        lines = [(bullet + x[2:]) if x.startswith("\u2022 ") else x for x in t.split("\n")]
+        return "\n".join(lines) + "\n"
     return to_standup(data, bullet=bullet)
 
 

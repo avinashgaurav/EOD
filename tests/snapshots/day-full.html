@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset='utf-8'><script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script><style>
+<!doctype html><html><head><meta charset='utf-8'><script>var _h=location.hash;document.documentElement.className=(_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':''))+(window.EOD_APP?' app':'');</script><style>
 @font-face{font-family:'Courier Prime';src:url('../eod/render/fonts/CourierPrime-Regular.ttf') format('truetype');font-weight:400}
 @font-face{font-family:'Courier Prime';src:url('../eod/render/fonts/CourierPrime-Bold.ttf') format('truetype');font-weight:700}
 /* Carbon-copy brand (audit section 5): white sheet, carbon-blue ink for anything
@@ -206,11 +206,24 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .more .menu button{justify-content:flex-start;border:0;width:100%;text-transform:none;letter-spacing:.2px;font-size:12px;padding:6px 8px}
 .more .menu button:hover{background:var(--copy)}
 .more .menu .lbl{font-size:10.5px;color:var(--ink2);padding:6px 8px 2px;letter-spacing:1px;text-transform:uppercase}
-.more .menu button[aria-checked="true"]::after{content:"¹3";margin-left:auto;color:var(--carbon)}
+.more .menu button[aria-pressed="true"]::after{content:"¹3";margin-left:auto;color:var(--carbon)}
 .barcode{height:22px;width:60%}
 .toast{font-size:11px;letter-spacing:1px}
 .sheet .box{border-color:var(--carbon)}
 .stamp{display:none}
+/* Controls only the Mac app can act on are hidden in the Hammerspoon widget. */
+.app-only{display:none!important}
+html.app .app-only{display:flex!important}
+.chip.failed{min-height:24px}
+.depthead .cp{opacity:1}
+@media print{
+  :root{--paper:#FFFFFF;--ink:#000;--ink2:#333;--line:#999;--carbon:#000;--accent:#000;--copy:#fff}
+  body{background:#fff}
+  .actions,.datebar,.hide,.toast,.tools,.chips,.nv,.del,.undo,.sheet,.status,.inc{display:none!important}
+  .receipt{filter:none;clip-path:none;width:auto;max-width:72mm;padding:0;background-image:none}
+  .surface{padding:0;display:block;min-height:0}
+  details.wsec{display:block}details.wsec>*{display:block}
+}
 .tldr{font-size:13px;font-weight:700;color:var(--ink);border-left:3px solid var(--carbon);padding:4px 0 4px 10px;margin:4px 0 10px}
 details.wsec>summary{list-style:none;cursor:pointer}
 details.wsec>summary::-webkit-details-marker{display:none}
@@ -238,7 +251,10 @@ clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('s
 // Copy the update in the format of where it is going (F37), remembered per Mac.
 var _fmt='plain';try{_fmt=localStorage.getItem('eod-fmt')||'plain'}catch(e){}
 function setFmt(k){_fmt=k;try{localStorage.setItem('eod-fmt',k)}catch(e){}_markFmt();copyUpdate()}
-function _markFmt(){document.querySelectorAll('[data-fmt]').forEach(function(b){b.setAttribute('aria-checked',b.getAttribute('data-fmt')===_fmt?'true':'false')})}
+function _markFmt(){document.querySelectorAll('[data-fmt]').forEach(function(b){b.setAttribute('aria-pressed',b.getAttribute('data-fmt')===_fmt?'true':'false')})}
+function closeMore(el){var d=el.closest('details');if(d){d.open=false;var s=d.querySelector('summary');if(s)s.focus()}}
+function openSettings(){if(window.EOD_APP)send({action:'settings'});else toast('Fix sources in the EOD app Settings')}
+document.addEventListener('click',function(e){var m=document.querySelector('details.more[open]');if(m&&!m.contains(e.target))m.open=false});
 function formatUpdate(t,k){var L=t.replace(/\s+$/,'').split('\n');var head=L[0],rest=L.slice(1);
   var bul={plain:'\u2022 ',slack:'\u2022 ',md:'- ',jira:'* '}[k]||'\u2022 ';
   var h={md:'**'+head+'**',jira:'*'+head+'*',slack:'*'+head+'*'}[k]||head;
@@ -248,11 +264,11 @@ function copyUpdate(){var el=document.getElementById('updText');if(!el||!el.text
 // Keyboard (F38): left and right arrows change day, Cmd+C copies the update, Esc hides.
 document.addEventListener('keydown',function(e){
   var t=e.target,typing=t&&(t.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(t.tagName));
-  if(typing||(window.isEditing&&window.isEditing()))return;
+  if(typing||(window.isEditing&&window.isEditing())||document.getElementById('sendSheet'))return;
   if(e.key==='ArrowLeft'){e.preventDefault();nav(-1)}
   else if(e.key==='ArrowRight'){e.preventDefault();nav(1)}
-  else if(e.key==='Escape'){var m=document.querySelector('details.more[open]');if(m){m.open=false;return}send({action:'hide'})}
-  else if((e.metaKey||e.ctrlKey)&&e.key==='c'&&!String(window.getSelection()).trim()&&document.getElementById('updText')){e.preventDefault();copyUpdate()}});
+  else if(e.key==='Escape'){var m=document.querySelector('details.more[open]');if(m){m.open=false;var su=m.querySelector('summary');if(su)su.focus();return}send({action:'hide'})}
+  else if((e.metaKey||e.ctrlKey)&&e.code==='KeyC'&&!String(window.getSelection()).trim()&&document.getElementById('updText')){e.preventDefault();copyUpdate()}});
 document.addEventListener('DOMContentLoaded',_markFmt);
 function copyText(txt,label,what){
   if(!send({action:'copy',text:txt,what:what||''})){ // browser fallback

@@ -153,12 +153,18 @@ def main():
         except OSError:
             pass
         if text_file:
-            try:
-                with open(text_file) as fh:
-                    exact = fh.read()[:20000]
-            except OSError:
-                sys.stderr.write("EOD: could not read the text to send\n")
+            # Only a plain file the app wrote into the cache, never a symlink or
+            # anything elsewhere on disk, and at most 20 KB of it.
+            real = os.path.realpath(text_file)
+            if (not real.startswith(os.path.realpath(CACHE) + os.sep) or os.path.islink(text_file)
+                    or not os.path.isfile(real) or os.stat(real).st_uid != os.getuid()):
+                sys.stderr.write("EOD: the text to send must be a file EOD wrote in its cache\n")
                 raise SystemExit(2)
+            with open(real) as fh:
+                exact = fh.read(20000)
+            # The person previewed this text; hide rules still apply line by line.
+            from .hide import hide_lines
+            exact = "\n".join(hide_lines(exact.split("\n")))
             sent, failed = send_day({"date": date, "_send_text": exact})
         else:
             sent, failed = send_day(card_data(date, build))

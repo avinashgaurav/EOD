@@ -216,11 +216,24 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .more .menu button{justify-content:flex-start;border:0;width:100%;text-transform:none;letter-spacing:.2px;font-size:12px;padding:6px 8px}
 .more .menu button:hover{background:var(--copy)}
 .more .menu .lbl{font-size:10.5px;color:var(--ink2);padding:6px 8px 2px;letter-spacing:1px;text-transform:uppercase}
-.more .menu button[aria-checked="true"]::after{content:"\2713";margin-left:auto;color:var(--carbon)}
+.more .menu button[aria-pressed="true"]::after{content:"\2713";margin-left:auto;color:var(--carbon)}
 .barcode{height:22px;width:60%}
 .toast{font-size:11px;letter-spacing:1px}
 .sheet .box{border-color:var(--carbon)}
 .stamp{display:none}
+/* Controls only the Mac app can act on are hidden in the Hammerspoon widget. */
+.app-only{display:none!important}
+html.app .app-only{display:flex!important}
+.chip.failed{min-height:24px}
+.depthead .cp{opacity:1}
+@media print{
+  :root{--paper:#FFFFFF;--ink:#000;--ink2:#333;--line:#999;--carbon:#000;--accent:#000;--copy:#fff}
+  body{background:#fff}
+  .actions,.datebar,.hide,.toast,.tools,.chips,.nv,.del,.undo,.sheet,.status,.inc{display:none!important}
+  .receipt{filter:none;clip-path:none;width:auto;max-width:72mm;padding:0;background-image:none}
+  .surface{padding:0;display:block;min-height:0}
+  details.wsec{display:block}details.wsec>*{display:block}
+}
 .tldr{font-size:13px;font-weight:700;color:var(--ink);border-left:3px solid var(--carbon);padding:4px 0 4px 10px;margin:4px 0 10px}
 details.wsec>summary{list-style:none;cursor:pointer}
 details.wsec>summary::-webkit-details-marker{display:none}
@@ -238,7 +251,10 @@ clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('s
 // Copy the update in the format of where it is going (F37), remembered per Mac.
 var _fmt='plain';try{_fmt=localStorage.getItem('eod-fmt')||'plain'}catch(e){}
 function setFmt(k){_fmt=k;try{localStorage.setItem('eod-fmt',k)}catch(e){}_markFmt();copyUpdate()}
-function _markFmt(){document.querySelectorAll('[data-fmt]').forEach(function(b){b.setAttribute('aria-checked',b.getAttribute('data-fmt')===_fmt?'true':'false')})}
+function _markFmt(){document.querySelectorAll('[data-fmt]').forEach(function(b){b.setAttribute('aria-pressed',b.getAttribute('data-fmt')===_fmt?'true':'false')})}
+function closeMore(el){var d=el.closest('details');if(d){d.open=false;var s=d.querySelector('summary');if(s)s.focus()}}
+function openSettings(){if(window.EOD_APP)send({action:'settings'});else toast('Fix sources in the EOD app Settings')}
+document.addEventListener('click',function(e){var m=document.querySelector('details.more[open]');if(m&&!m.contains(e.target))m.open=false});
 function formatUpdate(t,k){var L=t.replace(/\\s+$/,'').split('\\n');var head=L[0],rest=L.slice(1);
   var bul={plain:'\\u2022 ',slack:'\\u2022 ',md:'- ',jira:'* '}[k]||'\\u2022 ';
   var h={md:'**'+head+'**',jira:'*'+head+'*',slack:'*'+head+'*'}[k]||head;
@@ -248,11 +264,11 @@ function copyUpdate(){var el=document.getElementById('updText');if(!el||!el.text
 // Keyboard (F38): left and right arrows change day, Cmd+C copies the update, Esc hides.
 document.addEventListener('keydown',function(e){
   var t=e.target,typing=t&&(t.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(t.tagName));
-  if(typing||(window.isEditing&&window.isEditing()))return;
+  if(typing||(window.isEditing&&window.isEditing())||document.getElementById('sendSheet'))return;
   if(e.key==='ArrowLeft'){e.preventDefault();nav(-1)}
   else if(e.key==='ArrowRight'){e.preventDefault();nav(1)}
-  else if(e.key==='Escape'){var m=document.querySelector('details.more[open]');if(m){m.open=false;return}send({action:'hide'})}
-  else if((e.metaKey||e.ctrlKey)&&e.key==='c'&&!String(window.getSelection()).trim()&&document.getElementById('updText')){e.preventDefault();copyUpdate()}});
+  else if(e.key==='Escape'){var m=document.querySelector('details.more[open]');if(m){m.open=false;var su=m.querySelector('summary');if(su)su.focus();return}send({action:'hide'})}
+  else if((e.metaKey||e.ctrlKey)&&e.code==='KeyC'&&!String(window.getSelection()).trim()&&document.getElementById('updText')){e.preventDefault();copyUpdate()}});
 document.addEventListener('DOMContentLoaded',_markFmt);
 function copyText(txt,label,what){
   if(!send({action:'copy',text:txt,what:what||''})){ // browser fallback
@@ -383,7 +399,9 @@ function postWeekly(b){var old=document.getElementById('sendSheet');if(old)old.r
     "<div class='row'><button class='copyall seeall' id='sendCancel'>Cancel</button><button class='copyall primary' id='sendGo'>Send now</button></div></div>";
   sh.querySelector('.to').textContent='To: '+((document.getElementById('sendTo')||{}).textContent||'');
   sh.querySelector('pre').textContent=text;document.body.appendChild(sh);
-  var close=function(){sh.remove()};sh.querySelector('#sendCancel').onclick=close;
+  var close=function(){sh.remove();document.removeEventListener('keydown',esc);b.focus()};
+  var esc=function(e){if(e.key==='Escape'){e.stopPropagation();close()}};document.addEventListener('keydown',esc);
+  sh.querySelector('#sendCancel').onclick=close;
   sh.querySelector('#sendGo').onclick=function(){close();if(send({action:'postWeekly',text:text})){b.disabled=true;toast('Sending…')}};
   sh.querySelector('#sendGo').focus()}
 function sendResult(t){var b=document.getElementById('sendBtn');if(b)b.disabled=false;
@@ -456,7 +474,7 @@ def to_html(data, send_to=()):
 
     P = [f"<!doctype html><html><head><meta charset='utf-8'>"
          # set the animate-in class before first paint so the paper starts hidden (no flash)
-         "<script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script>"
+         "<script>var _h=location.hash;document.documentElement.className=(_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':''))+(window.EOD_APP?' app':'');</script>"
          f"<style>{css}</style></head>"
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
 
@@ -475,7 +493,7 @@ def to_html(data, send_to=()):
     P.append("<div class='datebar'>"
              "<button onclick='nav(-1)' title='Previous day (←)' aria-label='Previous day'>" + ic("left") + "</button>"
              f"<label class='dwrap'><span>{esc(pretty_date(data['date']))}</span>"
-             f"<input type='date' class='dpick' value='{data['date']}' max='{today_iso}' "
+             f"<input type='date' class='dpick' value='{esc(data['date'])}' max='{esc(today_iso)}' "
              "onchange='goDate(this.value)' aria-label='Jump to a date'></label>"
              "<button onclick='nav(1)' title='Next day (→)' aria-label='Next day'>" + ic("right") + "</button>"
              "<button onclick='refresh()' title='Refresh' aria-label='Refresh'>" + ic("refresh") + "</button>"
@@ -616,7 +634,7 @@ def to_html(data, send_to=()):
         label = {"claude-code": "Claude Code", "codex": "Codex", "git": "Git", "github": "GitHub", "docs": "Docs",
                  "web": "Web", "meetings": "Calendar", "apps": "Screen"}.get(st["name"], st["name"])
         if st["state"] == "failed":
-            chips.append(f"<button class='chip failed' onclick=\"send({{action:'settings'}})\" "
+            chips.append(f"<button class='chip failed' onclick=\"openSettings()\" "
                          f"title='{esc(label)} could not be read today. Open Settings.'>{esc(label)}: fix</button>")
         else:
             chips.append(f"<span class='chip {esc(st['state'])}' title='{esc(label)}: {esc(st['state'])}'>{esc(label)}</span>")
@@ -632,13 +650,13 @@ def to_html(data, send_to=()):
                 f"title='Post the work update to {esc(', '.join(send_to))}'"
                 + (" disabled" if none else "") + ">" + ic("send") + "Send</button>"
                 if send_to else "") +
-             "<details class='more'><summary aria-label='More actions'>" + ic("more") + "</summary><div class='menu' role='menu'>"
-             "<button role='menuitem' onclick=\"send({action:'full'})\">" + ic("list") + "Full day</button>"
-             "<button role='menuitem' onclick=\"send({action:'share'});toast('Drawing the image…')\">" + ic("share") + "Share as image</button>"
-             "<button role='menuitem' onclick=\"send({action:'print'})\">" + ic("print") + "Print receipt</button>"
-             "<button role='menuitem' onclick=\"copyEl('allText','Full day copied')\">" + ic("copy") + "Copy full day</button>"
+             "<details class='more'><summary aria-label='More actions'>" + ic("more") + "</summary><div class='menu'>"
+             "<button onclick=\"closeMore(this);send({action:'full'})\">" + ic("list") + "Full day</button>"
+             "<button onclick=\"closeMore(this);send({action:'share'});toast('Drawing the image…')\">" + ic("share") + "Share as image</button>"
+             "<button class='app-only' onclick=\"closeMore(this);send({action:'print'})\">" + ic("print") + "Print receipt</button>"
+             "<button onclick=\"closeMore(this);copyEl('allText','Full day copied')\">" + ic("copy") + "Copy full day</button>"
              "<div class='lbl'>Copy update as</div>"
-             + "".join(f"<button role='menuitemradio' data-fmt='{k}' aria-checked='false' onclick=\"setFmt('{k}')\">{v}</button>"
+             + "".join(f"<button data-fmt='{k}' aria-pressed='false' onclick=\"closeMore(this);setFmt('{k}')\">{v}</button>"
                        for k, v in (("plain", "Plain text"), ("slack", "Slack"), ("md", "Markdown"), ("jira", "Jira")))
              + "</div></details>"
              "</div>")
@@ -668,7 +686,7 @@ def to_html_full(data):
     web  = data.get("web", [])
 
     P = [f"<!doctype html><html><head><meta charset='utf-8'>",
-         "<script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script>",
+         "<script>var _h=location.hash;document.documentElement.className=(_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':''))+(window.EOD_APP?' app':'');</script>",
          f"<style>{css}</style></head>",
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
 
@@ -905,7 +923,7 @@ def to_html_weekly(data, send_to=()):
     css = CSS.replace("%CLIP%", clip_path(520)).replace("%W%", "520")
     esc = html.escape
     P = ["<!doctype html><html><head><meta charset='utf-8'>",
-         "<script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script>",
+         "<script>var _h=location.hash;document.documentElement.className=(_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':''))+(window.EOD_APP?' app':'');</script>",
          f"<style>{css}</style></head>",
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
     P.append("<button class='hide' onclick=\"send({action:'hide'})\" title='Close (Esc)' aria-label='Close the weekly report'>" + ic("close") + "</button>")
@@ -948,7 +966,8 @@ def to_html_weekly(data, send_to=()):
         # off by default: app hours read as surveillance in a manager update.
         secs = weekly_sections(data)
         if tldr:
-            P.append(f"<div class='wsec' data-title='Summary' style='display:none'><span class='wl'>{esc(tldr)}</span></div>")
+            P.append(f"<div class='wsec' data-title='Summary'><label class='inc'><input type='checkbox' id='incTldr' checked> include the summary in copy</label>"
+                     f"<span class='wl' style='display:none'>{esc(tldr)}</span></div>")
         if secs:
             t0, l0 = secs[0]
             P.append(f"<div class='wsec' data-title='{esc(t0)}' style='display:none'>"
@@ -978,11 +997,11 @@ def to_html_weekly(data, send_to=()):
         # Same action set as the daily (F33): Copy, Send, and More.
         P.append("<div class='actions'><button class='copyall primary' onclick='copyReport()' "
                  "title='Copy the sections switched on above'>" + ic("copy") + "Copy report</button>"
-                 + (f"<button id='sendBtn' class='copyall sendb' onclick='postWeekly(this)' "
+                 + (f"<button id='sendBtn' class='copyall sendb app-only' onclick='postWeekly(this)' "
                     f"title='Post the report to {esc(', '.join(send_to))}'>" + ic("send") + "Send</button>" if send_to else "")
-                 + "<details class='more'><summary aria-label='More actions'>" + ic("more") + "</summary><div class='menu' role='menu'>"
-                 "<button role='menuitem' onclick=\"send({action:'timesheet'})\">" + ic("list") + "Export timesheet (CSV)</button>"
-                 "<button role='menuitem' onclick=\"send({action:'print'})\">" + ic("print") + "Print report</button>"
+                 + "<details class='more app-only'><summary aria-label='More actions'>" + ic("more") + "</summary><div class='menu'>"
+                 "<button onclick=\"closeMore(this);send({action:'timesheet'})\">" + ic("list") + "Export timesheet (CSV)</button>"
+                 "<button onclick=\"closeMore(this);send({action:'print'})\">" + ic("print") + "Print report</button>"
                  "</div></details></div>")
         P.append(f"<div id='wkHead' style='display:none'>Weekly update: {esc(pretty_date(data['week_start']))} → {esc(pretty_date(data['week_end']))}</div>")
     P.append(f"<div id='wkText' style='display:none'>{esc(to_text_weekly(data))}</div>")

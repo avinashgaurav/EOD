@@ -714,7 +714,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if sending { return }
         sending = true
         let f = Paths.cacheFile(".send-\(UUID().uuidString).txt")
-        do { try text.write(to: f, atomically: true, encoding: .utf8) } catch { sending = false; return }
+        do { try text.write(to: f, atomically: true, encoding: .utf8) } catch {
+            sending = false
+            panel.js("window.sendResult&&sendResult('Couldn’t prepare the text to send')")
+            return
+        }
         Engine.run(["--date", curDate, "--send", "--text-file", f.path], timeout: 90) { [weak self] r in
             try? FileManager.default.removeItem(at: f)
             guard let self = self else { return }

@@ -70,6 +70,36 @@ class TestReceipt(unittest.TestCase):
         self.assertIn("min-width:24px;min-height:24px", css)
 
 
+class TestSafety(unittest.TestCase):
+    def setUp(self):
+        self.ex = load_extract()
+        self.h = mod(self.ex, "eod.render.html")
+        with open(os.path.join(HERE, "snapshots", "day.json")) as fh:
+            self.day = json.load(fh)
+
+    def test_source_names_are_escaped(self):
+        page = self.h.to_html(dict(self.day, sources_status=[{"name": "<img src=x onerror=alert(1)>'\"", "state": "failed"}]))
+        self.assertNotIn("<img src=x", page)
+
+    def test_app_only_controls_and_print_sheet(self):
+        page = self.h.to_html(dict(self.day, highlights=["A."]))
+        self.assertIn("class='app-only' onclick=\"closeMore(this);send({action:'print'})", page)
+        self.assertIn("(window.EOD_APP?' app':'')", page)
+        self.assertIn("@media print", page)
+
+    def test_send_text_file_must_live_in_the_cache(self):
+        import subprocess, sys
+        root = os.path.dirname(HERE)
+        r = subprocess.run([sys.executable, os.path.join(root, "extract.py"), "--send", "--text-file", "/etc/hosts"],
+                           capture_output=True, text=True, env=dict(os.environ, EOD_SEND_TARGETS="slack https://example.invalid/x"))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("must be a file EOD wrote", r.stderr)
+
+    def test_bullets_are_rewritten_only_at_line_start(self):
+        send = mod(self.ex, "eod.send")
+        self.assertEqual(send._text({"_send_text": "H\n\u2022 a \u2022 b"}, bullet="- "), "H\n- a \u2022 b\n")
+
+
 class TestWeeklyAndShare(unittest.TestCase):
     def setUp(self):
         self.ex = load_extract()
