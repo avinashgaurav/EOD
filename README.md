@@ -6,11 +6,11 @@
 curl -fsSL https://eodreceipt.vercel.app/install.sh | bash
 ```
 
-1. Run the line above in Terminal ([read it first](site/install.sh): about 60 lines, no sudo).
+1. Run the line above in Terminal ([read it first](site/install.sh): about 70 lines, no sudo).
 2. Pick what EOD may read on the first screen. AI tidy-up stays off until you tick it.
 3. Press ⌥⌃⌘W for the receipt, or ⌥⌃⌘C to copy today's update from anywhere.
 
-Mac only (macOS 13+, Apple silicon or Intel). Free, MIT, no account, no telemetry. In daily use by 5 people since mid-2026.
+Mac only (macOS 13+, Apple silicon or Intel). Free, MIT, no account, and the app has no telemetry. Used daily on one team since mid-2026.
 **Site: [eodreceipt.vercel.app](https://eodreceipt.vercel.app)** · [The Mac app](docs/mac-app.md) · [Privacy](docs/privacy.md)
 
 <p><img src="site/screenshots/brief.png" width="260" alt="EOD daily receipt, sample data"> &nbsp; <img src="site/screenshots/weekly.png" width="400" alt="EOD weekly report, sample data"></p>

@@ -31,8 +31,7 @@
    EOD
    Skeleton, spacing, shape and elevation: Ollama DESIGN.md.
    Surfaces, ink and text ramp: Claude DESIGN.md, which replaces
-   Ollama's pure white / pure black / cool grays. Those clash with
-   the cream receipt and forbid the product's own accent.
+   Ollama's pure white / pure black / cool grays.
    Accent, paper and mono micro-labels: EOD's own tokens, lifted
    from extract.py.
    ============================================================ */
@@ -349,14 +348,9 @@ kbd{
 }
 .steps p{margin-bottom:var(--md)}
 
-/* Applied by script, so a no-JS visitor never gets stuck with hidden content. */
-.rv{opacity:0;transform:translateY(16px)}
-.rv.in{opacity:1;transform:none;
-  transition:opacity .55s ease,transform .55s cubic-bezier(.16,1,.3,1)}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
-  .rv{opacity:1!important;transform:none!important}
   html{scroll-behavior:auto}
 }
 
@@ -406,7 +400,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 /* carbon-copy brand on the site */
 a{color:var(--carbon)}
 .eyebrow{color:var(--mute)!important}
-.btn-primary{background:var(--carbon)!important;border-color:var(--carbon)!important;color:#fff!important}
+.btn-primary{background:var(--carbon)!important;border-color:var(--carbon)!important;color:var(--canvas)!important}
 :focus-visible{outline:2px solid var(--carbon);outline-offset:2px}
 .who{margin:-4px 0 16px;color:var(--charcoal)}
 .hero-snippet{margin:0 0 16px}
@@ -418,7 +412,7 @@ a{color:var(--carbon)}
 .snippet{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .snippet code{white-space:pre-wrap;word-break:break-all;min-width:0;flex:1}
 @media (max-width:640px){
-  .navlinks{overflow-x:auto;white-space:nowrap;max-width:62vw}
+  .navlinks{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 12px;max-width:none}
   .navlinks .hide-sm{display:inline}
 }
 </style>
@@ -452,11 +446,11 @@ a{color:var(--carbon)}
           <button type="button" data-copy="#cmd-hero">Copy</button>
         </div>
         <div class="cta-row">
-          <a class="btn btn-primary" href="#install">Download for Mac</a>
+          <a class="btn btn-primary" href="#install">Install for Mac</a>
           <a class="btn btn-secondary" href="https://github.com/avinashgaurav/EOD">View source</a>
         </div>
         <p class="hero-meta">
-          Mac only <i>·</i> No account <i>·</i> No telemetry <i>·</i> MIT <i>·</i> In daily use by 5 people since mid-2026
+          Mac only <i>·</i> No account <i>·</i> The app has no telemetry <i>·</i> MIT <i>·</i> Used daily on one team since mid-2026
         </p>
       </div>
       <figure class="hero-shot">
@@ -480,7 +474,7 @@ a{color:var(--carbon)}
 
     <figure class="diagram">
       <svg class="d-wide" viewBox="0 4 980 348" role="img"
-           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. Nothing leaves the Mac unless you choose it: the optional AI step through your own Claude CLI login (or a local Ollama model, which stays on the Mac), Send to Slack, Teams or Linear after a preview, and the share image you paste yourself.">
+           aria-label="Local files on your Mac (Claude Code and Codex sessions, git repos, work folders, browser and app usage) feed the EOD engine, which writes a self-contained receipt that the EOD menu-bar app shows. Nothing leaves the Mac unless you choose it: the optional AI step through your own Claude CLI login or a local Ollama model, Send after a preview, and the share image you paste yourself.">
         <defs>
           <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
                   markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -528,7 +522,7 @@ a{color:var(--carbon)}
         <!-- extract.py -->
         <rect x="278" y="121" width="152" height="60" fill="none" stroke="currentColor"/>
         <text x="354" y="146" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
-              fill="currentColor" text-anchor="middle">extract.py</text>
+              fill="currentColor" text-anchor="middle">EOD engine</text>
         <text x="354" y="164" font-family="ui-monospace,monospace" font-size="10"
               fill="currentColor" fill-opacity=".6" text-anchor="middle">parse · dedupe · filter</text>
 
@@ -573,7 +567,7 @@ a{color:var(--carbon)}
       <!-- Same mechanism, redrawn top-to-bottom for narrow screens. Own markers,
            because a marker defined inside a display:none sibling is not reliable. -->
       <svg class="d-narrow" viewBox="0 0 340 600" role="img"
-           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. Nothing leaves the Mac unless you choose it: the optional AI step through your own Claude CLI login (or a local Ollama model, which stays on the Mac), Send to Slack, Teams or Linear after a preview, and the share image you paste yourself.">
+           aria-label="Local files on your Mac (Claude Code and Codex sessions, git repos, work folders, browser and app usage) feed the EOD engine, which writes a self-contained receipt that the EOD menu-bar app shows. Nothing leaves the Mac unless you choose it: the optional AI step through your own Claude CLI login or a local Ollama model, Send after a preview, and the share image you paste yourself.">
         <defs>
           <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5"
                   markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -611,7 +605,7 @@ a{color:var(--carbon)}
 
         <rect x="60" y="228" width="220" height="52" fill="none" stroke="currentColor"/>
         <text x="170" y="251" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
-              fill="currentColor" text-anchor="middle">extract.py</text>
+              fill="currentColor" text-anchor="middle">EOD engine</text>
         <text x="170" y="268" font-family="ui-monospace,monospace" font-size="10"
               fill="currentColor" fill-opacity=".6" text-anchor="middle">parse · dedupe · filter</text>
 
@@ -841,7 +835,7 @@ a{color:var(--carbon)}
       <button type="button" data-copy="#cmd">Copy</button>
     </div>
     <p class="note">
-      Read it first: <a href="/install.sh">install.sh</a> is about 60 lines. It checks for macOS 13+ and python3,
+      Read it first: <a href="/install.sh">install.sh</a> is about 70 lines. It checks for macOS 13+ and python3,
       downloads <code>EOD.zip</code> from the
       <a href="https://github.com/avinashgaurav/EOD/releases/latest">latest GitHub release</a>, checks it against the
       published SHA-256 (this catches a broken download, not a tampered release),
