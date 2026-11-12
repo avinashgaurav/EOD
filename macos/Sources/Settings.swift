@@ -1,6 +1,7 @@
 import AppKit
 import EventKit
 import ServiceManagement
+import UserNotifications
 
 /// Sources the person can switch off. Names match the engine's (sources.off).
 enum SourceSwitch {
@@ -185,9 +186,11 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let row2 = NSStackView(views: [NSTextField(labelWithString: "Copy today's update:  ⌥⌃⌘"), keyPopup("keyCopy", "C")])
         let morning = check("Morning standup reminder, 9:00 on weekdays", d.bool(forKey: "morningOn")) { [weak self] on in
             d.set(on, forKey: "morningOn"); self?.app?.scheduleExtras()
+            if on { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
         }
         let friday = check("Friday weekly reminder, 16:00", d.bool(forKey: "fridayOn")) { [weak self] on in
             d.set(on, forKey: "fridayOn"); self?.app?.scheduleExtras()
+            if on { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
         }
         return stack([login, start, rem, remEdit, morning, friday, NSBox.separator(), row1, row2,
                       note("Shortcuts need no Accessibility permission. If one is taken by another app, the menu says so.")])

@@ -97,7 +97,7 @@ def _extra(cmd, a, date):
             fh.write(doc)
         print("BRAG " + path)
     elif cmd == "--history":
-        ym = a[0] if a and re.match(r"^\d{4}-\d{2}$", a[0]) else date[:7]
+        ym = a[0] if a and re.match(r"^\d{4}-(0[1-9]|1[0-2])$", a[0]) else date[:7]
         from .render.html import CSS, clip_path
         css = CSS.replace("%CLIP%", clip_path(520)).replace("%W%", "520")
         path = os.path.join(CACHE, "history-%s.html" % ym)
@@ -106,7 +106,8 @@ def _extra(cmd, a, date):
         print("HISTORY " + path)
     elif cmd == "--plan-file":
         real = os.path.realpath(a[0]) if a else ""
-        if not real.startswith(os.path.realpath(CACHE) + os.sep) or not os.path.isfile(real):
+        if (not real.startswith(os.path.realpath(CACHE) + os.sep) or os.path.islink(a[0])
+                or not os.path.isfile(real) or os.stat(real).st_uid != os.getuid()):
             sys.stderr.write("EOD: the plan must be a file EOD wrote in its cache\n")
             raise SystemExit(2)
         with open(real) as fh:

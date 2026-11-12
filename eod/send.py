@@ -225,7 +225,7 @@ def send_day(data, targets=None):
         if t.get("kind") == "email":
             # Not sent by EOD: the app opens a draft. Printed as a mailto: line.
             from urllib.parse import quote
-            body = _text(data, bullet="- ") or ""
+            body = (_text(data, bullet="- ") or "")[:1800]      # mail apps drop very long mailto: links
             subject = body.split("\n", 1)[0] if body else "Work update"
             print("MAILTO mailto:%s?subject=%s&body=%s" % (quote(t["to"], safe="@"), quote(subject), quote(body)))
             sent.append("Email draft")

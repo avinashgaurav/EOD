@@ -44,7 +44,7 @@ extension AppDelegate {
         let f = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
         f.placeholderString = "webhook retries, or: when did I fix the coupon bug?"
         a.accessoryView = f
-        a.addButton(withTitle: "Search"); a.addButton(withTitle: "Ask"); a.addButton(withTitle: "Cancel")
+        a.addButton(withTitle: "Search"); a.addButton(withTitle: "Ask (uses AI)"); a.addButton(withTitle: "Cancel")
         a.window.initialFirstResponder = f
         let choice = a.runModal()
         let q = f.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)

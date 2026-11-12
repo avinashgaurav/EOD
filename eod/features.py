@@ -22,6 +22,13 @@ def day_lines(date):
         return []
 
 
+def visible_lines(date):
+    """The day's lines as anything leaving EOD should see them: hide rules
+    applied. Redaction happens at the edge, on the final text."""
+    from .hide import hide_lines
+    return hide_lines(day_lines(date))
+
+
 def day_json(date):
     try:
         with open(os.path.join(CACHE, "%s.json" % date)) as fh:
@@ -57,8 +64,9 @@ _REDACT = [
     (re.compile(r"\b(?:ghp|gho|ghs|github_pat|xox[abpr]|lin_api)_[A-Za-z0-9_]{10,}\b"), "[token]"),
     (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "[key]"),
     (re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\b"), "[token]"),
-    (re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b"), "[email]"),
-    (re.compile(r"\b[\w-]+(?:\.[\w-]+)*\.(?:internal|corp|local|lan|intranet)\b"), "[host]"),
+    (re.compile(r"\b[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b"), "[email]"),
+    # Hostnames only: every label starts with a letter, so v1.2.local stays as is.
+    (re.compile(r"\b[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)*\.(?:internal|corp|lan|intranet)\b(?!\.)"), "[host]"),
     (re.compile(r"/Users/[^/\s]+"), "~"),
     (re.compile(r"https://hooks\.slack\.com/\S+"), "[webhook]"),
 ]
@@ -83,7 +91,7 @@ def morning_standup(date):
     """Yesterday / Today / Blockers, from evidence: yesterday's lines, today's
     meetings and PRs still open."""
     y = previous_workday(date)
-    yesterday = day_lines(y)
+    yesterday = visible_lines(y)
     today = []
     for m in (day_json(date).get("meetings") or []):
         if m.get("title"):
@@ -106,15 +114,17 @@ def morning_standup(date):
     L += ["• " + x for x in yesterday] or ["• Nothing recorded."]
     L += ["", "Today"] + (["• " + x.strip() for x in today] or ["• Nothing scheduled yet."])
     L += ["", "Blockers"] + (["• " + b for b in blockers] or ["• None."])
-    return "\n".join(L) + "\n"
+    from .hide import hide_lines
+    # Hide rules cover meetings, PRs and blockers too; then redact the whole text.
+    return redact("\n".join(hide_lines(L)) + "\n")
 
 
 # ── B4: brag doc ───────────────────────────────────────────────────────────────
 def brag_lines(start, end):
     out = []
     for d in days_with_lines():
-        if start <= d <= end:
-            out.append((d, day_lines(d)))
+        if start <= d <= end and visible_lines(d):
+            out.append((d, visible_lines(d)))
     return out
 
 
@@ -137,12 +147,12 @@ def brag_doc(start, end, run_ai=None):
         try:
             out = run_ai(BRAG_PROMPT + redact(raw))
             if out and out.strip():
-                return head + out.strip() + "\n\n---\n\nBuilt by EOD from %d days of updates.\n" % len(days)
+                return redact(head + out.strip() + "\n\n---\n\nBuilt by EOD from %d days of updates.\n" % len(days))
         except Exception:
             pass
     # Without AI: every day's lines, newest last, ready to edit.
     body = "\n\n".join("## %s\n%s" % (pretty_date(d), "\n".join("- " + h for h in hl)) for d, hl in days)
-    return head + body + "\n"
+    return redact(head + body + "\n")
 
 
 # ── B5: search and ask ─────────────────────────────────────────────────────────
@@ -153,7 +163,7 @@ def search(query, limit=50):
         return []
     hits = []
     for d in reversed(days_with_lines()):
-        for h in day_lines(d):
+        for h in visible_lines(d):
             low = h.lower()
             if all(w in low for w in words):
                 hits.append((d, h))
@@ -172,15 +182,20 @@ def ask(question, run_ai=None):
     words = [w for w in re.findall(r"\w+", question.lower()) if len(w) > 3]
     lines = []
     for d in reversed(days_with_lines()):
-        for h in day_lines(d):
+        for h in visible_lines(d):
             if any(w in h.lower() for w in words):
                 lines.append("%s: %s" % (d, h))
     lines = lines[:80]
     if not lines:
         return "Nothing in your receipts matches that yet."
+    fallback = "AI tidy-up is off or unavailable, so here are the matching lines:\n" + redact("\n".join(lines[:20]))
     if not run_ai:
-        return "AI tidy-up is off, so here are the matching lines:\n" + "\n".join(lines[:20])
-    return run_ai(ASK_PROMPT + "Question: %s\n\n%s" % (question, redact("\n".join(lines))))
+        return fallback
+    try:
+        answer = run_ai(ASK_PROMPT + "Question: %s\n\n%s" % (question, redact("\n".join(lines))))
+    except Exception:
+        answer = None
+    return redact(answer.strip()) if answer and answer.strip() else fallback
 
 
 # ── B6: plan versus done ───────────────────────────────────────────────────────
@@ -255,6 +270,8 @@ def history_month_html(ym, css):
     """A month of receipts as a calendar: which days have a receipt, which were
     sent or copied. Clicking a day opens it."""
     y, m = (int(x) for x in ym.split("-"))
+    if not 1 <= m <= 12:
+        raise ValueError("month must be 01 to 12")
     have, sent = set(days_with_lines()), sent_days()
     today = datetime.now().strftime("%Y-%m-%d")
     cal = calendar.Calendar(firstweekday=0).monthdatescalendar(y, m)

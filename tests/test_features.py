@@ -116,6 +116,66 @@ class TestSendPresets(unittest.TestCase):
         self.assertEqual(t[2], {"kind": None, "bad": 3})
 
 
+class TestReviewFixes(FeatureCase):
+    def test_work_shows_once_with_highlights_and_with_a_plan(self):
+        h = mod(self.ex, "eod.render.html")
+        with open(os.path.join(HERE, "snapshots", "day.json")) as fh:
+            d = json.load(fh)
+        page = h.to_html(dict(d, highlights=["Fixed it."]))
+        self.assertIn("<section class='work'", page)
+        self.assertNotIn("<div class='sect'>WORK</div>", page)
+        self.f.save_plan(d["date"], "Fix it")
+        page = h.to_html(dict(d, highlights=["Fixed it."]))
+        self.assertNotIn("<div class='sect'>WORK</div>", page)
+        self.assertIn(">PLANNED<", page)
+        page = h.to_html(dict(d))                       # no highlights: the per-project fallback still shows
+        self.assertIn("<div class='sect'>WORK</div>", page)
+
+    def test_hide_rules_reach_morning_brag_search_and_ask(self):
+        mod(self.ex, "eod.hide").add_hide_rule("line", "dentist", os.path.join(self.tmp, "hide.txt"))
+        self.day("2026-11-12", ["Fixed the parser.", "Booked the dentist."])
+        self.day("2026-11-13", [])
+        self.assertNotIn("dentist", self.f.morning_standup("2026-11-13"))
+        self.assertNotIn("dentist", self.f.brag_doc("2026-11-01", "2026-11-30"))
+        self.assertEqual(self.f.search("dentist"), [])
+        self.assertNotIn("dentist", self.f.ask("when the dentist", lambda p: None))
+
+    def test_ask_falls_back_when_ai_gives_nothing_or_fails(self):
+        self.day("2026-11-12", ["Fixed webhook retries."])
+        self.assertIn("matching lines", self.f.ask("webhook retries", lambda p: None))
+        def boom(p):
+            raise RuntimeError("ollama down")
+        self.assertIn("matching lines", self.f.ask("webhook retries", boom))
+
+    def test_redaction_leaves_versions_and_packages_alone(self):
+        self.assertEqual(self.f.redact("Bumped v1.2.local and pkg@1.2.3"), "Bumped v1.2.local and pkg@1.2.3")
+        self.assertEqual(self.f.redact("Called db.corp"), "Called [host]")
+
+    def test_bad_month_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.f.history_month_html("2026-13", "")
+
+    def test_week_share_card_is_labelled(self):
+        h = mod(self.ex, "eod.render.html")
+        page = h.to_html_share_week({"week_start": "2026-11-09", "week_end": "2026-11-13", "highlights": ["A."],
+                                     "report": {"tldr": "Shipped A."}})
+        self.assertIn("WEEK IN A RECEIPT", page)
+        self.assertIn("Shipped A.", page)
+
+    def test_ollama_free_text_has_no_json_format(self):
+        p = mod(self.ex, "eod.polish")
+        sent = []
+        class R:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return json.dumps({"response": "text"}).encode()
+        p._open_local = lambda req, timeout: (sent.append(json.loads(req.data)), R())[1]
+        p._run_ollama("m", "hello", raw=True)
+        p._run_ollama("m", "hello")
+        self.assertNotIn("format", sent[0])
+        self.assertEqual(sent[1]["format"], "json")
+
+
 class TestTimeline(unittest.TestCase):
     def test_sessions_and_meetings_drawn(self):
         h = mod(load_extract(), "eod.render.html")

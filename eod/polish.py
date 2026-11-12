@@ -142,10 +142,13 @@ def _open_local(req, timeout):
     return _local_opener().open(req, timeout=timeout)
 
 
-def _run_ollama(model, prompt):
-    """One generate call. Returns the model's text, or raises with a reason worth logging."""
-    body = json.dumps({"model": model, "prompt": prompt, "stream": False, "format": "json",
-                       "options": {"num_ctx": OLLAMA_NUM_CTX}}).encode("utf-8")
+def _run_ollama(model, prompt, raw=False):
+    """One generate call. Returns the model's text, or raises with a reason worth logging.
+    raw=True asks for free text (brag doc, Ask) instead of a JSON object."""
+    req_body = {"model": model, "prompt": prompt, "stream": False, "options": {"num_ctx": OLLAMA_NUM_CTX}}
+    if not raw:
+        req_body["format"] = "json"
+    body = json.dumps(req_body).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=body,
                                  headers={"Content-Type": "application/json"})
     try:
@@ -293,7 +296,7 @@ def run_ai_text(prompt):
         return None
     model = load_ollama_model()
     if model:
-        return _run_ollama(model, prompt)
+        return _run_ollama(model, prompt, raw=True)
     cb = _claude_bin()
     if not cb:
         return None

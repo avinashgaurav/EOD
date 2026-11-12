@@ -557,16 +557,6 @@ def to_html(data, send_to=()):
             P.append("</div>")
             P.append(f"<div id='workText' style='display:none'>{esc(highlights_text(data))}</div>")
             P.append("</section>")
-        # B6: the morning plan against what happened.
-        from ..features import plan_status
-        _plan = plan_status(data["date"], data.get("highlights") or [])
-        if _plan:
-            P.append("<div class='rule'></div><div class='depthead'><span class='nm'>PLANNED</span><span class='dots'></span>"
-                     f"<span class='qty'>{sum(1 for _, st in _plan if st == 'done')}/{len(_plan)}</span></div>")
-            for line, st in _plan:
-                mark = "&#10003;" if st == "done" else "&bull;"
-                P.append(f"<div class='item plan {st}'><span class='t'><b>{mark}</b>{esc(line)}</span>"
-                         f"<span class='tm'>{'done' if st == 'done' else 'open'}</span></div>")
         # ── Fallback: per-project view (only when AI polish unavailable) ──
         elif data["projects"]:
             P.append("<div class='sect'>WORK</div>")
@@ -588,6 +578,17 @@ def to_html(data, send_to=()):
                              f"<span class='t'><b>•</b>{esc(it['text'])}</span>{tm}</div>")
                 P.append("</div>")
                 P.append(f"<div id='{pid}' style='display:none'>{esc(project_text(p))}</div>")
+
+        # B6: the morning plan against what happened.
+        from ..features import plan_status
+        _plan = plan_status(data["date"], data.get("highlights") or [])
+        if _plan:
+            P.append("<div class='rule'></div><div class='depthead'><span class='nm'>PLANNED</span><span class='dots'></span>"
+                     f"<span class='qty'>{sum(1 for _, st in _plan if st == 'done')}/{len(_plan)}</span></div>")
+            for line, st in _plan:
+                mark = "&#10003;" if st == "done" else "&bull;"
+                P.append(f"<div class='item plan {st}'><span class='t'><b>{mark}</b>{esc(line)}</span>"
+                         f"<span class='tm'>{'done' if st == 'done' else 'open'}</span></div>")
 
         # ── Screen time (app usage) ──
         if apps:
