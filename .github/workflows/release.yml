@@ -25,6 +25,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" macos/build/EOD.zip \
-            --title "EOD $GITHUB_REF_NAME" \
-            --notes "Install: curl -fsSL https://eodreceipt.vercel.app/install.sh | bash"
+          (cd macos/build && shasum -a 256 EOD.zip > EOD.zip.sha256)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" macos/build/EOD.zip macos/build/EOD.zip.sha256 --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" macos/build/EOD.zip macos/build/EOD.zip.sha256 \
+              --title "EOD $GITHUB_REF_NAME" \
+              --notes "Install: curl -fsSL https://eodreceipt.vercel.app/install.sh | bash"
+          fi

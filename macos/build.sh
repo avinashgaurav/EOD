@@ -7,6 +7,7 @@ cd "$(dirname "$0")"
 ROOT="$(cd .. && pwd)"
 VERSION="${VERSION:-$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)}"
 VERSION="${VERSION:-0.1.0}"
+[[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "VERSION must look like 1.2.3 (got '$VERSION')" >&2; exit 1; }
 BUILD="$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null || echo 1)"
 OUT=build
 APP="$OUT/EOD.app"

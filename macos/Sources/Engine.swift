@@ -27,14 +27,31 @@ enum EngineInstaller {
         let marker = Paths.support.appendingPathComponent(".engine-version")
         if (try? String(contentsOf: marker, encoding: .utf8)) == version,
            fm.fileExists(atPath: Paths.script.path) { return }
-        for name in ["extract.py", "eod", "bin", "exclude.txt.example"] {
-            let src = bundled.appendingPathComponent(name)
-            let dst = Paths.support.appendingPathComponent(name)
-            guard fm.fileExists(atPath: src.path) else { continue }
-            try? fm.removeItem(at: dst)
-            try? fm.copyItem(at: src, to: dst)
+        // Copy everything into a staging folder first, then swap each item in.
+        // The version marker is written only when every step worked, so a failed
+        // update is retried on the next launch instead of leaving a broken engine.
+        let staging = Paths.support.appendingPathComponent(".engine-staging", isDirectory: true)
+        do {
+            try? fm.removeItem(at: staging)
+            try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+            var names: [String] = []
+            for name in ["extract.py", "eod", "bin", "exclude.txt.example"] {
+                let src = bundled.appendingPathComponent(name)
+                guard fm.fileExists(atPath: src.path) else { continue }
+                try fm.copyItem(at: src, to: staging.appendingPathComponent(name))
+                names.append(name)
+            }
+            for name in names {
+                let dst = Paths.support.appendingPathComponent(name)
+                let src = staging.appendingPathComponent(name)
+                if fm.fileExists(atPath: dst.path) { _ = try fm.replaceItemAt(dst, withItemAt: src) }
+                else { try fm.moveItem(at: src, to: dst) }
+            }
+            try? fm.removeItem(at: staging)
+            try version.write(to: marker, atomically: true, encoding: .utf8)
+        } catch {
+            Log.write("engine install failed, will retry next launch: \(error)")
         }
-        try? version.write(to: marker, atomically: true, encoding: .utf8)
     }
 }
 
@@ -55,6 +72,12 @@ enum Engine {
         }
     }
 
+    /// Thread-safe byte buffer filled by a reader thread.
+    private final class Buffer { private let lock = NSLock(); private var data = Data()
+        func set(_ d: Data) { lock.lock(); data = d; lock.unlock() }
+        func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
+    }
+
     @discardableResult
     static func run(_ args: [String], timeout: TimeInterval = 300,
                     done: @escaping (Result) -> Void) -> Process? {
@@ -68,22 +91,28 @@ enum Engine {
         p.environment = env
         let outPipe = Pipe(), errPipe = Pipe()
         p.standardOutput = outPipe; p.standardError = errPipe
-        var outData = Data(), errData = Data()
-        let q = DispatchQueue(label: "eod.engine.read")
-        outPipe.fileHandleForReading.readabilityHandler = { h in let d = h.availableData; q.sync { outData.append(d) } }
-        errPipe.fileHandleForReading.readabilityHandler = { h in let d = h.availableData; q.sync { errData.append(d) } }
+        // Each pipe is read to EOF on its own thread, so no chunk can be lost or
+        // reordered, and a full pipe can never stall the engine.
+        let out = Buffer(), err = Buffer(), group = DispatchGroup()
+        for (pipe, buf) in [(outPipe, out), (errPipe, err)] {
+            group.enter()
+            DispatchQueue.global(qos: .utility).async {
+                buf.set(pipe.fileHandleForReading.readDataToEndOfFile()); group.leave()
+            }
+        }
         p.terminationHandler = { proc in
-            outPipe.fileHandleForReading.readabilityHandler = nil
-            errPipe.fileHandleForReading.readabilityHandler = nil
-            let restOut = outPipe.fileHandleForReading.readDataToEndOfFile()
-            let restErr = errPipe.fileHandleForReading.readDataToEndOfFile()
-            let (o, e): (Data, Data) = q.sync { (outData + restOut, errData + restErr) }
-            let r = Result(code: proc.terminationStatus,
-                           out: String(decoding: o, as: UTF8.self), err: String(decoding: e, as: UTF8.self))
-            DispatchQueue.main.async { done(r) }
+            DispatchQueue.global(qos: .utility).async {
+                // A grandchild that kept the pipe open must not hang us forever.
+                _ = group.wait(timeout: .now() + 5)
+                let r = Result(code: proc.terminationStatus,
+                               out: String(decoding: out.get(), as: UTF8.self),
+                               err: String(decoding: err.get(), as: UTF8.self))
+                DispatchQueue.main.async { done(r) }
+            }
         }
         do { try p.run() } catch {
             Log.write("could not start python: \(error)")
+            try? outPipe.fileHandleForWriting.close(); try? errPipe.fileHandleForWriting.close()
             DispatchQueue.main.async { done(Result(code: -1, out: "", err: "could not start python3")) }
             return nil
         }
@@ -94,6 +123,11 @@ enum Engine {
 
 enum Log {
     static func write(_ s: String) {
+        let url0 = Paths.cacheFile("app.log")
+        if let size = (try? FileManager.default.attributesOfItem(atPath: url0.path))?[.size] as? Int, size > 1_000_000 {
+            try? FileManager.default.removeItem(at: Paths.cacheFile("app.log.1"))
+            try? FileManager.default.moveItem(at: url0, to: Paths.cacheFile("app.log.1"))
+        }
         let line = "\(ISO8601DateFormatter().string(from: Date())) \(s)\n"
         let url = Paths.cacheFile("app.log")
         if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }

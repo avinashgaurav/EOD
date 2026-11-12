@@ -16,6 +16,9 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     private var loadN = 0
     private var dragMonitor: Any?
     private var dragOffset = NSPoint.zero
+    private var pendingHide: DispatchWorkItem?
+    /// Where the person last left the panel; nil until they move it.
+    var savedFrame: NSRect?
 
     init(frame: NSRect) {
         panel = ReceiptPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
@@ -25,6 +28,8 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         cfg.userContentController = ucc
         web = WKWebView(frame: NSRect(origin: .zero, size: frame.size), configuration: cfg)
         super.init()
+        // The controller retains this handler: a cycle, acceptable because both
+        // panels live as long as the app does.
         ucc.add(self, name: "eod")
         web.setValue(false, forKey: "drawsBackground")
         web.navigationDelegate = self
@@ -57,16 +62,21 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     func js(_ s: String) { web.evaluateJavaScript(s, completionHandler: nil) }
 
     func show(at frame: NSRect) {
-        panel.setFrame(frame, display: true)
+        pendingHide?.cancel(); pendingHide = nil       // a show beats a roll-up still in flight
+        panel.setFrame(savedFrame ?? frame, display: true)
         panel.orderFrontRegardless()
     }
 
     /// Roll the paper up, then hide once the animation has played.
     func hide(animated: Bool = true) {
         guard panel.isVisible else { return }
+        endDrag()
+        pendingHide?.cancel()
         if animated {
             js("window.playOut&&playOut()")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.46) { [weak self] in self?.panel.orderOut(nil) }
+            let w = DispatchWorkItem { [weak self] in self?.panel.orderOut(nil); self?.pendingHide = nil }
+            pendingHide = w
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.46, execute: w)
         } else { panel.orderOut(nil) }
     }
 
@@ -78,14 +88,18 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         dragMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDragged, .leftMouseUp]) { [weak self] e in
             guard let self = self else { return e }
             if e.type == .leftMouseUp {
-                if let m = self.dragMonitor { NSEvent.removeMonitor(m) }
-                self.dragMonitor = nil
+                self.endDrag(); self.savedFrame = self.panel.frame
                 return e
             }
             let p = NSEvent.mouseLocation
             self.panel.setFrameOrigin(NSPoint(x: p.x - self.dragOffset.x, y: p.y - self.dragOffset.y))
             return e
         }
+    }
+
+    private func endDrag() {
+        if let m = dragMonitor { NSEvent.removeMonitor(m) }
+        dragMonitor = nil
     }
 
     func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -96,7 +110,7 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     /// Links in the receipt (a PR, a doc) open in the browser, never inside the panel.
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let url = action.request.url, url.scheme == "http" || url.scheme == "https" {
+        if let url = action.request.url, let scheme = url.scheme, scheme != "file", scheme != "about" {
             NSWorkspace.shared.open(url); decisionHandler(.cancel); return
         }
         decisionHandler(.allow)

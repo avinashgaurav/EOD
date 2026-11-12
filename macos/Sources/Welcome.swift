@@ -5,6 +5,7 @@ import AppKit
 /// first receipt is built. Per-source switches come with the engine change in #37.
 enum Welcome {
     private static var window: NSWindow?
+    private static var key = 0
 
     static func show(done: @escaping () -> Void) {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 470),
@@ -51,10 +52,14 @@ enum Welcome {
         stack.addArrangedSubview(row)
         stack.addArrangedSubview(label("Show or hide it any time with ⌥⌃⌘W or the menu-bar icon.", size: 12, color: .secondaryLabelColor))
 
+        // Opt-in for real: AI polish is off on disk before the window even shows,
+        // so closing it any way leaves it off.
+        FileManager.default.createFile(atPath: Paths.support.appendingPathComponent("polish.off").path, contents: Data())
         let handler = Handler(ai: ai, window: w, done: done)
+        w.delegate = handler
         fda.target = handler; fda.action = #selector(Handler.openFDA)
         go.target = handler; go.action = #selector(Handler.finish)
-        objc_setAssociatedObject(w, "handler", handler, .OBJC_ASSOCIATION_RETAIN)
+        objc_setAssociatedObject(w, &Welcome.key, handler, .OBJC_ASSOCIATION_RETAIN)
 
         w.contentView = stack
         w.center()
@@ -63,7 +68,8 @@ enum Welcome {
         w.makeKeyAndOrderFront(nil)
     }
 
-    private final class Handler: NSObject {
+    private final class Handler: NSObject, NSWindowDelegate {
+        private var finished = false
         let ai: NSButton, window: NSWindow, done: () -> Void
         init(ai: NSButton, window: NSWindow, done: @escaping () -> Void) { self.ai = ai; self.window = window; self.done = done }
 
@@ -74,10 +80,13 @@ enum Welcome {
         }
 
         @objc func finish() {
-            let off = Paths.support.appendingPathComponent("polish.off")
-            if ai.state == .off { FileManager.default.createFile(atPath: off.path, contents: Data()) }
-            else { try? FileManager.default.removeItem(at: off) }
-            window.close()
+            if ai.state == .on { try? FileManager.default.removeItem(at: Paths.support.appendingPathComponent("polish.off")) }
+            window.close()          // windowWillClose shows the receipt
+        }
+
+        func windowWillClose(_ n: Notification) {
+            guard !finished else { return }
+            finished = true
             done()
         }
     }

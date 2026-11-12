@@ -28,6 +28,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationDidFinishLaunching(_ n: Notification) {
         defaults.register(defaults: ["reminderOn": true, "showAtStart": true])
         EngineInstaller.installIfNeeded()
+        // Both versions at once overwrite each other's screen time and fight over
+        // the hotkey. Say so once, plainly, instead of failing quietly.
+        let hs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".hammerspoon/eod.lua")
+        if FileManager.default.fileExists(atPath: hs.path) && !defaults.bool(forKey: "warnedHammerspoon") {
+            defaults.set(true, forKey: "warnedHammerspoon")
+            NSApp.activate(ignoringOtherApps: true)
+            let a = NSAlert()
+            a.messageText = "You also have EOD in Hammerspoon"
+            a.informativeText = "Running both mixes up screen time and the ⌥⌃⌘W shortcut. To switch to the app, remove the EOD lines from ~/.hammerspoon/init.lua and reload Hammerspoon. Your Hammerspoon files are not changed."
+            a.addButton(withTitle: "Keep the app"); a.addButton(withTitle: "Quit the app")
+            if a.runModal() == .alertSecondButtonReturn { NSApp.terminate(nil); return }
+        }
         receipt = WebPanel(frame: receiptFrame())
         receipt.onMessage = { [weak self] in self?.onReceiptMessage($0) }
         detail = WebPanel(frame: detailFrame())
@@ -39,6 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         scheduleMidnight()
         scheduleReminder()
         UNUserNotificationCenter.current().delegate = self
+        if defaults.bool(forKey: "reminderOn") {   // ask now, not by surprise at 18:30
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        }
         if !FileManager.default.fileExists(atPath: Paths.cacheFile(".welcomed").path) {
             try? "1".write(to: Paths.cacheFile(".welcomed"), atomically: true, encoding: .utf8)
             Welcome.show { [weak self] in self?.show(animate: true) }
@@ -70,6 +85,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             i.target = self; return i
         }
         menu.addItem(item(shown ? "Hide receipt" : "Show receipt", #selector(toggleMenu), "w", [.command, .option, .control]))
+        if hotkey?.ok == false {
+            let warn = NSMenuItem(title: "⌥⌃⌘W is in use by another app", action: nil, keyEquivalent: "")
+            warn.isEnabled = false; menu.addItem(warn)
+        }
         menu.addItem(item("Jump to today", #selector(jumpToday)))
         menu.addItem(item("Refresh now", #selector(refreshNow)))
         menu.addItem(.separator())
@@ -78,7 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         menu.addItem(item("Open data folder", #selector(openData)))
         menu.addItem(.separator())
         let login = item("Open at login", #selector(toggleLogin))
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        login.state = SMAppService.mainApp.status == .enabled ? .on
+            : (SMAppService.mainApp.status == .requiresApproval ? .mixed : .off)
         menu.addItem(login)
         let rem = item("End-of-day reminder (18:30)", #selector(toggleReminder))
         rem.state = defaults.bool(forKey: "reminderOn") ? .on : .off
@@ -88,14 +108,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         menu.addItem(start)
         menu.addItem(.separator())
         menu.addItem(item("About EOD", #selector(about)))
-        menu.addItem(item("Quit EOD", #selector(quit), "q"))
+        menu.addItem(item("Quit EOD", #selector(quit), "q", [.command]))
     }
 
     @objc private func toggleMenu() { toggle() }
     @objc private func jumpToday() { curDate = Day.today(); show(animate: true) }
     @objc private func refreshNow() { rebuild(curDate, force: true) }
     @objc private func showWeeklyMenu() { showWeekly(force: false) }
-    @objc private func openHistory() { NSWorkspace.shared.open(Paths.cacheFile("worklog-history.md")) }
+    @objc private func openHistory() {
+        let f = Paths.cacheFile("worklog-history.md")
+        if FileManager.default.fileExists(atPath: f.path) { NSWorkspace.shared.open(f) }
+        else { alert("No history yet", "Your work history appears after EOD has summarised its first day.") }
+    }
     @objc private func openData() { NSWorkspace.shared.open(Paths.support) }
     @objc private func toggleReminder() {
         defaults.set(!defaults.bool(forKey: "reminderOn"), forKey: "reminderOn"); scheduleReminder()
@@ -103,8 +127,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @objc private func toggleShowAtStart() { defaults.set(!defaults.bool(forKey: "showAtStart"), forKey: "showAtStart") }
     @objc private func toggleLogin() {
         do {
-            if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
-            else { try SMAppService.mainApp.register() }
+            switch SMAppService.mainApp.status {
+            case .enabled: try SMAppService.mainApp.unregister()
+            case .requiresApproval: SMAppService.openSystemSettingsLoginItems()
+            default:
+                try SMAppService.mainApp.register()
+                if SMAppService.mainApp.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
+            }
         } catch {
             alert("Couldn't change Open at login", "Move EOD to your Applications folder and try again. (\(error.localizedDescription))")
         }
@@ -173,8 +202,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             guard let self = self else { return }
             guard r.code == 0, let t = r.tagged, t.tag == "WEEKLY" else {
                 Log.write("weekly build failed (\(r.code)): \(r.err.suffix(400))")
-                self.detailMode = ""
-                self.receipt.js("window.toast&&toast('Weekly report failed, see the data folder log')")
+                self.hideDetail()
+                self.receipt.js("window.toast&&toast('Couldn’t build the weekly report. Try Refresh, or open the data folder for details.')")
                 return
             }
             if let m = t.rest.range(of: #"weekly-(\d{4}-\d{2}-\d{2})"#, options: .regularExpression) {
@@ -197,9 +226,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 Log.write("extract failed (\(r.code)): \(r.err.suffix(600))"); return
             }
             if cacheOnly || !(force || t.tag != "UNCHANGED") { return }
+            // A slow earlier run must not replace the day the person has moved to.
+            guard date == self.curDate else { return }
             self.receipt.load(path: t.rest, animate: animate)
-            if self.detailMode == "full" {
-                self.detail.load(path: t.rest.replacingOccurrences(of: ".html", with: "-full.html"), animate: false)
+            if self.detailMode == "full", t.rest.hasSuffix(".html") {
+                self.detail.load(path: String(t.rest.dropLast(5)) + "-full.html", animate: false)
             }
         }
     }
@@ -210,9 +241,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     private func scheduleMidnight() {
-        var c = Calendar.current.dateComponents([.year, .month, .day], from: Date().addingTimeInterval(86400))
-        c.hour = 0; c.minute = 0; c.second = 30
-        guard let fire = Calendar.current.date(from: c) else { return }
+        guard let fire = Calendar.current.nextDate(after: Date(), matching: DateComponents(hour: 0, minute: 0, second: 30),
+                                                   matchingPolicy: .nextTime) else { return }
         midnightTimer = Timer(fire: fire, interval: 0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             self.curDate = Day.today()
@@ -225,14 +255,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private func scheduleReminder() {
         reminderTimer?.invalidate()
         guard defaults.bool(forKey: "reminderOn") else { return }
-        var c = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        c.hour = 18; c.minute = 30
-        guard var fire = Calendar.current.date(from: c) else { return }
-        if fire <= Date() { fire = fire.addingTimeInterval(86400) }
+        guard let fire = Calendar.current.nextDate(after: Date(), matching: DateComponents(hour: 18, minute: 30, second: 0),
+                                                   matchingPolicy: .nextTime) else { return }
         reminderTimer = Timer(fire: fire, interval: 0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             let wd = Calendar.current.component(.weekday, from: Date())   // 1 = Sun, 7 = Sat
-            if wd != 1 && wd != 7 {
+            let late = Date().timeIntervalSince(fire) > 1800              // the Mac slept through 18:30
+            if wd != 1 && wd != 7 && !late {
                 self.rebuild(Day.today(), force: true, cacheOnly: !self.shown)
                 self.notify()
             }
@@ -249,6 +278,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             c.title = "EOD"; c.body = "Your work update is ready. Review it and send."
             center.add(UNNotificationRequest(identifier: "eod-reminder", content: c, trigger: nil))
         }
+    }
+
+    func userNotificationCenter(_ c: UNUserNotificationCenter, willPresent n: UNNotification,
+                                withCompletionHandler done: @escaping (UNNotificationPresentationOptions) -> Void) {
+        done([.banner, .sound])
     }
 
     func userNotificationCenter(_ c: UNUserNotificationCenter, didReceive r: UNNotificationResponse,
@@ -305,14 +339,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// Hand-edited lines are saved with edited=true, which the engine honours on
     /// every rebuild. The detailed breakdown (and the weekly report) are kept.
     private func saveEdits(_ raw: Any?, file: String, keep: [String], then: @escaping () -> Void) {
-        let items = (raw as? [Any] ?? []).compactMap { $0 as? String }.filter { !$0.isEmpty }
+        guard let list = raw as? [Any] else { return }       // malformed message: never wipe lines
+        let items = list.compactMap { $0 as? String }.filter { !$0.isEmpty }
         let url = Paths.cacheFile(file)
         var out: [String: Any] = ["key": "edited", "highlights": items, "edited": true]
         if let d = try? Data(contentsOf: url), let prev = try? JSONSerialization.jsonObject(with: d) as? [String: Any] {
             for k in keep { if let v = prev[k] { out[k] = v } }
         }
-        if let data = try? JSONSerialization.data(withJSONObject: out) { try? data.write(to: url, options: .atomic) }
-        then()
+        do {
+            try JSONSerialization.data(withJSONObject: out).write(to: url, options: .atomic)
+            then()
+        } catch { Log.write("could not save edits to \(file): \(error)") }
     }
 
     private func shareImage() {

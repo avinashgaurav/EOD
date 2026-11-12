@@ -45,6 +45,7 @@ final class UsageTracker {
 /// ⌥⌃⌘W, registered with Carbon so it needs no Accessibility permission.
 final class HotKey {
     private var ref: EventHotKeyRef?
+    private(set) var ok = false
     private static var action: (() -> Void)?
 
     init(action: @escaping () -> Void) {
@@ -55,7 +56,9 @@ final class HotKey {
             return noErr
         }, 1, &spec, nil, nil)
         let id = EventHotKeyID(signature: OSType(0x454F4420), id: 1)   // "EOD "
-        RegisterEventHotKey(UInt32(kVK_ANSI_W), UInt32(cmdKey | optionKey | controlKey), id,
-                            GetApplicationEventTarget(), 0, &ref)
+        let st = RegisterEventHotKey(UInt32(kVK_ANSI_W), UInt32(cmdKey | optionKey | controlKey), id,
+                                     GetApplicationEventTarget(), 0, &ref)
+        ok = (st == noErr)
+        if !ok { Log.write("⌥⌃⌘W is taken by another app (status \(st)); use the menu-bar icon") }
     }
 }
