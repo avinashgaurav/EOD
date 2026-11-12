@@ -1,13 +1,24 @@
-<!doctype html><html><head><meta charset='utf-8'><script>if(location.hash.indexOf('in')>=0)document.documentElement.className='anim-in';</script><style>
+<!doctype html><html><head><meta charset='utf-8'><script>var _h=location.hash;document.documentElement.className=(_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':''))+(window.EOD_APP?' app':'');</script><style>
+@font-face{font-family:'Courier Prime';src:url('../eod/render/fonts/CourierPrime-Regular.ttf') format('truetype');font-weight:400}
+@font-face{font-family:'Courier Prime';src:url('../eod/render/fonts/CourierPrime-Bold.ttf') format('truetype');font-weight:700}
+/* Carbon-copy brand (audit section 5): white sheet, carbon-blue ink for anything
+   you can act on, stamp red for the one signature mark. Every text pair passes
+   WCAG AA in both themes. */
 :root{
-  --surface:#14151a;          /* the dark desk the receipt sits on */
-  --paper:#f3ecdd;            /* warm thermal paper */
-  --ink:#2a2620;              /* warm near-black ink */
-  --ink2:#9a8f7c;             /* faded ink */
-  --line:#cdc2aa;             /* printed rule */
-  --accent:#bf3d1f;           /* stamp red-orange */
-  --mono:'SF Mono',ui-monospace,Menlo,'Courier New',monospace;
+  --surface:#151416;          /* the desk behind the sheet (share image) */
+  --paper:#FFFFFF;            /* the sheet */
+  --ink:#1B1A18;              /* body text, 17.4:1 */
+  --ink2:#5F5B54;             /* secondary text, 6.75:1 */
+  --line:#E7DAD6;             /* dotted leaders and dashed rules, decorative only */
+  --accent:#C8323C;           /* stamp red: signature only, 5.28:1 */
+  --carbon:#24357A;           /* carbon blue: headings, buttons, focus, 11.26:1 */
+  --copy:#F6D9DC;             /* carbon copy pink: edited lines, the shared preview */
+  --on-carbon:#FFFFFF;
+  --mono:'Courier Prime','Courier New',ui-monospace,monospace;
 }
+@media (prefers-color-scheme:dark){:root{
+  --surface:#0F0E10;--paper:#1E1D20;--ink:#EEEBE5;--ink2:#A6A198;--line:#34323A;
+  --accent:#E5646C;--carbon:#8FA0E0;--copy:#3A2A2E;--on-carbon:#151416}}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:transparent;font-family:var(--mono);-webkit-font-smoothing:antialiased}
@@ -138,7 +149,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 /* ── print / unroll animation (paper fed from a slot at the top) ── */
 .roll{transform-origin:top center}
 html.anim-in  .roll{animation:printDown .85s cubic-bezier(.18,.86,.24,1) both}
-html.anim-out .roll{animation:rollUp   .42s cubic-bezier(.45,0,.7,.25) both}
+html.anim-out .roll{animation:rollUp   .2s cubic-bezier(.45,0,.7,.25) both}
+/* Every open after the first of the day is quick (F27): the print-down is a moment, not a wait. */
+html.anim-quick .roll{animation:quickIn .16s ease-out both}
+@keyframes quickIn{0%{opacity:0;transform:translateY(-4px)}100%{opacity:1;transform:none}}
 @keyframes printDown{
   0%{clip-path:inset(0 0 100% 0);transform:translateY(-4px)}
   100%{clip-path:inset(0 0 0 0);transform:translateY(0)}}
@@ -146,11 +160,84 @@ html.anim-out .roll{animation:rollUp   .42s cubic-bezier(.45,0,.7,.25) both}
   0%{clip-path:inset(0 0 0 0)}
   100%{clip-path:inset(0 0 100% 0);transform:translateY(-3px)}}
 @media (prefers-reduced-motion:reduce){
-  html.anim-in .roll,html.anim-out .roll{animation-duration:.001s}}
-</style></head><body><div class='surface'><div class='roll'><div class='receipt'><button class='hide' onclick="send({action:'hide'})" title='Hide (⌥⌃⌘W to reopen)'>✕</button><div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>DAILY WORK RECEIPT</div><div class='stamp'>WORK · SCREEN · WEB</div></div><div class='rule'></div><div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>Thu, Aug 6 2026</span></div><div class='kv'><span class='k'>Ref</span><span class='dots'></span><span class='v'>#20260806</span></div><div class='nav'><button onclick='nav(-1)' title='Previous day'>◀</button><input type='date' class='dpick' value='2026-08-06' max='2026-08-07' onchange='goDate(this.value)' title='Jump to date'><button onclick='nav(1)' title='Next day'>▶</button><button onclick='refresh()' title='Refresh'>↻</button></div><div class='rule double'></div><div class='sect'>WORK</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Checkout</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p0','Users Me Work Checkout copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Fixed the coupon rounding edge case</span><span class='tm'>09:12</span></div></div><div id='p0' style='display:none'>Users Me Work Checkout
-  • Fixed the coupon rounding edge case</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Search</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p1','Users Me Work Search copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Reviewed the indexing pull request</span><span class='tm'>11:55</span></div></div><div id='p1' style='display:none'>Users Me Work Search
-  • Reviewed the indexing pull request</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Platform</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p2','Users Me Work Platform copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Trace why the webhook retries twice</span><span class='tm'>15:30</span></div></div><div id='p2' style='display:none'>Users Me Work Platform
-  • Trace why the webhook retries twice</div><div class='rule'></div><div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>From</span><span class='dots'></span><span class='v'>09:12</span></div><div class='kv tot'><span class='k'>To</span><span class='dots'></span><span class='v'>15:30</span></div><div class='rule double'></div><div class='end'>END OF DAY</div><div class='barcode'></div><div class='bcnum'>20260806 · XY</div><div class='actions'><button class='copyall primary' onclick="copyEl('updText','Update copied')" title='Copy the work update: work lines only, no screen time or sites'>⎙ Copy update</button><button class='copyall seeall' onclick="send({action:'full'})" title='Everything from today'>Full day</button><button class='copyall' onclick="send({action:'share'});toast('Drawing the image…')" title='Copy the day as an image for X / LinkedIn' aria-label='Share as image'>⇪</button></div><div class='ts'>updated 17:00 · ~/.claude · <span class='sig'>XY</span></div><div id='allText' style='display:none'>Daily update — Thu, Aug 6 2026
+  html.anim-in .roll,html.anim-out .roll,html.anim-quick .roll{animation-duration:.001s}}
+/* ── carbon-copy layer: hierarchy, icons, accessibility ───────────── */
+body,button,input{font-family:var(--mono)}
+.receipt{filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
+.brand{color:var(--carbon)}
+.item .t b{color:var(--carbon)}
+.sect{color:var(--carbon)}
+.depthead{color:var(--ink)}
+.tag,.kv .k,.ts,.item .tm,.prov{font-size:11px}
+.kv{font-size:12px}.item{font-size:12.5px}
+.ic{width:14px;height:14px;display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* WCAG 2.5.8: every control is at least 24 by 24 px to hit */
+button{min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border-style:solid;border-color:var(--line);color:var(--carbon);font-size:11px}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--carbon);outline-offset:2px}
+.hide{color:var(--ink2)}
+.hide:hover{color:var(--accent)}
+/* date bar: arrows, the date as text, refresh; the native picker sits under the text */
+.datebar{display:flex;align-items:center;gap:6px;justify-content:space-between;margin:8px 0 2px}
+.dwrap{position:relative;flex:1;text-align:center;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer}
+.dwrap input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+/* WORK tools appear on hover or keyboard focus, and stay while editing (Hick's law) */
+.work .tools{display:flex;gap:4px;opacity:0;transition:opacity .12s}
+.work:hover .tools,.work:focus-within .tools,.work.editing .tools{opacity:1}
+.work .tools .cp{margin:0;opacity:1;border-color:var(--line)}
+.htext.editing{outline:1px dashed var(--carbon);background:var(--copy)}
+/* source chips: what was read today, and what needs fixing */
+.chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0 0}
+.chip{font-size:10.5px;border:1px solid var(--line);padding:1px 6px;color:var(--ink2);min-height:0;min-width:0}
+.chip.failed{color:var(--accent);border-color:var(--accent);cursor:pointer}
+.chip.off{text-decoration:line-through}
+/* sticky action bar: the main action never scrolls away */
+.actions{position:sticky;bottom:0;background:var(--paper);padding:8px 0 6px;margin:10px 0 0;z-index:3;flex-wrap:wrap}
+.copyall{font-size:11.5px;padding:6px 12px}
+.copyall.primary{background:var(--carbon);color:var(--on-carbon);border-color:var(--carbon)}
+.copyall.primary:hover{background:var(--carbon);color:var(--on-carbon);opacity:.9}
+.copyall.sendb{border-color:var(--carbon)}
+.more{position:relative}
+.more summary{list-style:none;cursor:pointer;border:1px solid var(--line);color:var(--carbon);min-height:24px;min-width:24px;
+  display:flex;align-items:center;justify-content:center;padding:6px 10px;font-size:11.5px}
+.more summary::-webkit-details-marker{display:none}
+.more .menu{position:absolute;right:0;bottom:calc(100% + 6px);background:var(--paper);border:1px solid var(--ink);
+  min-width:210px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:6}
+.more .menu button{justify-content:flex-start;border:0;width:100%;text-transform:none;letter-spacing:.2px;font-size:12px;padding:6px 8px}
+.more .menu button:hover{background:var(--copy)}
+.more .menu .lbl{font-size:10.5px;color:var(--ink2);padding:6px 8px 2px;letter-spacing:1px;text-transform:uppercase}
+.more .menu button[aria-pressed="true"]::after{content:"¹3";margin-left:auto;color:var(--carbon)}
+.barcode{height:22px;width:60%}
+.toast{font-size:11px;letter-spacing:1px}
+.sheet .box{border-color:var(--carbon)}
+.sheet pre{background:var(--copy);padding:8px;outline-offset:2px}
+.sheet .cc{font-size:10.5px;color:var(--ink2);margin:-2px 0 6px}
+.stamp{display:none}
+.item.plan.done .t{color:var(--ink2);text-decoration:line-through}
+/* Controls only the Mac app can act on are hidden in the Hammerspoon widget. */
+.app-only{display:none!important}
+html.app .app-only{display:flex!important}
+.chip.failed{min-height:24px}
+.depthead .cp{opacity:1}
+@media print{
+  :root{--paper:#FFFFFF;--ink:#000;--ink2:#333;--line:#999;--carbon:#000;--accent:#000;--copy:#fff}
+  body{background:#fff}
+  .actions,.datebar,.hide,.toast,.tools,.chips,.nv,.del,.undo,.sheet,.status,.inc{display:none!important}
+  .receipt{filter:none;clip-path:none;width:auto;max-width:72mm;padding:0;background-image:none}
+  .surface{padding:0;display:block;min-height:0}
+  details.wsec{display:block}details.wsec>*{display:block}
+}
+.tldr{font-size:13px;font-weight:700;color:var(--ink);border-left:3px solid var(--carbon);padding:4px 0 4px 10px;margin:4px 0 10px}
+details.wsec>summary{list-style:none;cursor:pointer}
+details.wsec>summary::-webkit-details-marker{display:none}
+details.wsec>summary .nm::before{content:"\25B8 ";color:var(--ink2)}
+details.wsec[open]>summary .nm::before{content:"\25BE "}
+@media (prefers-reduced-motion:reduce){.work .tools{transition:none}}
+
+</style></head><body><div class='surface'><div class='roll'><div class='receipt'><button class='hide' onclick="send({action:'hide'})" title='Hide (Esc)' aria-label='Hide the receipt'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M4 4l8 8M12 4l-8 8'/></svg></button><div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>DAILY WORK RECEIPT</div></div><div class='rule'></div><div class='datebar'><button onclick='nav(-1)' title='Previous day (←)' aria-label='Previous day'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M10 3L5 8l5 5'/></svg></button><label class='dwrap'><span>Thu, Aug 6 2026</span><input type='date' class='dpick' value='2026-08-06' max='2026-08-07' onchange='goDate(this.value)' aria-label='Jump to a date'></label><button onclick='nav(1)' title='Next day (→)' aria-label='Next day'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M6 3l5 5-5 5'/></svg></button><button onclick='refresh()' title='Refresh' aria-label='Refresh'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M13 8a5 5 0 1 1-1.5-3.5'/><path d='M13 2v3h-3'/></svg></button></div><div class='rule double'></div><div class='sect'>WORK</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Checkout</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p0','Users Me Work Checkout copied')" aria-label='Copy Users Me Work Checkout'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><rect x='5' y='5' width='8' height='9' rx='1'/><path d='M3 11V3a1 1 0 0 1 1-1h6'/></svg></button></div><div class='item'><span class='t'><b>•</b>Fixed the coupon rounding edge case</span><span class='tm'>09:12</span></div></div><div id='p0' style='display:none'>Users Me Work Checkout
+  • Fixed the coupon rounding edge case</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Search</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p1','Users Me Work Search copied')" aria-label='Copy Users Me Work Search'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><rect x='5' y='5' width='8' height='9' rx='1'/><path d='M3 11V3a1 1 0 0 1 1-1h6'/></svg></button></div><div class='item'><span class='t'><b>•</b>Reviewed the indexing pull request</span><span class='tm'>11:55</span></div></div><div id='p1' style='display:none'>Users Me Work Search
+  • Reviewed the indexing pull request</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Platform</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p2','Users Me Work Platform copied')" aria-label='Copy Users Me Work Platform'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><rect x='5' y='5' width='8' height='9' rx='1'/><path d='M3 11V3a1 1 0 0 1 1-1h6'/></svg></button></div><div class='item'><span class='t'><b>•</b>Trace why the webhook retries twice</span><span class='tm'>15:30</span></div></div><div id='p2' style='display:none'>Users Me Work Platform
+  • Trace why the webhook retries twice</div><div class='rule'></div><div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>First activity</span><span class='dots'></span><span class='v'>09:12</span></div><div class='kv tot'><span class='k'>Last activity</span><span class='dots'></span><span class='v'>15:30</span></div><div class='rule double'></div><div class='end'>END OF DAY</div><div class='barcode'></div><div class='bcnum'>20260806 · XY</div><div class='actions'><button class='copyall primary' onclick='copyUpdate()' title='Copy the work update (⌘C): work lines only, no screen time or sites' ><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><rect x='5' y='5' width='8' height='9' rx='1'/><path d='M3 11V3a1 1 0 0 1 1-1h6'/></svg>Copy update</button><details class='more'><summary aria-label='More actions'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><circle cx='3.5' cy='8' r='.8'/><circle cx='8' cy='8' r='.8'/><circle cx='12.5' cy='8' r='.8'/></svg></summary><div class='menu'><button onclick="closeMore(this);send({action:'full'})"><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M3 4h10M3 8h10M3 12h7'/></svg>Full day</button><button onclick="closeMore(this);send({action:'share'});toast('Drawing the image…')"><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M8 2v8'/><path d='M5 5l3-3 3 3'/><path d='M3 9v4a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9'/></svg>Share as image</button><button class='app-only' onclick="closeMore(this);send({action:'print'})"><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M4 6V2h8v4'/><rect x='2' y='6' width='12' height='5' rx='1'/><path d='M4 9h8v5H4z'/></svg>Print receipt</button><button onclick="closeMore(this);copyEl('allText','Full day copied')"><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><rect x='5' y='5' width='8' height='9' rx='1'/><path d='M3 11V3a1 1 0 0 1 1-1h6'/></svg>Copy full day</button><div class='lbl'>Copy update as</div><button data-fmt='plain' aria-pressed='false' onclick="closeMore(this);setFmt('plain')">Plain text</button><button data-fmt='slack' aria-pressed='false' onclick="closeMore(this);setFmt('slack')">Slack</button><button data-fmt='md' aria-pressed='false' onclick="closeMore(this);setFmt('md')">Markdown</button><button data-fmt='jira' aria-pressed='false' onclick="closeMore(this);setFmt('jira')">Jira</button></div></details></div><div class='ts'>updated 17:00 · <span class='sig'>XY</span></div><div id='allText' style='display:none'>Daily update: Thu, Aug 6 2026
 
 Users Me Work Checkout
   • Fixed the coupon rounding edge case
@@ -163,10 +250,32 @@ Users Me Work Platform
 • Users Me Work Checkout: Fixed the coupon rounding edge case
 • Users Me Work Search: Reviewed the indexing pull request
 • Users Me Work Platform: Trace why the webhook retries twice
-</div></div></div></div><div class='toast' id='toast'></div><script>
+</div></div></div></div><div class='toast' id='toast' role='status' aria-live='polite'></div><script>
 function send(m){try{window.webkit.messageHandlers.eod.postMessage(m);return true}catch(e){return false}}
-function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
-clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},1300)}
+function toast(t,ms){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},ms||3000)}
+// Copy the update in the format of where it is going (F37), remembered per Mac.
+var _fmt='plain';try{_fmt=localStorage.getItem('eod-fmt')||'plain'}catch(e){}
+function setFmt(k){_fmt=k;try{localStorage.setItem('eod-fmt',k)}catch(e){}_markFmt();copyUpdate()}
+function _markFmt(){document.querySelectorAll('[data-fmt]').forEach(function(b){b.setAttribute('aria-pressed',b.getAttribute('data-fmt')===_fmt?'true':'false')})}
+function closeMore(el){var d=el.closest('details');if(d){d.open=false;var s=d.querySelector('summary');if(s)s.focus()}}
+function openSettings(){if(window.EOD_APP)send({action:'settings'});else toast('Fix sources in the EOD app Settings')}
+document.addEventListener('click',function(e){var m=document.querySelector('details.more[open]');if(m&&!m.contains(e.target))m.open=false});
+function formatUpdate(t,k){var L=t.replace(/\s+$/,'').split('\n');var head=L[0],rest=L.slice(1);
+  var bul={plain:'\u2022 ',slack:'\u2022 ',md:'- ',jira:'* '}[k]||'\u2022 ';
+  var h={md:'**'+head+'**',jira:'*'+head+'*',slack:'*'+head+'*'}[k]||head;
+  return [h].concat(rest.map(function(x){return x.indexOf('\u2022 ')===0?bul+x.slice(2):x})).join('\n')+'\n'}
+function copyUpdate(){var el=document.getElementById('updText');if(!el||!el.textContent.trim()){toast('Nothing to copy yet');return}
+  copyText(formatUpdate(el.textContent,_fmt),'Update copied','updText')}
+// Keyboard (F38): left and right arrows change day, Cmd+C copies the update, Esc hides.
+document.addEventListener('keydown',function(e){
+  var t=e.target,typing=t&&(t.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(t.tagName));
+  if(typing||(window.isEditing&&window.isEditing())||document.getElementById('sendSheet'))return;
+  if(e.key==='ArrowLeft'){e.preventDefault();nav(-1)}
+  else if(e.key==='ArrowRight'){e.preventDefault();nav(1)}
+  else if(e.key==='Escape'){var m=document.querySelector('details.more[open]');if(m){m.open=false;var su=m.querySelector('summary');if(su)su.focus();return}send({action:'hide'})}
+  else if((e.metaKey||e.ctrlKey)&&e.code==='KeyC'&&!String(window.getSelection()).trim()&&document.getElementById('updText')){e.preventDefault();copyUpdate()}});
+document.addEventListener('DOMContentLoaded',_markFmt);
 function copyText(txt,label,what){
   if(!send({action:'copy',text:txt,what:what||''})){ // browser fallback
     var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
@@ -180,10 +289,11 @@ window.setStatus=function(msg,retry){var r=document.querySelector('.receipt');if
   el.textContent=msg+' ';if(retry){var b=document.createElement('button');b.textContent='Retry';b.onclick=function(){refresh()};el.appendChild(b)}};
 window.isEditing=function(){var l=document.getElementById('workList');return !!(l&&l.getAttribute('data-edit')==='1')};
 function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hiding…');else toast('Hiding works from the app')}
-function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
+function reportText(){var L=[document.getElementById('wkHead').textContent,''];
   document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
     L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\u2022 '+x.textContent)});L.push('')});
-  copyText(L.join('\n').replace(/\n+$/,'\n'),'Weekly report copied')}
+  return L.join('\n').replace(/\n+$/,'\n')}
+function copyReport(){copyText(reportText(),'Weekly report copied','report')}
 function nav(d){send({action:'nav',delta:d})}
 function goDate(v){if(v)send({action:'goDate',date:v})}
 function refresh(){send({action:'refresh'});toast('Refreshing…')}
@@ -192,6 +302,7 @@ function _enterEdit(){
   var list=document.getElementById('workList'),b=document.getElementById('editBtn');
   list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='true';s.classList.add('editing');});
   list.setAttribute('data-edit','1');if(b)b.textContent='Save';
+  var w=list.closest('.work');if(w)w.classList.add('editing');
   if(!list._keys){list._keys=true;list.addEventListener('keydown',_editKeys)}
 }
 // Keyboard model while editing (F16): Enter adds a line, Cmd+Enter or Cmd+S saves,
@@ -221,10 +332,11 @@ function toggleEdit(){
     toast('Enter adds a line, Cmd+Enter saves, Esc cancels');
   }else{
     var items=_collect();
-    if(!items.length){toast('Keep at least one line, or press ⟳ to re-summarize');return}
+    if(!items.length){toast('Keep at least one line, or re-summarize with AI');return}
     _undo=[];var ub=document.getElementById('undoBar');if(ub)ub.remove();
     list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='false';s.classList.remove('editing');});
     list.setAttribute('data-edit','0');if(b)b.textContent='Edit';
+    var w=list.closest('.work');if(w)w.classList.remove('editing');
     send({action:'saveEdits',items:items});toast('Saved');
   }
 }
@@ -233,7 +345,7 @@ function addLine(after){
   if(list.getAttribute('data-edit')!=='1')_enterEdit();
   var d=document.createElement('div');d.className='item';
   d.innerHTML="<span class='t'><b>•</b><span class='htext editing' contenteditable='true'></span></span>"+
-    "<button class='del' onclick='delLine(this)' title='Delete line' aria-label='Delete line'>✕</button>";
+    "<button class='del' onclick='delLine(this)' title='Delete line' aria-label='Delete line'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M4 4l8 8M12 4l-8 8'/></svg></button>";
   if(after&&after.parentNode===list)list.insertBefore(d,after.nextSibling);else list.appendChild(d);
   d.querySelector('.htext').focus();
 }
@@ -261,5 +373,5 @@ function copyWork(){
   }else{copyEl('workText','Work update copied');}
 }
 function drag(e){if(e.button===0)send({action:'dragStart'})}
-window.playOut=function(){var h=document.documentElement;h.classList.remove('anim-in');h.classList.add('anim-out')};
+window.playOut=function(){var h=document.documentElement;h.classList.remove('anim-in','anim-quick');h.classList.add('anim-out')};
 </script></body></html>

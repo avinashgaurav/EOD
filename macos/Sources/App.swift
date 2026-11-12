@@ -55,13 +55,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         detail = WebPanel(frame: detailFrame())
         detail.onMessage = { [weak self] in self?.onDetailMessage($0) }
         buildStatusItem()
-        hotkey = HotKey(key: kVK_ANSI_W, id: 1, name: "⌥⌃⌘W") { [weak self] in self?.toggle() }
-        copyKey = HotKey(key: kVK_ANSI_C, id: 2, name: "⌥⌃⌘C") { [weak self] in self?.copyTodayUpdate() }
+        registerHotKeys()
         usage.start()
         Counts.mark("installed")
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in self?.tick() }
         scheduleMidnight()
         scheduleReminder()
+        scheduleExtras()
         UNUserNotificationCenter.current().delegate = self
         if defaults.bool(forKey: "reminderOn") {   // ask now, not by surprise at 18:30
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
@@ -75,6 +75,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationWillTerminate(_ n: Notification) { usage.stop() }
+
+    // MARK: settings hooks
+
+    private static let keyCodes: [String: Int] = ["A": kVK_ANSI_A, "B": kVK_ANSI_B, "C": kVK_ANSI_C, "D": kVK_ANSI_D,
+        "E": kVK_ANSI_E, "F": kVK_ANSI_F, "G": kVK_ANSI_G, "H": kVK_ANSI_H, "I": kVK_ANSI_I, "J": kVK_ANSI_J,
+        "K": kVK_ANSI_K, "L": kVK_ANSI_L, "M": kVK_ANSI_M, "N": kVK_ANSI_N, "O": kVK_ANSI_O, "P": kVK_ANSI_P,
+        "Q": kVK_ANSI_Q, "R": kVK_ANSI_R, "S": kVK_ANSI_S, "T": kVK_ANSI_T, "U": kVK_ANSI_U, "V": kVK_ANSI_V,
+        "W": kVK_ANSI_W, "X": kVK_ANSI_X, "Y": kVK_ANSI_Y, "Z": kVK_ANSI_Z]
+
+    /// (Re)register both shortcuts from Settings (audit F25).
+    func registerHotKeys() {
+        hotkey?.unregister(); copyKey?.unregister()
+        let t = defaults.string(forKey: "keyToggle") ?? "W", c = defaults.string(forKey: "keyCopy") ?? "C"
+        hotkey = HotKey(key: Self.keyCodes[t] ?? kVK_ANSI_W, id: 1, name: "⌥⌃⌘\(t)") { [weak self] in self?.toggle() }
+        copyKey = c == t ? nil : HotKey(key: Self.keyCodes[c] ?? kVK_ANSI_C, id: 2, name: "⌥⌃⌘\(c)") { [weak self] in self?.copyTodayUpdate() }
+    }
+    func reschedule() { scheduleReminder() }
+    func refreshFromSettings() { rebuild(curDate, force: true, cacheOnly: !shown) }
+    func previewPayload() { aiPreview() }
+    func editDestinationsFromSettings() { editDestinations() }
+    func deleteAllFromSettings() { deleteAll() }
+    @objc private func openSettings() { SettingsWindow.show(app: self) }
+    func flashMessage(_ t: String) { flash(t) }
+    func showDetailPage(_ path: String, mode: String) {
+        detailMode = mode
+        detail.load(path: path, animate: false)
+        detail.show(at: detailFrame())
+    }
+
+    // MARK: morning standup and Friday reminders (B1, B7)
+    private var extraTimers: [Timer] = []
+    func scheduleExtras() {
+        extraTimers.forEach { $0.invalidate() }; extraTimers = []
+        func at(_ c: DateComponents, _ fn: @escaping () -> Void) {
+            guard let fire = Calendar.current.nextDate(after: Date(), matching: c, matchingPolicy: .nextTime) else { return }
+            let t = Timer(fire: fire, interval: 0, repeats: false) { [weak self] _ in fn(); self?.scheduleExtras() }
+            RunLoop.main.add(t, forMode: .common); extraTimers.append(t)
+        }
+        if defaults.bool(forKey: "morningOn") {
+            at(DateComponents(hour: 9, minute: 0)) { [weak self] in
+                let wd = Calendar.current.component(.weekday, from: Date())
+                if (2...6).contains(wd) { self?.notifyExtra("Your standup is ready: yesterday, today, blockers.", id: "eod-morning") }
+            }
+        }
+        if defaults.bool(forKey: "fridayOn") {
+            at(DateComponents(hour: 16, minute: 0, weekday: 6)) { [weak self] in
+                self?.notifyExtra("Your week is ready to review and send.", id: "eod-friday")
+            }
+        }
+    }
+    private func notifyExtra(_ body: String, id: String) {
+        let c = UNMutableNotificationContent(); c.title = "EOD"; c.body = body; c.categoryIdentifier = id
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: c, trigger: nil))
+    }
 
     // MARK: menu bar
 
@@ -96,17 +150,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let i = NSMenuItem(title: t, action: sel, keyEquivalent: key); i.keyEquivalentModifierMask = mods
             i.target = self; return i
         }
-        menu.addItem(item(shown ? "Hide receipt" : "Show receipt", #selector(toggleMenu), "w", [.command, .option, .control]))
-        if hotkey?.ok == false {
-            let warn = NSMenuItem(title: "⌥⌃⌘W is in use by another app", action: nil, keyEquivalent: "")
+        menu.addItem(item(shown ? "Hide receipt" : "Show receipt", #selector(toggleMenu),
+                          (defaults.string(forKey: "keyToggle") ?? "W").lowercased(), [.command, .option, .control]))
+        if copyKey?.ok == false {
+            let warn = NSMenuItem(title: "⌥⌃⌘\(defaults.string(forKey: "keyCopy") ?? "C") is in use by another app (change it in Settings)", action: nil, keyEquivalent: "")
             warn.isEnabled = false; menu.addItem(warn)
         }
-        menu.insertItem(item("Copy today's update", #selector(copyTodayUpdate), "c", [.command, .option, .control]), at: 0)
+        if hotkey?.ok == false {
+            let warn = NSMenuItem(title: "⌥⌃⌘\(defaults.string(forKey: "keyToggle") ?? "W") is in use by another app (change it in Settings)", action: nil, keyEquivalent: "")
+            warn.isEnabled = false; menu.addItem(warn)
+        }
+        menu.insertItem(item("Copy today's update", #selector(copyTodayUpdate),
+                             (defaults.string(forKey: "keyCopy") ?? "C").lowercased(), [.command, .option, .control]), at: 0)
+        menu.addItem(item("Copy morning standup", #selector(copyMorningStandup)))
+        menu.addItem(item("Plan today…", #selector(planToday)))
         menu.addItem(item("Jump to today", #selector(jumpToday)))
         menu.addItem(item("Refresh now", #selector(refreshNow)))
         menu.addItem(.separator())
         menu.addItem(item("This week's report", #selector(showWeeklyMenu)))
-        menu.addItem(item("Open work history", #selector(openHistory)))
+        menu.addItem(item("History…", #selector(showHistory)))
+        menu.addItem(item("Search history…", #selector(searchHistory)))
+        let brag = NSMenuItem(title: "Brag doc for reviews", action: nil, keyEquivalent: ""); let bm = NSMenu()
+        for (t, days) in [("Last 3 months", 91), ("Last 6 months", 182), ("Last 12 months", 365)] {
+            let i = item(t, #selector(bragDoc(_:))); i.tag = days; bm.addItem(i)
+        }
+        brag.submenu = bm; menu.addItem(brag)
+        menu.addItem(item("Open work history file", #selector(openHistoryFile)))
         menu.addItem(item("Open data folder", #selector(openData)))
         menu.addItem(.separator())
         let ai = NSMenuItem(title: "AI tidy-up", action: nil, keyEquivalent: ""); let aiMenu = NSMenu()
@@ -138,8 +207,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         start.state = defaults.bool(forKey: "showAtStart") ? .on : .off
         menu.addItem(start)
         menu.addItem(.separator())
+        menu.addItem(item("Settings…", #selector(openSettings), ",", [.command]))
         menu.addItem(item("Check for updates…", #selector(checkUpdates)))
         menu.addItem(item("Usage counts (stay on this Mac)…", #selector(showCounts)))
+        menu.addItem(item("Send feedback…", #selector(feedback)))
         menu.addItem(item("About EOD", #selector(about)))
         menu.addItem(item("Quit EOD", #selector(quit), "q", [.command]))
     }
@@ -148,7 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @objc private func jumpToday() { curDate = Day.today(); show(animate: true) }
     @objc private func refreshNow() { rebuild(curDate, force: true) }
     @objc private func showWeeklyMenu() { showWeekly(force: false) }
-    @objc private func openHistory() {
+    @objc private func openHistoryFile() {
         let f = Paths.cacheFile("worklog-history.md")
         if FileManager.default.fileExists(atPath: f.path) { NSWorkspace.shared.open(f) }
         else { alert("No history yet", "Your work history appears after EOD has summarised its first day.") }
@@ -181,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
     }
     @objc private func editDestinations() {
-        let current = Secrets.sendTargets() ?? "# One destination per line. Saved in your macOS Keychain, never in a file.\n# slack  https://hooks.slack.com/services/...\n# teams  https://example.webhook.office.com/...\n# linear lin_api_...  ENG-123\n"
+        let current = Secrets.sendTargets() ?? "# One destination per line. Saved in your macOS Keychain, never in a file.\n# slack  https://hooks.slack.com/services/...\n# teams  https://example.webhook.office.com/...  format=markdown\n# linear lin_api_...  ENG-123\n# email  manager@example.com   (opens a draft in your mail app)\n"
         _ = TextWindow(title: "Send destinations", body: current,
                        note: "Where ↗ Send posts your update. Stored in the macOS Keychain on this Mac only.",
                        editable: true) { [weak self] text in
@@ -209,6 +280,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     @objc private func editReminder() { ReminderSettings.edit { [weak self] in self?.scheduleReminder() } }
+    @objc private func feedback() {
+        if let u = URL(string: "https://github.com/avinashgaurav/EOD/issues/new") { NSWorkspace.shared.open(u) }
+    }
     @objc private func checkUpdates() {
         guard !updateCheckRunning else { return }
         updateCheckRunning = true
@@ -270,13 +344,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func show(animate: Bool) {
         Counts.activeToday()
+        // Full print-down on the first open of the day; every other open is quick (F27).
+        let first = animate && defaults.string(forKey: "lastPrintDay") != Day.today()
         let path = Paths.cacheFile("\(curDate).html").path
         let exists = FileManager.default.fileExists(atPath: path)
         // A page with unsaved edits is shown as it is, never reloaded (F14).
         receipt.isEditing { [weak self] editing in
             guard let self = self else { return }
             if editing { return }
-            if exists { self.receipt.load(path: path, animate: animate) }
+            if exists {
+                self.receipt.load(path: path, animate: first, quick: animate && !first)
+                if first { self.defaults.set(Day.today(), forKey: "lastPrintDay") }   // only once it really played
+            }
             else { self.rebuild(self.curDate, force: true, animate: animate) }
         }
         receipt.show(at: receipt.panel.isVisible ? receipt.panel.frame : receiptFrame())
@@ -301,7 +380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         detail.show(at: detailFrame())
     }
 
-    private func showWeekly(force: Bool, offerUndo: Bool = false) {
+    func showWeekly(force: Bool, offerUndo: Bool = false) {
         detailMode = "weekly"
         var args = ["--date", curDate, "--weekly"]
         if force { args.append("--repolish") }
@@ -329,6 +408,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                          repolish: Bool = false, cacheOnly: Bool = false) {
         var args = ["--date", date]
         if repolish { args.append("--repolish") }
+        // EventKit is synchronous and can be slow with many calendars: read it off
+        // the main thread, then run the engine (F26).
+        DispatchQueue.global(qos: .utility).async {
+            CalendarBridge.shared.export(date: date)
+            DispatchQueue.main.async { self.runEngine(args, date: date, force: force, animate: animate, repolish: repolish, cacheOnly: cacheOnly) }
+        }
+    }
+
+    private func runEngine(_ args: [String], date: String, force: Bool, animate: Bool, repolish: Bool, cacheOnly: Bool) {
         Engine.run(args) { [weak self] r in
             guard let self = self else { return }
             let wasManual = self.manualRefresh, wasDiscard = self.discarding
@@ -454,12 +542,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func userNotificationCenter(_ c: UNUserNotificationCenter, didReceive r: UNNotificationResponse,
                                 withCompletionHandler done: @escaping () -> Void) {
         DispatchQueue.main.async {
+            if r.notification.request.identifier == "eod-morning" { self.copyMorningStandup(); done(); return }
+            if r.notification.request.identifier == "eod-friday" { self.showWeekly(force: false); done(); return }
             switch r.actionIdentifier {
             case "copy": self.copyTodayUpdate()
             case "snooze":
                 // Re-checked when it fires: no reminder if you copied or sent meanwhile.
                 self.snoozeTimer?.invalidate()
-                self.snoozeTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: false) { [weak self] _ in self?.remindIfNeeded() }
+                self.snoozeTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: false) { [weak app = self] _ in app?.remindIfNeeded() }
             default: self.curDate = Day.today(); self.show(animate: true)
             }
             done()
@@ -489,6 +579,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self.rebuild(self.curDate, force: true)
         }
         case "post": post()
+        case "postText": postText(b["text"] as? String ?? "", panel: receipt)
+        case "print": printPanel(receipt)
+        case "settings": SettingsWindow.show(app: self)
         case "neverShow":
             let kind = b["kind"] as? String ?? "", value = b["value"] as? String ?? ""
             guard ["line", "site", "app"].contains(kind), !value.isEmpty else { return }
@@ -528,6 +621,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 if restore("weekly-\(ws).json") { showWeekly(force: false) } else { detail.js("window.toast&&toast('Nothing to undo')") }
             }
         case "hide": hideDetail()
+        case "month": if let ym = b["ym"] as? String, ym.range(of: #"^\d{4}-\d{2}$"#, options: .regularExpression) != nil { openHistory(month: ym) }
+        case "goDate":
+            let c = b["date"] as? String ?? ""
+            if c.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil, c <= Day.today() {
+                curDate = c; hideDetail(); show(animate: false); rebuild(c, force: true)
+            }
+        case "shareWeek": shareWeek()
+        case "assign":
+            let start = b["start"] as? String ?? "", title = b["title"] as? String ?? ""
+            NSApp.activate(ignoringOtherApps: true)
+            let a = NSAlert(); a.messageText = "Assign this session to a project"
+            a.informativeText = "\(start)  \(title)\nTimesheets will count it under the project you type."
+            let f = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24)); f.placeholderString = "Project name"
+            a.accessoryView = f; a.addButton(withTitle: "Assign"); a.addButton(withTitle: "Cancel")
+            a.window.initialFirstResponder = f
+            guard a.runModal() == .alertFirstButtonReturn, !f.stringValue.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            Engine.run(["--date", curDate, "--assign", start, title, f.stringValue]) { [weak self] r in
+                guard let self = self else { return }
+                if r.code == 0 { self.rebuild(self.curDate, force: true) }
+                else { self.detail.js("window.toast&&toast('Couldn’t assign that session')") }
+            }
+        case "print": printPanel(detail)
+        case "timesheet": exportTimesheet()
+        case "postWeekly", "postText": postText(b["text"] as? String ?? "", panel: detail)
         default: break
         }
     }
@@ -548,7 +665,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     /// The update left the Mac today (copied or sent): the reminder stays quiet.
     private func markShared() {
-        defaults.set(Day.today(), forKey: "sharedOn"); Counts.mark("firstCopy")
+        defaults.set(Day.today(), forKey: "sharedOn"); Counts.mark("firstCopy"); recordSentDay()
         snoozeTimer?.invalidate(); snoozeTimer = nil
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["eod-reminder"])
     }
@@ -557,8 +674,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// Build today fresh, then remind only if there is work and it hasn't left the Mac yet.
     private func remindIfNeeded() {
         guard defaults.string(forKey: "sharedOn") != Day.today() else { return }
-        Engine.run(["--date", Day.today()]) { _ in
-            Engine.run(["--date", Day.today(), "--standup"]) { [weak self] r in
+        Engine.run(["--date", Day.today()]) { [weak self] _ in
+            Engine.run(["--date", Day.today(), "--standup"]) { r in
                 if r.code == 0 && !r.out.isEmpty { self?.notify() }
             }
         }
@@ -605,6 +722,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         Engine.run(["--date", curDate, "--send"], timeout: 90) { [weak self] r in
             guard let self = self else { return }
             self.sending = false
+            for line in r.out.split(separator: "\n") where line.hasPrefix("MAILTO ") {
+                if let u = URL(string: String(line.dropFirst(7))), u.scheme == "mailto" { NSWorkspace.shared.open(u) }
+            }
             if r.code == 0 {
                 self.markShared()
                 let names = r.out.components(separatedBy: "\n").first { $0.hasPrefix("SENT ") }?.dropFirst(5)
@@ -614,6 +734,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 Log.write("send failed (\(r.code)): \(last ?? "")")
                 self.sendResult(last ?? "Send failed (exit \(r.code))")
             }
+        }
+    }
+
+    /// Print the receipt (B12): any printer, including a small thermal one set up
+    /// in macOS, via the standard print panel.
+    private func printPanel(_ p: WebPanel) {
+        NSApp.activate(ignoringOtherApps: true)
+        let info = NSPrintInfo.shared.copy() as! NSPrintInfo
+        info.horizontalPagination = .fit; info.verticalPagination = .automatic
+        info.topMargin = 12; info.bottomMargin = 12; info.leftMargin = 12; info.rightMargin = 12
+        let op = p.web.printOperation(with: info)
+        op.view?.frame = p.web.bounds
+        op.runModal(for: p.panel, delegate: nil, didRun: nil, contextInfo: nil)
+    }
+
+    /// Weekly timesheet as CSV, saved to Downloads and shown in Finder (F33).
+    private func exportTimesheet() {
+        let bin = Paths.support.appendingPathComponent("bin/eod").path
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: Engine.python)
+        p.arguments = [bin, "timesheet", "--week", "--date", curDate]
+        p.currentDirectoryURL = Paths.support
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
+        DispatchQueue.global(qos: .utility).async {
+            do { try p.run() } catch { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+            DispatchQueue.main.async {
+                // The engine writes the CSV and prints its path.
+                let path = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                guard p.terminationStatus == 0, FileManager.default.fileExists(atPath: path) else {
+                    self.detail.js("window.toast&&toast('Couldn’t build the timesheet')"); return
+                }
+                let dl = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+                let f = dl.appendingPathComponent("EOD-timesheet-\(self.weekStart ?? self.curDate).csv")
+                do {
+                    try? FileManager.default.removeItem(at: f)
+                    try FileManager.default.copyItem(at: URL(fileURLWithPath: path), to: f)
+                    NSWorkspace.shared.activateFileViewerSelecting([f])
+                } catch { self.detail.js("window.toast&&toast('Couldn’t save to Downloads')") }
+            }
+        }
+    }
+
+    /// Send exactly the text the person previewed (the weekly report).
+    private func postText(_ text: String, panel: WebPanel) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if sending { return }
+        sending = true
+        let f = Paths.cacheFile(".send-\(UUID().uuidString).txt")
+        do { try text.write(to: f, atomically: true, encoding: .utf8) } catch {
+            sending = false
+            panel.js("window.sendResult&&sendResult('Couldn’t prepare the text to send')")
+            return
+        }
+        Engine.run(["--date", curDate, "--send", "--text-file", f.path], timeout: 90) { [weak self] r in
+            try? FileManager.default.removeItem(at: f)
+            guard let self = self else { return }
+            self.sending = false
+            let msg: String
+            for line in r.out.split(separator: "\n") where line.hasPrefix("MAILTO ") {
+                if let u = URL(string: String(line.dropFirst(7))), u.scheme == "mailto" { NSWorkspace.shared.open(u) }
+            }
+            if r.code == 0 {
+                self.markShared()
+                let names = r.out.components(separatedBy: "\n").first { $0.hasPrefix("SENT ") }?.dropFirst(5)
+                msg = "Sent to \(names.map(String.init) ?? "chat") ✓"
+            } else { msg = r.err.split(separator: "\n").last.map(String.init) ?? "Send failed" }
+            guard let data = try? JSONSerialization.data(withJSONObject: [msg]),
+                  let arr = String(data: data, encoding: .utf8) else { return }
+            panel.js("window.sendResult&&sendResult(\(arr.dropFirst().dropLast()))")
         }
     }
 

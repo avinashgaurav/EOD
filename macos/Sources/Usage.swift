@@ -35,6 +35,7 @@ final class UsageTracker {
     private func sample() {
         let d = Day.today()
         if d != date { flush(); date = d; secs = load(d) }      // crossed midnight
+        if SourceSwitch.off.contains("apps") { return }          // switched off: not even sampled
         let anyInput = CGEventType(rawValue: ~0)!
         if CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: anyInput) > idleLimit { return }
         guard let name = NSWorkspace.shared.frontmostApplication?.localizedName, !name.isEmpty else { return }
@@ -47,6 +48,7 @@ final class UsageTracker {
 final class HotKey {
     private var ref: EventHotKeyRef?
     private(set) var ok = false
+    func unregister() { if let r = ref { UnregisterEventHotKey(r); ref = nil } }
     private static var actions: [UInt32: () -> Void] = [:]
     private static var installed = false
 

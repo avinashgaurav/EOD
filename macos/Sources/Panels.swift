@@ -27,6 +27,9 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
                              backing: .buffered, defer: false)
         let cfg = WKWebViewConfiguration()
         let ucc = WKUserContentController()
+        // Tells the page it runs in the Mac app, so it shows controls only the app
+        // can act on (print, settings, weekly send, timesheet export).
+        ucc.addUserScript(WKUserScript(source: "window.EOD_APP=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController = ucc
         web = WKWebView(frame: NSRect(origin: .zero, size: frame.size), configuration: cfg)
         super.init()
@@ -51,12 +54,12 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
 
     /// Load a file from the data folder. A changing ?n= forces a real reload, and
     /// #in plays the print-down animation (a fragment change alone would not reload).
-    func load(path: String, animate: Bool) {
+    func load(path: String, animate: Bool, quick: Bool = false) {
         loadN += 1
         var c = URLComponents()
         c.scheme = "file"; c.path = path
         c.queryItems = [URLQueryItem(name: "n", value: String(loadN))]
-        if animate { c.fragment = "in" }
+        if animate { c.fragment = "in" } else if quick { c.fragment = "quick" }
         guard let url = c.url else { return }
         let nav = web.loadFileURL(url, allowingReadAccessTo: Paths.support)
         afterLoadNav = afterLoad == nil ? nil : nav
@@ -101,7 +104,7 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
             js("window.playOut&&playOut()")
             let w = DispatchWorkItem { [weak self] in self?.panel.orderOut(nil); self?.pendingHide = nil }
             pendingHide = w
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.46, execute: w)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: w)
         } else { panel.orderOut(nil) }
     }
 

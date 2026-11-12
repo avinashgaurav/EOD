@@ -32,7 +32,7 @@ MODULES = [
     "eod.sources.base", "eod.sources.builtin",
     "eod.pipeline", "eod.polish", "eod.render.text", "eod.render.html",
     "eod.render.image",
-    "eod.weekly", "eod.timesheet", "eod.hide", "eod.cli", "eod.send",
+    "eod.weekly", "eod.timesheet", "eod.hide", "eod.features", "eod.cli", "eod.send",
 ]
 
 
@@ -92,6 +92,9 @@ def load_extract():
                "read_docs", "read_meetings"):
         setattr(ex, fn, lambda date, _f=fn: [])
     ex.collect_people = lambda commits, meetings: []
+    # Which sources are set up depends on the machine (~/.claude, gh, icalBuddy);
+    # a snapshot must not. Tests that need chips pass sources_status themselves.
+    ex.sources_status = lambda problems: []
     ex.write_history = lambda: None
     # polish() stays real; what is removed is its only route off the machine, so
     # no test can spawn the CLI or spend a token by accident.
