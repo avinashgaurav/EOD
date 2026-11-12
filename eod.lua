@@ -152,13 +152,13 @@ local function saveWeeklyEdits(items)
   local hl = {}
   for _, v in ipairs(items) do if type(v) == "string" and v ~= "" then hl[#hl + 1] = v end end
   local path = DIR .. "/cache/weekly-" .. weekStart .. ".json"
-  local detailed
+  local detailed, report
   local rf = io.open(path, "r")
   if rf then
     local prev = hs.json.decode(rf:read("*a")); rf:close()
-    if type(prev) == "table" then detailed = prev.detailed end
+    if type(prev) == "table" then detailed = prev.detailed; report = prev.report end
   end
-  local ok, raw = pcall(hs.json.encode, { key = "edited", highlights = hl, detailed = detailed, edited = true })
+  local ok, raw = pcall(hs.json.encode, { key = "edited", highlights = hl, detailed = detailed, report = report, edited = true })
   if ok then
     local f = io.open(path, "w")
     if f then f:write(raw); f:close() end

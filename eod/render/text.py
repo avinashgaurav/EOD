@@ -241,19 +241,73 @@ def web_text(data):
     return "\n".join(L)
 
 
+def _day_name(date):
+    try:
+        return datetime.strptime(date, "%Y-%m-%d").strftime("%a")
+    except (TypeError, ValueError):
+        return str(date)
+
+
+def weekly_sections(data):
+    """The weekly report, section by section, as (title, lines). Shared by the
+    text and HTML recaps so both say the same thing. Time and tickets come from
+    code; progress, blockers, collaboration and next steps from the summary,
+    which only states what the dailies show. Sections with nothing are left out,
+    except Blockers, which says so: a week with none is worth saying."""
+    rep = data.get("report") or {}
+    out = []
+    if data.get("highlights"):
+        out.append(("Key achievements", list(data["highlights"])))
+    if rep.get("progress"):
+        out.append(("Overall progress", rep["progress"]))
+    # Only say "none seen" when the summary actually ran and found none. With the
+    # AI off or failed there is no report, and silence must not read as a claim.
+    if rep and data.get("highlights"):
+        out.append(("Challenges or blockers", rep.get("blockers") or ["None seen this week."]))
+    t = data.get("time") or {}
+    if t.get("total"):
+        per_day = ", ".join("%s %s" % (_day_name(d["date"]), fmt_dur(d["secs"])) for d in t["days"])
+        lines = ["Screen time: %s across %d day%s (%s)." % (fmt_dur(t["total"]), len(t["days"]),
+                                                           "" if len(t["days"]) == 1 else "s", per_day)]
+        if t.get("top_apps"):
+            lines.append("Most time in: " + ", ".join("%s %s" % (a["name"], fmt_dur(a["secs"])) for a in t["top_apps"]) + ".")
+        out.append(("Time spent", lines))
+    if rep.get("collaboration"):
+        out.append(("Collaboration", rep["collaboration"]))
+    if rep.get("next_steps"):
+        out.append(("Next steps", rep["next_steps"]))
+    tk = data.get("tickets") or {}
+    lines = []
+    label = {"MERGED": "Merged PRs", "CLOSED": "Closed PRs", "OPEN": "Open PRs"}
+    for state in ("MERGED", "CLOSED", "OPEN"):
+        prs = (tk.get("prs") or {}).get(state) or []
+        if prs:
+            lines.append("%s: %s." % (label[state], ", ".join("%s #%s" % (x["repo"].split("/")[-1], x["number"]) for x in prs)))
+    for state, prs in (tk.get("prs") or {}).items():
+        if state not in label and prs:
+            lines.append("Other PRs: %s." % (", ".join("%s #%s" % (x["repo"].split("/")[-1], x["number"]) for x in prs)))
+    if tk.get("commits"):
+        lines.append("Commits: %d." % tk["commits"])
+    if lines:
+        out.append(("Tickets and PRs", lines))
+    return out
+
+
 def to_text_weekly(data):
-    L = [f"Weekly update — {pretty_date(data['week_start'])} → {pretty_date(data['week_end'])}", ""]
-    for h in data.get("highlights", []):
-        L.append("• " + h)
-    if data.get("detailed"):
+    L = [f"Weekly update: {pretty_date(data['week_start'])} → {pretty_date(data['week_end'])}", ""]
+    for title, lines in weekly_sections(data):
+        L.append(title.upper())
+        L += ["• " + x for x in lines]
         L.append("")
+    if data.get("detailed"):
+        L.append("BY AREA")
         for g in data["detailed"]:
             L.append(g["area"])
             for it in g["items"]:
                 L.append("  - " + it)
+        L.append("")
     warns = weekly_source_warnings(data)
     if warns:
-        L.append("")
         for w in warns:
             L.append("! " + w)
     return "\n".join(L).rstrip() + "\n"

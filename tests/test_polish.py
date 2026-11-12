@@ -200,6 +200,19 @@ class TestPromptRules(unittest.TestCase):
         # The old line offered 'shipped' and 'merged' as examples of an outcome to show.
         self.assertNotIn("outcome (e.g. 'shipped', 'merged')", w)
 
+    def test_daily_prompt_uses_the_report_voice(self):
+        d = self.p.POLISH_PROMPT
+        self.assertIn("Start each line with the most specific past-tense verb the input supports", d)
+        self.assertIn("Use 'Worked on' only when nothing more specific is true", d)
+        self.assertIn("Never repeat a line", d)
+        self.assertIn("ending with a full stop", d)
+
+    def test_weekly_prompt_never_invents_blockers_or_next_steps(self):
+        w = self.p.WEEKLY_PROMPT
+        self.assertIn("If none are stated, return an empty list. Never guess.", w)
+        self.assertIn("only for work the dailies show as started, in progress or handed over", w)
+        self.assertIn("only names or teams that appear in the dailies", w)
+
     def test_daily_prompt_keeps_the_outcome_and_no_additions_rules(self):
         d = self.p.POLISH_PROMPT
         self.assertIn("Only say shipped, merged, deployed, released, sent, shared or met when the input shows it", d)

@@ -35,19 +35,25 @@ POLISH_PROMPT = (
     "navigating, asking for paths, 'analyzing' just to look. If a whole session was only "
     "this, DROP it entirely.\n"
     "MERGE many small related sessions into ONE themed line (e.g. all website work → one line).\n\n"
-    "STYLE — match these examples exactly (voice, tone, length):\n"
-    "- Worked on the Billing Service issues and Email infra.\n"
-    "- Discussed with Engg on new changes for Website.\n"
-    "- Worked on the Mobile App Product Brief and shared that with Team.\n"
-    "- Worked on the Pricing Comparison sheet and Competitor One-Pager.\n"
-    "- Worked with Priya on Onboarding email setup and discussion.\n"
-    "- Worked with Design on website changes suggested by Sam.\n"
-    "- Made Product note from Changelogs and sent to Marketing for partner mail.\n"
-    "- Reworked content for the new Website and product pages post review.\n"
-    "- Meeting with Design to review recent website updates and list content needs.\n\n"
+    "STYLE: past-tense achievement lines, the way a strong status report reads. Match these "
+    "examples (voice, tone, length):\n"
+    "- Shipped the v2.4.0 release notes to staging and production.\n"
+    "- Fixed the coupon rounding bug in checkout (#412) and added a regression test.\n"
+    "- Opened 3 PRs for the flaky test fixes found in CI.\n"
+    "- Wrote the API error messages for 6 edge cases and handed them over to Engineering.\n"
+    "- Reviewed the settings page design and shared feedback with Design.\n"
+    "- Drafted the Q3 roadmap deck and shared it with the team.\n"
+    "- Started the churn analysis for the March cohort.\n"
+    "- Met with Design to review the new onboarding flow.\n\n"
     "RULES:\n"
-    "- Start lines like the examples: 'Worked on…', 'Discussed with…', 'Worked with <name> on…', "
-    "'Made…', 'Reworked…', 'Meeting with…'.\n"
+    "- Start each line with the most specific past-tense verb the input supports: Shipped, Published, "
+    "Merged, Fixed, Built, Developed, Wrote, Drafted, Created, Reviewed, Audited, Researched, Analysed, "
+    "Raised, Finalized, Completed, Reworked, Started, Discussed, Met with, Worked with <name> on. Use "
+    "'Worked on' only when nothing more specific is true, and 'Started' for work begun but not finished.\n"
+    "- Put counts and versions in the line when the input has them (3 PRs, 40 pages, v2.4.0, "
+    "6 cases), and end with the outcome or hand-off the input shows (and shared it with Design; "
+    "to staging and production).\n"
+    "- Never repeat a line: the same work across several sessions becomes one line.\n"
     "- Use real specifics from the prompts: issue/PR numbers (#253, #254), names that appear in the prompts, "
     "document/deliverable/product names. Never invent details not in the input.\n"
     "- Only say shipped, merged, deployed, released, sent, shared or met when the input shows it: a merged "
@@ -59,8 +65,8 @@ POLISH_PROMPT = (
     "Google Docs/Sheets/Slides or research from the DOCS sections (e.g. 'Made the launch "
     "deck', 'Worked on the Q3 Roadmap doc'). STRICTLY EXCLUDE anything "
     "personal — email, chat, job-hunting, shopping, food, social. Never put those in the update.\n"
-    "- One line each, ~5-16 words, plain professional English, no first-person 'I', no fluff, "
-    "no emojis.\n"
+    "- One line each, ~6-20 words, ending with a full stop. Plain professional English, no "
+    "first-person 'I', no fluff, no emojis.\n"
     "- Order by importance (most important first).\n\n"
     "Return TWO things as a JSON OBJECT:\n"
     '1. "highlights": array of 4-9 short top-level lines — the manager update (as above).\n'
@@ -70,7 +76,7 @@ POLISH_PROMPT = (
     "specifics (issue/PR numbers, files, names from the input, outcomes). Still NEVER dump raw prompts — "
     "rewrite into clear accomplishments. Skip trivia. Group by theme/area, most important first.\n\n"
     "Output ONLY the JSON object. No markdown, no commentary.\n"
-    'Example: {"highlights": ["Worked on Billing Service issues #253 and #254 (PR #268)"], '
+    'Example: {"highlights": ["Fixed Billing Service issues #253 and #254 and opened PR #268."], '
     '"detailed": [{"area": "Billing Service", "items": ["Fixed proration logic in the invoice '
     'generator (#253)", "Raised plan capacity and added 4-variant preview (#254)", "Resolved '
     'path-traversal review blocker and opened PR #268"]}]}'
@@ -359,21 +365,43 @@ def polish(data, force=False):
 
 # ── weekly rollup + history ─────────────────────────────────────────────────────
 WEEKLY_PROMPT = (
-    "You are writing a WEEKLY work update for a manager from a person's DAILY updates "
+    "You are writing a WEEKLY work report for a manager from a person's DAILY updates "
     "(one block per day below, each a list of that day's accomplishments).\n\n"
-    "Merge the week into a concise summary. Rules:\n"
+    "Merge the week into a concise report. Rules:\n"
     "- Group by theme/area, most important first; dedupe work repeated across days; show the "
-    "outcome the dailies state rather than day-by-day churn.\n"
-    "- Same voice as the dailies: 'Worked on…', 'Shipped…', 'Discussed with…', 'Met with…'.\n"
+    "outcome the dailies state rather than day-by-day churn. Never list the same work twice.\n"
+    "- Same voice as the dailies: past-tense achievement lines that start with the most specific verb "
+    "(Shipped, Published, Fixed, Developed, Wrote, Reviewed, Audited, Raised, Completed, Started, Met with), "
+    "keep counts and versions, end with the outcome or hand-off, and end with a full stop.\n"
     "- Keep specifics: issue/PR numbers, names from the input, deliverables. Never invent.\n"
     "- Keep 'shipped', 'merged', 'sent' or 'met' wording exactly as a daily line states it (the dailies were "
     "already checked). Never upgrade a daily line: 'Worked on', 'Fixed', 'Committed' or 'Drafted' must not "
     "become 'Shipped' or 'Merged'.\n"
     "- Never add people, teams, meetings, recipients or cadence words (weekly, daily) that are not in the "
     "input. 'Worked with <name>' only when the input shows that person working on it, not just asking for it.\n"
+    "- progress: 2-4 lines that sum up the week's direction (e.g. 'Kept a steady release cadence.'), "
+    "only from what the dailies show.\n"
+    "- blockers: only problems the dailies state (a revert, a failed build, something on hold). If none are "
+    "stated, return an empty list. Never guess.\n"
+    "- collaboration: who the person worked with, only names or teams that appear in the dailies. Empty if none.\n"
+    "- next_steps: 2-4 lines, only for work the dailies show as started, in progress or handed over and not "
+    "finished. Start each with a verb (Continue, Finish, Follow up on). Empty if nothing is open.\n"
     "Return a JSON OBJECT: {\"highlights\": [4-8 top weekly lines], "
-    '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}]}. Output ONLY the JSON object.'
+    '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}], '
+    '"progress": ["..."], "blockers": ["..."], "collaboration": ["..."], "next_steps": ["..."]}. '
+    "Output ONLY the JSON object."
 )
+
+REPORT_KEYS = ("progress", "blockers", "collaboration", "next_steps")
+
+
+def _clean_report(obj):
+    """The weekly report sections, each a short list of one-line strings."""
+    out = {}
+    for k in REPORT_KEYS:
+        v = obj.get(k) if isinstance(obj, dict) else None
+        out[k] = [oneline(x, 160) for x in (v if isinstance(v, list) else []) if isinstance(x, str) and x.strip()][:4]
+    return out
 
 
 def polish_weekly(data, force=False):
@@ -393,11 +421,16 @@ def polish_weekly(data, force=False):
         if c.get("edited") and not force:          # hand-edited weekly → keep
             data["highlights"] = c.get("highlights", [])
             data["detailed"] = c.get("detailed", [])
+            if "report" in c:
+                data["report"] = _clean_report(c.get("report"))
             data["edited"] = True
             return
-        if c.get("key") == key and not force:
+        # A cache from before the report sections has no "report": treat it as a
+        # miss so the first view after upgrading re-summarises.
+        if c.get("key") == key and "report" in c and not force:
             data["highlights"] = c.get("highlights", [])
             data["detailed"] = c.get("detailed", [])
+            data["report"] = _clean_report(c.get("report"))
             return
     except Exception:
         pass
@@ -419,6 +452,7 @@ def polish_weekly(data, force=False):
         obj = json.loads(_extract_json_obj(out.strip()))
         hl = [oneline(x, 140) for x in obj.get("highlights", []) if isinstance(x, str) and x.strip()]
         det = _clean_detailed(obj.get("detailed"))
+        rep = _clean_report(obj)
         if not hl:
             raise ValueError("empty")
     except Exception:
@@ -426,6 +460,7 @@ def polish_weekly(data, force=False):
         data["highlights"] = [x for _, h in data["days"] for x in h][:8]
         return
     with open(cache_path, "w") as fh:
-        json.dump({"key": key, "highlights": hl, "detailed": det}, fh)
+        json.dump({"key": key, "highlights": hl, "detailed": det, "report": rep}, fh)
     data["highlights"] = hl
     data["detailed"] = det
+    data["report"] = rep
