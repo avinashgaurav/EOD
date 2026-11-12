@@ -148,7 +148,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 /* ── print / unroll animation (paper fed from a slot at the top) ── */
 .roll{transform-origin:top center}
 html.anim-in  .roll{animation:printDown .85s cubic-bezier(.18,.86,.24,1) both}
-html.anim-out .roll{animation:rollUp   .42s cubic-bezier(.45,0,.7,.25) both}
+html.anim-out .roll{animation:rollUp   .2s cubic-bezier(.45,0,.7,.25) both}
+/* Every open after the first of the day is quick (F27): the print-down is a moment, not a wait. */
+html.anim-quick .roll{animation:quickIn .16s ease-out both}
+@keyframes quickIn{0%{opacity:0;transform:translateY(-4px)}100%{opacity:1;transform:none}}
 @keyframes printDown{
   0%{clip-path:inset(0 0 100% 0);transform:translateY(-4px)}
   100%{clip-path:inset(0 0 0 0);transform:translateY(0)}}
@@ -156,7 +159,7 @@ html.anim-out .roll{animation:rollUp   .42s cubic-bezier(.45,0,.7,.25) both}
   0%{clip-path:inset(0 0 0 0)}
   100%{clip-path:inset(0 0 100% 0);transform:translateY(-3px)}}
 @media (prefers-reduced-motion:reduce){
-  html.anim-in .roll,html.anim-out .roll{animation-duration:.001s}}
+  html.anim-in .roll,html.anim-out .roll,html.anim-quick .roll{animation-duration:.001s}}
 """
 
 
@@ -330,7 +333,7 @@ def to_html(data, send_to=()):
 
     P = [f"<!doctype html><html><head><meta charset='utf-8'>"
          # set the animate-in class before first paint so the paper starts hidden (no flash)
-         "<script>if(location.hash.indexOf('in')>=0)document.documentElement.className='anim-in';</script>"
+         "<script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script>"
          f"<style>{css}</style></head>"
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
 
@@ -519,7 +522,7 @@ def to_html_full(data):
     web  = data.get("web", [])
 
     P = [f"<!doctype html><html><head><meta charset='utf-8'>",
-         "<script>if(location.hash.indexOf('in')>=0)document.documentElement.className='anim-in';</script>",
+         "<script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script>",
          f"<style>{css}</style></head>",
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
 
@@ -750,7 +753,7 @@ def to_html_weekly(data):
     css = CSS.replace("%CLIP%", clip_path(520)).replace("%W%", "520")
     esc = html.escape
     P = ["<!doctype html><html><head><meta charset='utf-8'>",
-         "<script>if(location.hash.indexOf('in')>=0)document.documentElement.className='anim-in';</script>",
+         "<script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script>",
          f"<style>{css}</style></head>",
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
     P.append("<button class='hide' onclick=\"send({action:'hide'})\" title='Close'>✕</button>")

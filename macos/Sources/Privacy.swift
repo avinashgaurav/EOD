@@ -148,7 +148,8 @@ final class TextWindow: NSObject, NSWindowDelegate {
     let text: NSTextView
     private var onSave: ((String) -> Void)?
 
-    init(title: String, body: String, note: String, editable: Bool, onSave: ((String) -> Void)? = nil) {
+    init(title: String, body: String, note: String, editable: Bool, saveTitle: String = "Save to Keychain",
+         onSave: ((String) -> Void)? = nil) {
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 460),
                           styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         window.title = title; window.isReleasedWhenClosed = false
@@ -167,7 +168,7 @@ final class TextWindow: NSObject, NSWindowDelegate {
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -32).isActive = true
         if onSave != nil {
-            let save = NSButton(title: "Save to Keychain", target: self, action: #selector(save))
+            let save = NSButton(title: saveTitle, target: self, action: #selector(save))
             save.keyEquivalent = "s"; save.keyEquivalentModifierMask = [.command]
             stack.addArrangedSubview(save)
         }

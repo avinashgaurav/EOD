@@ -55,8 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         detail = WebPanel(frame: detailFrame())
         detail.onMessage = { [weak self] in self?.onDetailMessage($0) }
         buildStatusItem()
-        hotkey = HotKey(key: kVK_ANSI_W, id: 1, name: "⌥⌃⌘W") { [weak self] in self?.toggle() }
-        copyKey = HotKey(key: kVK_ANSI_C, id: 2, name: "⌥⌃⌘C") { [weak self] in self?.copyTodayUpdate() }
+        registerHotKeys()
         usage.start()
         Counts.mark("installed")
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { [weak self] _ in self?.tick() }
@@ -75,6 +74,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationWillTerminate(_ n: Notification) { usage.stop() }
+
+    // MARK: settings hooks
+
+    private static let keyCodes: [String: Int] = ["A": kVK_ANSI_A, "B": kVK_ANSI_B, "C": kVK_ANSI_C, "D": kVK_ANSI_D,
+        "E": kVK_ANSI_E, "F": kVK_ANSI_F, "G": kVK_ANSI_G, "H": kVK_ANSI_H, "I": kVK_ANSI_I, "J": kVK_ANSI_J,
+        "K": kVK_ANSI_K, "L": kVK_ANSI_L, "M": kVK_ANSI_M, "N": kVK_ANSI_N, "O": kVK_ANSI_O, "P": kVK_ANSI_P,
+        "Q": kVK_ANSI_Q, "R": kVK_ANSI_R, "S": kVK_ANSI_S, "T": kVK_ANSI_T, "U": kVK_ANSI_U, "V": kVK_ANSI_V,
+        "W": kVK_ANSI_W, "X": kVK_ANSI_X, "Y": kVK_ANSI_Y, "Z": kVK_ANSI_Z]
+
+    /// (Re)register both shortcuts from Settings (audit F25).
+    func registerHotKeys() {
+        hotkey?.unregister(); copyKey?.unregister()
+        let t = defaults.string(forKey: "keyToggle") ?? "W", c = defaults.string(forKey: "keyCopy") ?? "C"
+        hotkey = HotKey(key: Self.keyCodes[t] ?? kVK_ANSI_W, id: 1, name: "⌥⌃⌘\(t)") { [weak self] in self?.toggle() }
+        copyKey = c == t ? nil : HotKey(key: Self.keyCodes[c] ?? kVK_ANSI_C, id: 2, name: "⌥⌃⌘\(c)") { [weak self] in self?.copyTodayUpdate() }
+    }
+    func reschedule() { scheduleReminder() }
+    func refreshFromSettings() { rebuild(curDate, force: true, cacheOnly: !shown) }
+    func previewPayload() { aiPreview() }
+    func editDestinationsFromSettings() { editDestinations() }
+    func deleteAllFromSettings() { deleteAll() }
+    @objc private func openSettings() { SettingsWindow.show(app: self) }
 
     // MARK: menu bar
 
@@ -96,12 +117,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let i = NSMenuItem(title: t, action: sel, keyEquivalent: key); i.keyEquivalentModifierMask = mods
             i.target = self; return i
         }
-        menu.addItem(item(shown ? "Hide receipt" : "Show receipt", #selector(toggleMenu), "w", [.command, .option, .control]))
+        menu.addItem(item(shown ? "Hide receipt" : "Show receipt", #selector(toggleMenu),
+                          (defaults.string(forKey: "keyToggle") ?? "W").lowercased(), [.command, .option, .control]))
         if hotkey?.ok == false {
-            let warn = NSMenuItem(title: "⌥⌃⌘W is in use by another app", action: nil, keyEquivalent: "")
+            let warn = NSMenuItem(title: "⌥⌃⌘\(defaults.string(forKey: "keyToggle") ?? "W") is in use by another app (change it in Settings)", action: nil, keyEquivalent: "")
             warn.isEnabled = false; menu.addItem(warn)
         }
-        menu.insertItem(item("Copy today's update", #selector(copyTodayUpdate), "c", [.command, .option, .control]), at: 0)
+        menu.insertItem(item("Copy today's update", #selector(copyTodayUpdate),
+                             (defaults.string(forKey: "keyCopy") ?? "C").lowercased(), [.command, .option, .control]), at: 0)
         menu.addItem(item("Jump to today", #selector(jumpToday)))
         menu.addItem(item("Refresh now", #selector(refreshNow)))
         menu.addItem(.separator())
@@ -138,8 +161,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         start.state = defaults.bool(forKey: "showAtStart") ? .on : .off
         menu.addItem(start)
         menu.addItem(.separator())
+        menu.addItem(item("Settings…", #selector(openSettings), ",", [.command]))
         menu.addItem(item("Check for updates…", #selector(checkUpdates)))
         menu.addItem(item("Usage counts (stay on this Mac)…", #selector(showCounts)))
+        menu.addItem(item("Send feedback…", #selector(feedback)))
         menu.addItem(item("About EOD", #selector(about)))
         menu.addItem(item("Quit EOD", #selector(quit), "q", [.command]))
     }
@@ -209,6 +234,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     @objc private func editReminder() { ReminderSettings.edit { [weak self] in self?.scheduleReminder() } }
+    @objc private func feedback() {
+        if let u = URL(string: "https://github.com/avinashgaurav/EOD/issues/new") { NSWorkspace.shared.open(u) }
+    }
     @objc private func checkUpdates() {
         guard !updateCheckRunning else { return }
         updateCheckRunning = true
@@ -270,13 +298,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func show(animate: Bool) {
         Counts.activeToday()
+        // Full print-down on the first open of the day; every other open is quick (F27).
+        let first = defaults.string(forKey: "lastPrintDay") != Day.today()
+        if first { defaults.set(Day.today(), forKey: "lastPrintDay") }
         let path = Paths.cacheFile("\(curDate).html").path
         let exists = FileManager.default.fileExists(atPath: path)
         // A page with unsaved edits is shown as it is, never reloaded (F14).
         receipt.isEditing { [weak self] editing in
             guard let self = self else { return }
             if editing { return }
-            if exists { self.receipt.load(path: path, animate: animate) }
+            if exists { self.receipt.load(path: path, animate: animate && first, quick: animate && !first) }
             else { self.rebuild(self.curDate, force: true, animate: animate) }
         }
         receipt.show(at: receipt.panel.isVisible ? receipt.panel.frame : receiptFrame())
@@ -327,6 +358,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func rebuild(_ date: String, force: Bool = false, animate: Bool = false,
                          repolish: Bool = false, cacheOnly: Bool = false) {
+        CalendarBridge.shared.export(date: date)          // EventKit titles for the engine (F26)
         var args = ["--date", date]
         if repolish { args.append("--repolish") }
         Engine.run(args) { [weak self] r in

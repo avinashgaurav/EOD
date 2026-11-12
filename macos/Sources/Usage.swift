@@ -47,6 +47,7 @@ final class UsageTracker {
 final class HotKey {
     private var ref: EventHotKeyRef?
     private(set) var ok = false
+    func unregister() { if let r = ref { UnregisterEventHotKey(r); ref = nil } }
     private static var actions: [UInt32: () -> Void] = [:]
     private static var installed = false
 

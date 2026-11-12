@@ -8,7 +8,7 @@ enum Welcome {
     private static var key = 0
 
     static func show(done: @escaping () -> Void) {
-        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 470),
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 600),
                          styleMask: [.titled, .closable], backing: .buffered, defer: false)
         w.title = "Welcome to EOD"
         w.isReleasedWhenClosed = false
@@ -26,15 +26,14 @@ enum Welcome {
 
         stack.addArrangedSubview(label("Your work day, as a receipt.", size: 20, bold: true))
         stack.addArrangedSubview(label("EOD builds the receipt from files already on this Mac. Nothing is uploaded and there is no account.", color: .secondaryLabelColor))
-        stack.addArrangedSubview(label("What it reads", bold: true))
-        for line in [
-            "Claude Code and Codex sessions: the titles of what you worked on",
-            "Git: commits and pull requests in your work folders",
-            "Documents: decks, docs and sheets you created or edited today",
-            "Browser history (Chrome, Brave, Safari): the work sites you used",
-            "Calendar, if icalBuddy is installed: today's meeting titles",
-            "Screen time: which app is in front, counted by EOD itself",
-        ] { stack.addArrangedSubview(label("•  " + line)) }
+        stack.addArrangedSubview(label("What it reads (untick anything you don't want)", bold: true))
+        var sourceBoxes: [(String, NSButton)] = []
+        for src in SourceSwitch.all {
+            let title = src.name == "meetings" ? "Calendar: meeting titles (macOS will ask)" : "\(src.title): \(src.detail)"
+            let b = NSButton(checkboxWithTitle: title, target: nil, action: nil)
+            b.state = .on
+            sourceBoxes.append((src.name, b)); stack.addArrangedSubview(b)
+        }
         stack.addArrangedSubview(label("Safari history needs Full Disk Access for EOD (System Settings, Privacy & Security). Everything else works without it.",
                                        size: 12, color: .secondaryLabelColor))
 
@@ -55,7 +54,7 @@ enum Welcome {
         // Opt-in for real: AI polish is off on disk before the window even shows,
         // so closing it any way leaves it off.
         FileManager.default.createFile(atPath: Paths.support.appendingPathComponent("polish.off").path, contents: Data())
-        let handler = Handler(ai: ai, window: w, done: done)
+        let handler = Handler(ai: ai, window: w, sources: sourceBoxes, done: done)
         w.delegate = handler
         fda.target = handler; fda.action = #selector(Handler.openFDA)
         go.target = handler; go.action = #selector(Handler.finish)
@@ -71,7 +70,10 @@ enum Welcome {
     private final class Handler: NSObject, NSWindowDelegate {
         private var finished = false
         let ai: NSButton, window: NSWindow, done: () -> Void
-        init(ai: NSButton, window: NSWindow, done: @escaping () -> Void) { self.ai = ai; self.window = window; self.done = done }
+        let sources: [(String, NSButton)]
+        init(ai: NSButton, window: NSWindow, sources: [(String, NSButton)], done: @escaping () -> Void) {
+            self.ai = ai; self.window = window; self.sources = sources; self.done = done
+        }
 
         @objc func openFDA() {
             if let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
@@ -81,6 +83,8 @@ enum Welcome {
 
         @objc func finish() {
             if ai.state == .on { try? FileManager.default.removeItem(at: Paths.support.appendingPathComponent("polish.off")) }
+            for (name, box) in sources { SourceSwitch.set(name, on: box.state == .on) }
+            if sources.first(where: { $0.0 == "meetings" })?.1.state == .on { CalendarBridge.shared.enable { _ in } }
             window.close()          // windowWillClose shows the receipt
         }
 

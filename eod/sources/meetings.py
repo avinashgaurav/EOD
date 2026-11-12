@@ -1,9 +1,9 @@
 """MEETINGS: calendar, via icalBuddy when it is installed."""
 
-import os, re, time, subprocess
+import json, os, re, time, subprocess
 from datetime import datetime
 
-from ..config import _full_env
+from ..config import _full_env, CACHE
 
 
 def _icalbuddy():
@@ -11,8 +11,30 @@ def _icalbuddy():
                  if os.path.exists(p)), None)
 
 
+def _app_calendar(date):
+    """Events the Mac app read through Calendar's own permission (EventKit) and
+    left in cache/calendar-<date>.json. No Homebrew tool needed."""
+    try:
+        with open(os.path.join(CACHE, "calendar-%s.json" % date)) as fh:
+            ev = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    return [{"title": str(e.get("title", "")), "time": str(e.get("time", "")), "attendees": ""}
+            for e in ev if isinstance(e, dict) and e.get("time")]
+
+
+def app_calendar_on():
+    return os.path.exists(os.path.join(CACHE, "calendar-enabled"))
+
+
 def read_meetings(date):
-    """Timed calendar events for `date` via icalBuddy (skips all-day items like holidays)."""
+    """Timed calendar events for `date`: from the Mac app (EventKit) when it has
+    Calendar access, else via icalBuddy (skips all-day items like holidays).
+    Attendee names are never read from the app path: other people's data."""
+    if app_calendar_on():
+        got = _app_calendar(date)
+        if got is not None:
+            return got
     ib = _icalbuddy()
     if not ib:
         return []

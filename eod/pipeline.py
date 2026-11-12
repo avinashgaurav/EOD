@@ -13,7 +13,7 @@ from .sources.docs import read_docs
 from .sources.meetings import read_meetings
 from .sources import base as source_registry
 from .sources.builtin import register_builtins
-from .config import app_path
+from .config import app_path, load_sources_off
 
 register_builtins()
 _PLUGIN_ERRORS = source_registry.load_plugins(
@@ -38,8 +38,9 @@ def collect_sources(target):
     the receipt needs to show.
     """
     items, problems, extra = {}, [], {}
+    off = load_sources_off()
     for src in source_registry.registry():
-        if getattr(src, "assembled_by_pipeline", False):
+        if getattr(src, "assembled_by_pipeline", False) or src.name.lower() in off:
             continue
         got, err = src.collect(target)
         if err:
@@ -66,8 +67,13 @@ def build_projects(target):
     git, browser history, screen time and the rest for every day of a week.
     Returns (projects, n_sessions, n_untitled, touched).
     """
-    projects, n_sessions, n_untitled, touched = read_sessions(target)
-    add_codex(projects, target)   # merge Codex sessions into the same project buckets
+    off = load_sources_off()
+    if "claude-code" in off:
+        projects, n_sessions, n_untitled, touched = {}, 0, 0, 0
+    else:
+        projects, n_sessions, n_untitled, touched = read_sessions(target)
+    if "codex" not in off:
+        add_codex(projects, target)   # merge Codex sessions into the same project buckets
 
     # shape output, ordered by busiest project
     out_projects = []

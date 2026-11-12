@@ -227,6 +227,16 @@ def _send_labels_env():
     return _LABELS_ENV
 
 
+# Sources you switched off, one name per line in sources.off (the Mac app's
+# Settings writes it): git, github, web, apps, docs, meetings, claude-code, codex.
+def load_sources_off():
+    try:
+        with open(app_path("sources.off")) as fh:
+            return {l.strip().lower() for l in fh if l.strip() and not l.startswith("#")}
+    except OSError:
+        return set()
+
+
 def _full_env():
     """Env that subprocesses (claude/gh/icalBuddy) need to authenticate — Hammerspoon's
     task env omits USER/PATH, which breaks auth."""
