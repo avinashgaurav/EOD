@@ -5,7 +5,7 @@ from datetime import datetime
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB, SIG, _sig_html
-from .text import extra_lines, source_warnings, weekly_source_warnings, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
+from .text import extra_lines, source_warnings, weekly_source_warnings, weekly_sections, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
 
 
 CSS = """
@@ -657,7 +657,7 @@ def to_html_weekly(data):
         P.append("<div class='empty'>— NO ACTIVITY THIS WEEK —</div>")
     else:
         wk_edited = " <span class='edot' title='hand-edited'>✎</span>" if data.get("edited") else ""
-        P.append("<div class='depthead'><span class='nm'>THIS WEEK" + wk_edited + "</span><span class='dots'></span>"
+        P.append("<div class='depthead'><span class='nm'>KEY ACHIEVEMENTS" + wk_edited + "</span><span class='dots'></span>"
                  f"<span class='qty'>×{len(data['highlights'])}</span>"
                  "<button class='cp' onclick='copyWork()' title='Copy weekly update'>⧉</button>"
                  "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines'>✎</button>"
@@ -670,6 +670,13 @@ def to_html_weekly(data):
                      "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button></div>")
         P.append("</div>")
         P.append(f"<div id='workText' style='display:none'>{esc(chr(10).join('• ' + h for h in data['highlights']))}</div>")
+        # The rest of the report. Key achievements are the editable list above.
+        for title, lines in weekly_sections(data)[1:]:
+            P.append("<div class='rule'></div><div class='dept'><div class='depthead'>"
+                     f"<span class='nm'>{esc(title.upper())}</span><span class='dots'></span></div>")
+            for it in lines:
+                P.append(f"<div class='item'><span class='t'><b>•</b>{esc(it)}</span></div>")
+            P.append("</div>")
         if data.get("detailed"):
             P.append("<div class='rule'></div><div class='sect'>BY AREA</div>")
             for g in data["detailed"]:
@@ -681,6 +688,9 @@ def to_html_weekly(data):
                 P.append("</div>")
     P.append("<div class='rule double'></div>")
     P.append("<div class='end'>END OF WEEK</div>")
+    if data.get("highlights"):
+        P.append("<div class='actions'><button class='copyall' onclick=\"copyEl('wkText','Weekly report copied')\" "
+                 "title='Copy the whole weekly report'>⎙ COPY REPORT</button></div>")
     P.append(f"<div id='wkText' style='display:none'>{esc(to_text_weekly(data))}</div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])}{_sig_html()}</div>")
     P.append("</div></div></div><div class='toast' id='toast'></div>")

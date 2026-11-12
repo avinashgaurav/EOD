@@ -586,3 +586,48 @@ class TestConfigClaims(ClaimCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWeeklyReport(TestWeeklySourceClaims):
+    """The weekly reads as a report: achievements, progress, blockers, time,
+    collaboration, next steps, tickets. Time and tickets are counted by code."""
+
+    def cache_full_day(self, ex, date, highlights, apps=(), prs=(), commits=0):
+        with open(os.path.join(ex.CACHE, "polish-%s.json" % date), "w") as fh:
+            json.dump({"highlights": highlights}, fh)
+        with open(os.path.join(ex.CACHE, "%s.json" % date), "w") as fh:
+            json.dump({"date": date, "source_problems": [], "apps": list(apps), "prs": list(prs),
+                       "commits": [{"repo": "r", "subject": "c%d" % i} for i in range(commits)]}, fh)
+
+    def test_time_and_tickets_come_from_the_cached_days(self):
+        ex = self.ex
+        self.cache_full_day(ex, self.WEEK[0], ["Fixed the parser."],
+                            apps=[{"name": "Code", "secs": 7200}, {"name": "Slack", "secs": 600}],
+                            prs=[{"repo": "o/eod", "number": 7, "state": "open", "title": "x"}], commits=2)
+        self.cache_full_day(ex, self.WEEK[1], ["Shipped the parser."],
+                            apps=[{"name": "Code", "secs": 3600}],
+                            prs=[{"repo": "o/eod", "number": 7, "state": "merged", "title": "x"}], commits=1)
+        data = self.weekly(ex)
+        self.assertEqual(data["time"]["total"], 11400)
+        self.assertEqual(data["time"]["top_apps"][0], {"name": "Code", "secs": 10800})
+        self.assertEqual(list(data["tickets"]["prs"]), ["MERGED"])   # newest state wins
+        self.assertEqual(data["tickets"]["commits"], 3)
+        text = ex.to_text_weekly(data)
+        for head in ("KEY ACHIEVEMENTS", "CHALLENGES OR BLOCKERS", "TIME SPENT", "TICKETS AND PRS"):
+            self.assertIn(head, text)
+        self.assertIn("None seen this week.", text)          # no blocker is invented
+        self.assertIn("Merged PRs: eod #7.", text)
+        self.assertIn("Commits: 3.", text)
+        page = ex.to_html_weekly(data)
+        self.assertIn("TIME SPENT", page)
+        self.assertIn("COPY REPORT", page)
+
+    def test_model_sections_are_kept_and_cleaned(self):
+        ex = self.ex
+        p = next(m for m in ex._mods if m.__name__ == "eod.polish")
+        rep = p._clean_report({"progress": ["Kept shipping.", 3, ""], "blockers": "nope",
+                               "next_steps": ["Finish the parser."]})
+        self.assertEqual(rep["progress"], ["Kept shipping."])
+        self.assertEqual(rep["blockers"], [])
+        self.assertEqual(rep["collaboration"], [])
+        self.assertEqual(rep["next_steps"], ["Finish the parser."])
