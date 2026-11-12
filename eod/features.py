@@ -66,7 +66,7 @@ _REDACT = [
     (re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\b"), "[token]"),
     (re.compile(r"\b[\w.+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b"), "[email]"),
     # Hostnames only: every label starts with a letter, so v1.2.local stays as is.
-    (re.compile(r"\b[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)*\.(?:internal|corp|lan|intranet)\b(?!\.)"), "[host]"),
+    (re.compile(r"\b[A-Za-z][\w-]*(?:\.[A-Za-z][\w-]*)*\.(?:internal|corp|lan|intranet)\b(?![\w-]|\.[A-Za-z0-9])"), "[host]"),
     (re.compile(r"/Users/[^/\s]+"), "~"),
     (re.compile(r"https://hooks\.slack\.com/\S+"), "[webhook]"),
 ]
@@ -115,8 +115,11 @@ def morning_standup(date):
     L += ["", "Today"] + (["• " + x.strip() for x in today] or ["• Nothing scheduled yet."])
     L += ["", "Blockers"] + (["• " + b for b in blockers] or ["• None."])
     from .hide import hide_lines
-    # Hide rules cover meetings, PRs and blockers too; then redact the whole text.
-    return redact("\n".join(hide_lines(L)) + "\n")
+    # Hide rules cover meetings, PRs and blockers too (body lines only, never the
+    # section headers); then redact the whole text.
+    body = set(hide_lines([x for x in L if x.startswith("\u2022 ")]))
+    L = [x for x in L if not x.startswith("\u2022 ") or x in body]
+    return redact("\n".join(L) + "\n")
 
 
 # ── B4: brag doc ───────────────────────────────────────────────────────────────
@@ -230,36 +233,42 @@ def plan_status(date, done_lines):
 
 
 # ── B9: assign a session to a project (for timesheets) ──────────────────────────
+ASSIGNED = "~assigned~"     # internal bucket prefix; real Claude project keys never start with ~
+
+
+def norm_title(t):
+    """One normalisation for saving and for matching, so a title always finds itself."""
+    return " ".join(str(t or "").split())[:200]
+
+
 def _assign_path():
     return app_path("assign.txt")
 
 
 def load_assignments():
-    """{(date, start, title): project} from assign.txt lines 'date start | title => project'."""
+    """{(date, start, title): project}, from tab-separated lines: date, start, title, project.
+    Tabs cannot occur inside the fields (whitespace is collapsed on save), so any
+    title, including ones with | or =>, round-trips."""
     out = {}
     try:
         with open(_assign_path()) as fh:
             for line in fh:
-                if "=>" not in line or "|" not in line or line.lstrip().startswith("#"):
-                    continue
-                left, project = line.rsplit("=>", 1)
-                when, title = left.split("|", 1)
-                parts = when.split()
-                if len(parts) == 2 and project.strip():
-                    out[(parts[0], parts[1], title.strip())] = " ".join(project.split())[:80]
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) == 4 and not line.startswith("#") and parts[3].strip():
+                    out[(parts[0], parts[1], norm_title(parts[2]))] = " ".join(parts[3].split())[:80]
     except OSError:
         pass
     return out
 
 
 def assign_session(date, start, title, project):
-    if not (DAY_RE.match(date or "") and re.match(r"^\d{2}:\d{2}$", start or "")):
+    if not (DAY_RE.fullmatch(date or "") and re.fullmatch(r"\d{2}:\d{2}", start or "")):
         return False
-    title, project = " ".join(str(title).split())[:200], " ".join(str(project).split())[:80]
-    if not title or not project or "=>" in title or "|" in title:
+    title, project = norm_title(title), " ".join(str(project).split())[:80]
+    if not title or not project:
         return False
     with open(_assign_path(), "a") as fh:
-        fh.write("%s %s | %s => %s\n" % (date, start, title, project))
+        fh.write("%s\t%s\t%s\t%s\n" % (date, start, title, project))
     return True
 
 

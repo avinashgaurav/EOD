@@ -178,18 +178,25 @@ class TestReviewFixes(FeatureCase):
 
 class TestAssign(FeatureCase):
     def test_assigned_session_moves_project(self):
-        self.assertTrue(self.f.assign_session("2026-11-10", "09:12", "Fix parser", "Client A"))
+        self.assertTrue(self.f.assign_session("2026-11-10", "09:12", "Fix  parser\n", "Client A"))
+        self.assertTrue(self.f.assign_session("2026-11-10", "10:00", "Docs | release => notes", "eod"))
         self.assertFalse(self.f.assign_session("2026-11-10", "9am", "Fix parser", "Client A"))
-        self.assertFalse(self.f.assign_session("2026-11-10", "09:12", "a => b", "Client A"))
+        self.assertFalse(self.f.assign_session("2026-11-10", "09:12\n", "Fix parser", "Client A"))
         pipe = mod(self.ex, "eod.pipeline")
         pipe.read_sessions = lambda d: ({"-Users-x-work-eod": [
             {"start": "09:12", "end": "09:40", "title": "Fix parser", "prompts": [("09:12", "p")]},
-            {"start": "10:00", "end": "10:20", "title": "Docs", "prompts": [("10:00", "q")]}]}, 2, 0, 1)
+            {"start": "10:00", "end": "10:20", "title": "Docs | release => notes", "prompts": [("10:00", "q")]}],
+            "-Users-x-work-other": [{"start": "11:00", "end": "11:10", "title": "Other", "prompts": [("11:00", "r")]}]}, 3, 0, 1)
         pipe.add_codex = lambda p, d: None
         projects = pipe.build_projects("2026-11-10")[0]
         names = {p["name"]: [s["title"] for s in p["sessions"]] for p in projects}
         self.assertEqual(names["Client A"], ["Fix parser"])
         self.assertNotIn("Fix parser", sum((v for k, v in names.items() if k != "Client A"), []))
+        self.assertEqual(sum(1 for p in projects if p["name"] == "Client A"), 1)
+
+    def test_internal_host_redaction_edges(self):
+        self.assertEqual(self.f.redact("deploy to api.corp."), "deploy to [host].")
+        self.assertIn("internal.acme.com", self.f.redact("see db.internal.acme.com"))
 
 
 class TestTimeline(unittest.TestCase):

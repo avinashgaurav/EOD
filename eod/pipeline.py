@@ -78,15 +78,21 @@ def build_projects(target):
     # shape output, ordered by busiest project
     # B9: sessions you moved to another project (Full day timeline) go there,
     # so the timesheet counts them where they belong.
-    from .features import load_assignments
+    from .features import ASSIGNED, load_assignments, norm_title
     moves = load_assignments()
     if moves:
+        def bucket(dest):
+            # Into an existing project of that name when there is one, so it merges.
+            for k in projects:
+                if (k[len(ASSIGNED):] if k.startswith(ASSIGNED) else pretty_project(k)) == dest:
+                    return k
+            return ASSIGNED + dest
         for pn in list(projects):
             keep = []
             for s in projects[pn]:
-                dest = moves.get((target, s.get("start", ""), (s.get("title") or "").strip()))
+                dest = moves.get((target, s.get("start", ""), norm_title(s.get("title"))))
                 if dest and dest != pretty_project(pn):
-                    projects.setdefault("~assigned~" + dest, []).append(s)
+                    projects.setdefault(bucket(dest), []).append(s)
                 else:
                     keep.append(s)
             projects[pn] = keep
@@ -99,7 +105,7 @@ def build_projects(target):
         sessions.sort(key=lambda s: s["start"])
         total = sum(len(s["prompts"]) for s in sessions)
         out_projects.append({
-            "name": pn[len("~assigned~"):] if pn.startswith("~assigned~") else pretty_project(pn), "total": total,
+            "name": pn[len("~assigned~"):] if pn.startswith("~assigned~") else pretty_project(pn), "total": total,  # see features.ASSIGNED
             "sessions": [{
                 "title": s["title"], "start": s["start"], "end": s["end"],
                 "source": s.get("source", "claude"),

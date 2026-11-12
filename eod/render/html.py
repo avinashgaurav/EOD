@@ -582,6 +582,8 @@ def to_html(data, send_to=()):
         # B6: the morning plan against what happened.
         from ..features import plan_status
         _plan = plan_status(data["date"], data.get("highlights") or [])
+        if not data.get("highlights"):          # nothing summarised yet: list the plan, don't judge it
+            _plan = [(line, "open") for line, _ in _plan]
         if _plan:
             P.append("<div class='rule'></div><div class='depthead'><span class='nm'>PLANNED</span><span class='dots'></span>"
                      f"<span class='qty'>{sum(1 for _, st in _plan if st == 'done')}/{len(_plan)}</span></div>")
@@ -743,8 +745,9 @@ def timeline_svg(data, width=476):
         click = ""
         if kind == "work" and start:
             # Clicking a work block moves that session to another project (B9).
+            act = f"send({{action:'assign',start:{esc(json.dumps(start))},title:{esc(json.dumps(stitle))}}})"
             click = (f" class='tlw' tabindex='0' role='button' aria-label='{esc(title)}. Assign to a project' "
-                     f"onclick=\"send({{action:'assign',start:{esc(json.dumps(start))},title:{esc(json.dumps(stitle))}}})\"")
+                     f"onclick=\"{act}\" onkeydown=\"if(event.key==='Enter'||event.key===' '){{event.preventDefault();{act}}}\"")
         out.append(f"<rect x='{x(a)}' y='{y}' width='{max(2, x(b) - x(a))}' height='12' fill='{fill}' opacity='.85'{click}>"
                    f"<title>{esc(title)}</title></rect>")
     out.append("</svg><div class='prov'>Top row: work sessions (click one to assign it to a project for timesheets). "
