@@ -1,13 +1,24 @@
 <!doctype html><html><head><meta charset='utf-8'><script>var _h=location.hash;document.documentElement.className=_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':'');</script><style>
+@font-face{font-family:'Courier Prime';src:url('../eod/render/fonts/CourierPrime-Regular.ttf') format('truetype');font-weight:400}
+@font-face{font-family:'Courier Prime';src:url('../eod/render/fonts/CourierPrime-Bold.ttf') format('truetype');font-weight:700}
+/* Carbon-copy brand (audit section 5): white sheet, carbon-blue ink for anything
+   you can act on, stamp red for the one signature mark. Every text pair passes
+   WCAG AA in both themes. */
 :root{
-  --surface:#14151a;          /* the dark desk the receipt sits on */
-  --paper:#f3ecdd;            /* warm thermal paper */
-  --ink:#2a2620;              /* warm near-black ink */
-  --ink2:#9a8f7c;             /* faded ink */
-  --line:#cdc2aa;             /* printed rule */
-  --accent:#bf3d1f;           /* stamp red-orange */
-  --mono:'SF Mono',ui-monospace,Menlo,'Courier New',monospace;
+  --surface:#151416;          /* the desk behind the sheet (share image) */
+  --paper:#FFFFFF;            /* the sheet */
+  --ink:#1B1A18;              /* body text, 17.4:1 */
+  --ink2:#5F5B54;             /* secondary text, 6.75:1 */
+  --line:#E7DAD6;             /* dotted leaders and dashed rules, decorative only */
+  --accent:#C8323C;           /* stamp red: signature only, 5.28:1 */
+  --carbon:#24357A;           /* carbon blue: headings, buttons, focus, 11.26:1 */
+  --copy:#F6D9DC;             /* carbon copy pink: edited lines, the shared preview */
+  --on-carbon:#FFFFFF;
+  --mono:'Courier Prime','Courier New',ui-monospace,monospace;
 }
+@media (prefers-color-scheme:dark){:root{
+  --surface:#0F0E10;--paper:#1E1D20;--ink:#EEEBE5;--ink2:#A6A198;--line:#34323A;
+  --accent:#E5646C;--carbon:#8FA0E0;--copy:#3A2A2E;--on-carbon:#151416}}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:transparent;font-family:var(--mono);-webkit-font-smoothing:antialiased}
@@ -150,7 +161,64 @@ html.anim-quick .roll{animation:quickIn .16s ease-out both}
   100%{clip-path:inset(0 0 100% 0);transform:translateY(-3px)}}
 @media (prefers-reduced-motion:reduce){
   html.anim-in .roll,html.anim-out .roll,html.anim-quick .roll{animation-duration:.001s}}
-</style></head><body><div class='surface'><div class='roll'><div class='receipt'><button class='hide' onclick="send({action:'hide'})" title='Close'>✕</button><div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>FULL BILL · ALL ACTIVITY</div></div><div class='rule'></div><div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>Thu, Aug 6 2026</span></div><div class='rule double'></div><div class='sect'>CLAUDE CODE</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Checkout</span><span class='dots'></span><span class='qty'>×1</span></div><div class='item'><span class='t'><b>•</b>Fixed the coupon rounding edge case</span><span class='tm'>09:12</span></div><div class='item subt'><span class='t'>look at the coupon rounding edge case</span><span class='tm'>09:12</span></div><div class='item subt'><span class='t'>add a regression test for that path</span><span class='tm'>09:40</span></div></div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Search</span><span class='dots'></span><span class='qty'>×1</span></div><div class='item'><span class='t'><b>•</b>Reviewed the indexing pull request</span><span class='tm'>11:55</span></div><div class='item subt'><span class='t'>review PR 501 for the search service</span><span class='tm'>11:55</span></div></div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Platform</span><span class='dots'></span><span class='qty'>×1</span></div><div class='item'><span class='t'><b>•</b>Trace why the webhook retries twice</span><span class='tm'>15:30</span></div><div class='item subt'><span class='t'>trace why the webhook retries twice</span><span class='tm'>15:30</span></div></div><div class='rule double'></div><div class='actions'><button class='copyall' onclick="copyEl('fullText','Full bill copied')">⎙ Copy full bill</button></div><div class='ts'>updated 17:00 · ~/.claude + browser + apps · <span class='sig'>XY</span></div><div id='fullText' style='display:none'>Full work log — Thu, Aug 6 2026
+/* ── carbon-copy layer: hierarchy, icons, accessibility ───────────── */
+body,button,input{font-family:var(--mono)}
+.receipt{filter:drop-shadow(0 8px 18px rgba(0,0,0,.28))}
+.brand{color:var(--carbon)}
+.item .t b{color:var(--carbon)}
+.sect{color:var(--carbon)}
+.depthead{color:var(--ink)}
+.tag,.kv .k,.ts,.item .tm,.prov{font-size:11px}
+.kv{font-size:12px}.item{font-size:12.5px}
+.ic{width:14px;height:14px;display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* WCAG 2.5.8: every control is at least 24 by 24 px to hit */
+button{min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border-style:solid;border-color:var(--line);color:var(--carbon);font-size:11px}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--carbon);outline-offset:2px}
+.hide{color:var(--ink2)}
+.hide:hover{color:var(--accent)}
+/* date bar: arrows, the date as text, refresh; the native picker sits under the text */
+.datebar{display:flex;align-items:center;gap:6px;justify-content:space-between;margin:8px 0 2px}
+.dwrap{position:relative;flex:1;text-align:center;font-size:12.5px;font-weight:700;color:var(--ink);cursor:pointer}
+.dwrap input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
+/* WORK tools appear on hover or keyboard focus, and stay while editing (Hick's law) */
+.work .tools{display:flex;gap:4px;opacity:0;transition:opacity .12s}
+.work:hover .tools,.work:focus-within .tools,.work.editing .tools{opacity:1}
+.work .tools .cp{margin:0;opacity:1;border-color:var(--line)}
+.htext.editing{outline:1px dashed var(--carbon);background:var(--copy)}
+/* source chips: what was read today, and what needs fixing */
+.chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:6px 0 0}
+.chip{font-size:10.5px;border:1px solid var(--line);padding:1px 6px;color:var(--ink2);min-height:0;min-width:0}
+.chip.failed{color:var(--accent);border-color:var(--accent);cursor:pointer}
+.chip.off{text-decoration:line-through}
+/* sticky action bar: the main action never scrolls away */
+.actions{position:sticky;bottom:0;background:var(--paper);padding:8px 0 6px;margin:10px 0 0;z-index:3;flex-wrap:wrap}
+.copyall{font-size:11.5px;padding:6px 12px}
+.copyall.primary{background:var(--carbon);color:var(--on-carbon);border-color:var(--carbon)}
+.copyall.primary:hover{background:var(--carbon);color:var(--on-carbon);opacity:.9}
+.copyall.sendb{border-color:var(--carbon)}
+.more{position:relative}
+.more summary{list-style:none;cursor:pointer;border:1px solid var(--line);color:var(--carbon);min-height:24px;min-width:24px;
+  display:flex;align-items:center;justify-content:center;padding:6px 10px;font-size:11.5px}
+.more summary::-webkit-details-marker{display:none}
+.more .menu{position:absolute;right:0;bottom:calc(100% + 6px);background:var(--paper);border:1px solid var(--ink);
+  min-width:210px;padding:6px;display:flex;flex-direction:column;gap:2px;z-index:6}
+.more .menu button{justify-content:flex-start;border:0;width:100%;text-transform:none;letter-spacing:.2px;font-size:12px;padding:6px 8px}
+.more .menu button:hover{background:var(--copy)}
+.more .menu .lbl{font-size:10.5px;color:var(--ink2);padding:6px 8px 2px;letter-spacing:1px;text-transform:uppercase}
+.more .menu button[aria-checked="true"]::after{content:"¹3";margin-left:auto;color:var(--carbon)}
+.barcode{height:22px;width:60%}
+.toast{font-size:11px;letter-spacing:1px}
+.sheet .box{border-color:var(--carbon)}
+.stamp{display:none}
+.tldr{font-size:13px;font-weight:700;color:var(--ink);border-left:3px solid var(--carbon);padding:4px 0 4px 10px;margin:4px 0 10px}
+details.wsec>summary{list-style:none;cursor:pointer}
+details.wsec>summary::-webkit-details-marker{display:none}
+details.wsec>summary .nm::before{content:"\25B8 ";color:var(--ink2)}
+details.wsec[open]>summary .nm::before{content:"\25BE "}
+@media (prefers-reduced-motion:reduce){.work .tools{transition:none}}
+
+</style></head><body><div class='surface'><div class='roll'><div class='receipt'><button class='hide' onclick="send({action:'hide'})" title='Close (Esc)' aria-label='Close the full day'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M4 4l8 8M12 4l-8 8'/></svg></button><div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>FULL BILL · ALL ACTIVITY</div></div><div class='rule'></div><div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>Thu, Aug 6 2026</span></div><div class='rule double'></div><div class='sect'>CLAUDE CODE</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Checkout</span><span class='dots'></span><span class='qty'>×1</span></div><div class='item'><span class='t'><b>•</b>Fixed the coupon rounding edge case</span><span class='tm'>09:12</span></div><div class='item subt'><span class='t'>look at the coupon rounding edge case</span><span class='tm'>09:12</span></div><div class='item subt'><span class='t'>add a regression test for that path</span><span class='tm'>09:40</span></div></div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Search</span><span class='dots'></span><span class='qty'>×1</span></div><div class='item'><span class='t'><b>•</b>Reviewed the indexing pull request</span><span class='tm'>11:55</span></div><div class='item subt'><span class='t'>review PR 501 for the search service</span><span class='tm'>11:55</span></div></div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Platform</span><span class='dots'></span><span class='qty'>×1</span></div><div class='item'><span class='t'><b>•</b>Trace why the webhook retries twice</span><span class='tm'>15:30</span></div><div class='item subt'><span class='t'>trace why the webhook retries twice</span><span class='tm'>15:30</span></div></div><div class='rule double'></div><div class='actions'><button class='copyall primary' onclick="copyEl('fullText','Full day copied')"><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><rect x='5' y='5' width='8' height='9' rx='1'/><path d='M3 11V3a1 1 0 0 1 1-1h6'/></svg>Copy full day</button><button class='copyall' onclick="send({action:'print'})" aria-label='Print'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M4 6V2h8v4'/><rect x='2' y='6' width='12' height='5' rx='1'/><path d='M4 9h8v5H4z'/></svg>Print</button></div><div class='ts'>updated 17:00 · ~/.claude + browser + apps · <span class='sig'>XY</span></div><div id='fullText' style='display:none'>Full work log: Thu, Aug 6 2026
 
 CLAUDE CODE
   Users Me Work Checkout
@@ -165,8 +233,27 @@ CLAUDE CODE
         15:30  trace why the webhook retries twice
 </div></div></div></div><div class='toast' id='toast'></div><script>
 function send(m){try{window.webkit.messageHandlers.eod.postMessage(m);return true}catch(e){return false}}
-function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
-clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},1300)}
+function toast(t,ms){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
+clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},ms||3000)}
+// Copy the update in the format of where it is going (F37), remembered per Mac.
+var _fmt='plain';try{_fmt=localStorage.getItem('eod-fmt')||'plain'}catch(e){}
+function setFmt(k){_fmt=k;try{localStorage.setItem('eod-fmt',k)}catch(e){}_markFmt();copyUpdate()}
+function _markFmt(){document.querySelectorAll('[data-fmt]').forEach(function(b){b.setAttribute('aria-checked',b.getAttribute('data-fmt')===_fmt?'true':'false')})}
+function formatUpdate(t,k){var L=t.replace(/\s+$/,'').split('\n');var head=L[0],rest=L.slice(1);
+  var bul={plain:'\u2022 ',slack:'\u2022 ',md:'- ',jira:'* '}[k]||'\u2022 ';
+  var h={md:'**'+head+'**',jira:'*'+head+'*',slack:'*'+head+'*'}[k]||head;
+  return [h].concat(rest.map(function(x){return x.indexOf('\u2022 ')===0?bul+x.slice(2):x})).join('\n')+'\n'}
+function copyUpdate(){var el=document.getElementById('updText');if(!el||!el.textContent.trim()){toast('Nothing to copy yet');return}
+  copyText(formatUpdate(el.textContent,_fmt),'Update copied','updText')}
+// Keyboard (F38): left and right arrows change day, Cmd+C copies the update, Esc hides.
+document.addEventListener('keydown',function(e){
+  var t=e.target,typing=t&&(t.isContentEditable||/INPUT|TEXTAREA|SELECT/.test(t.tagName));
+  if(typing||(window.isEditing&&window.isEditing()))return;
+  if(e.key==='ArrowLeft'){e.preventDefault();nav(-1)}
+  else if(e.key==='ArrowRight'){e.preventDefault();nav(1)}
+  else if(e.key==='Escape'){var m=document.querySelector('details.more[open]');if(m){m.open=false;return}send({action:'hide'})}
+  else if((e.metaKey||e.ctrlKey)&&e.key==='c'&&!String(window.getSelection()).trim()&&document.getElementById('updText')){e.preventDefault();copyUpdate()}});
+document.addEventListener('DOMContentLoaded',_markFmt);
 function copyText(txt,label,what){
   if(!send({action:'copy',text:txt,what:what||''})){ // browser fallback
     var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
@@ -180,10 +267,11 @@ window.setStatus=function(msg,retry){var r=document.querySelector('.receipt');if
   el.textContent=msg+' ';if(retry){var b=document.createElement('button');b.textContent='Retry';b.onclick=function(){refresh()};el.appendChild(b)}};
 window.isEditing=function(){var l=document.getElementById('workList');return !!(l&&l.getAttribute('data-edit')==='1')};
 function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hiding…');else toast('Hiding works from the app')}
-function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
+function reportText(){var L=[document.getElementById('wkHead').textContent,''];
   document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
     L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\u2022 '+x.textContent)});L.push('')});
-  copyText(L.join('\n').replace(/\n+$/,'\n'),'Weekly report copied')}
+  return L.join('\n').replace(/\n+$/,'\n')}
+function copyReport(){copyText(reportText(),'Weekly report copied','report')}
 function nav(d){send({action:'nav',delta:d})}
 function goDate(v){if(v)send({action:'goDate',date:v})}
 function refresh(){send({action:'refresh'});toast('Refreshing…')}
@@ -192,6 +280,7 @@ function _enterEdit(){
   var list=document.getElementById('workList'),b=document.getElementById('editBtn');
   list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='true';s.classList.add('editing');});
   list.setAttribute('data-edit','1');if(b)b.textContent='Save';
+  var w=list.closest('.work');if(w)w.classList.add('editing');
   if(!list._keys){list._keys=true;list.addEventListener('keydown',_editKeys)}
 }
 // Keyboard model while editing (F16): Enter adds a line, Cmd+Enter or Cmd+S saves,
@@ -221,10 +310,11 @@ function toggleEdit(){
     toast('Enter adds a line, Cmd+Enter saves, Esc cancels');
   }else{
     var items=_collect();
-    if(!items.length){toast('Keep at least one line, or press ⟳ to re-summarize');return}
+    if(!items.length){toast('Keep at least one line, or re-summarize with AI');return}
     _undo=[];var ub=document.getElementById('undoBar');if(ub)ub.remove();
     list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='false';s.classList.remove('editing');});
     list.setAttribute('data-edit','0');if(b)b.textContent='Edit';
+    var w=list.closest('.work');if(w)w.classList.remove('editing');
     send({action:'saveEdits',items:items});toast('Saved');
   }
 }
@@ -233,7 +323,7 @@ function addLine(after){
   if(list.getAttribute('data-edit')!=='1')_enterEdit();
   var d=document.createElement('div');d.className='item';
   d.innerHTML="<span class='t'><b>•</b><span class='htext editing' contenteditable='true'></span></span>"+
-    "<button class='del' onclick='delLine(this)' title='Delete line' aria-label='Delete line'>✕</button>";
+    "<button class='del' onclick='delLine(this)' title='Delete line' aria-label='Delete line'><svg class='ic' viewBox='0 0 16 16' aria-hidden='true'><path d='M4 4l8 8M12 4l-8 8'/></svg></button>";
   if(after&&after.parentNode===list)list.insertBefore(d,after.nextSibling);else list.appendChild(d);
   d.querySelector('.htext').focus();
 }

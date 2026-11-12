@@ -95,6 +95,16 @@ def _teams_card(text):
         }}]}
 
 
+def _text(data, bullet="• "):
+    """What to post: a given text (the weekly report exactly as previewed), or
+    the day's standup."""
+    t = data.get("_send_text")
+    if t is not None:
+        t = t.strip()
+        return (t.replace("\u2022 ", bullet) + "\n") if t else None
+    return to_standup(data, bullet=bullet)
+
+
 def payload_for(target, data):
     """(url, json payload, extra headers) for one destination's post. Pure, so
     the tests can check the exact shape each service is sent. For Linear this
@@ -103,15 +113,15 @@ def payload_for(target, data):
     if kind == "slack":
         # Slack reads &, < and > as markup, so a highlight mentioning <div>
         # would vanish without this.
-        text = to_standup(data)
+        text = _text(data)
         text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         return target["url"], {"text": text}, {}
     if kind == "teams":
-        return target["url"], _teams_card(to_standup(data, bullet="- ")), {}
+        return target["url"], _teams_card(_text(data, bullet="- ")), {}
     if kind == "linear":
         body = {"query": LINEAR_MUTATION,
                 "variables": {"input": {"issueId": target.get("issue_uuid", target["issue"]),
-                                        "body": to_standup(data, bullet="- ")}}}
+                                        "body": _text(data, bullet="- ")}}}
         return LINEAR_API, body, {"Authorization": target["key"]}
     raise ValueError(kind)
 
@@ -191,8 +201,9 @@ def send_day(data, targets=None):
     targets = load_send_targets() if targets is None else targets
     if not targets:
         return [], ["nothing to send to: add a destination to send.txt"]
-    data = apply_hide(data)
-    if to_standup(data) is None:
+    if data.get("_send_text") is None:
+        data = apply_hide(data)
+    if _text(data) is None:
         return [], ["no work recorded for this day, nothing sent"]
     sent, failed = [], []
     for t in targets:

@@ -89,7 +89,7 @@ class TestCopyDefaults(unittest.TestCase):
              "time": {"days": [{"date": "2026-11-09", "secs": 3600}], "total": 3600,
                       "top_apps": [{"name": "Chrome", "secs": 3600}]}, "tickets": {}}
         page = self.ex.to_html_weekly(w)
-        self.assertRegex(page, r"data-title='Time by app'><div class='depthead'>.*?<input type='checkbox' id='inc\d+'>")
+        self.assertRegex(page, r"data-title='Time by app'>.*?<input type='checkbox' id='inc\d+'>")
         self.assertRegex(page, r"data-title='Time spent'>.*?<input type='checkbox' id='inc\d+' checked>")
 
 

@@ -99,6 +99,27 @@ def build_projects(target):
     return out_projects, n_sessions, n_untitled, touched
 
 
+def sources_status(problems):
+    """One line per source for the receipt's footer chips (audit F32):
+    ok, off (switched off in Settings), failed, or missing (not set up)."""
+    off = load_sources_off()
+    failed = {str(p).split(":", 1)[0].strip() for p in problems}
+    out = []
+    for src in source_registry.registry():
+        n = src.name
+        if n.lower() in off:
+            state = "off"
+        elif n in failed:
+            state = "failed"
+        else:
+            try:
+                state = "ok" if src.available() else "missing"
+            except Exception:
+                state = "missing"
+        out.append({"name": n, "state": state})
+    return out
+
+
 def build(target):
     """One day, assembled from every source."""
     out_projects, n_sessions, n_untitled, touched = build_projects(target)
@@ -127,5 +148,6 @@ def build(target):
         # A source that is configured and then fails is not the same as one that
         # is absent, and the receipt should be able to tell you which happened.
         "source_problems": problems + _PLUGIN_ERRORS,
+        "sources_status": sources_status(problems + _PLUGIN_ERRORS),
         "extra": collected.get("extra", {}),
     }

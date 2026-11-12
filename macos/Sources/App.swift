@@ -535,6 +535,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self.rebuild(self.curDate, force: true)
         }
         case "post": post()
+        case "print": printPanel(receipt)
+        case "settings": SettingsWindow.show(app: self)
         case "neverShow":
             let kind = b["kind"] as? String ?? "", value = b["value"] as? String ?? ""
             guard ["line", "site", "app"].contains(kind), !value.isEmpty else { return }
@@ -574,6 +576,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 if restore("weekly-\(ws).json") { showWeekly(force: false) } else { detail.js("window.toast&&toast('Nothing to undo')") }
             }
         case "hide": hideDetail()
+        case "print": printPanel(detail)
+        case "timesheet": exportTimesheet()
+        case "postWeekly": postText(b["text"] as? String ?? "", panel: detail)
         default: break
         }
     }
@@ -660,6 +665,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 Log.write("send failed (\(r.code)): \(last ?? "")")
                 self.sendResult(last ?? "Send failed (exit \(r.code))")
             }
+        }
+    }
+
+    /// Print the receipt (B12): any printer, including a small thermal one set up
+    /// in macOS, via the standard print panel.
+    private func printPanel(_ p: WebPanel) {
+        NSApp.activate(ignoringOtherApps: true)
+        let info = NSPrintInfo.shared.copy() as! NSPrintInfo
+        info.horizontalPagination = .fit; info.verticalPagination = .automatic
+        info.topMargin = 12; info.bottomMargin = 12; info.leftMargin = 12; info.rightMargin = 12
+        let op = p.web.printOperation(with: info)
+        op.view?.frame = p.web.bounds
+        op.runModal(for: p.panel, delegate: nil, didRun: nil, contextInfo: nil)
+    }
+
+    /// Weekly timesheet as CSV, saved to Downloads and shown in Finder (F33).
+    private func exportTimesheet() {
+        let bin = Paths.support.appendingPathComponent("bin/eod").path
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: Engine.python)
+        p.arguments = [bin, "timesheet", "--week", "--date", curDate]
+        p.currentDirectoryURL = Paths.support
+        let pipe = Pipe(); p.standardOutput = pipe; p.standardError = Pipe()
+        DispatchQueue.global(qos: .utility).async {
+            do { try p.run() } catch { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+            DispatchQueue.main.async {
+                // The engine writes the CSV and prints its path.
+                let path = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                guard p.terminationStatus == 0, FileManager.default.fileExists(atPath: path) else {
+                    self.detail.js("window.toast&&toast('Couldn’t build the timesheet')"); return
+                }
+                let dl = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+                let f = dl.appendingPathComponent("EOD-timesheet-\(self.weekStart ?? self.curDate).csv")
+                do {
+                    try? FileManager.default.removeItem(at: f)
+                    try FileManager.default.copyItem(at: URL(fileURLWithPath: path), to: f)
+                    NSWorkspace.shared.activateFileViewerSelecting([f])
+                } catch { self.detail.js("window.toast&&toast('Couldn’t save to Downloads')") }
+            }
+        }
+    }
+
+    /// Send exactly the text the person previewed (the weekly report).
+    private func postText(_ text: String, panel: WebPanel) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if sending { return }
+        sending = true
+        let f = Paths.cacheFile(".send-\(UUID().uuidString).txt")
+        do { try text.write(to: f, atomically: true, encoding: .utf8) } catch { sending = false; return }
+        Engine.run(["--date", curDate, "--send", "--text-file", f.path], timeout: 90) { [weak self] r in
+            try? FileManager.default.removeItem(at: f)
+            guard let self = self else { return }
+            self.sending = false
+            let msg: String
+            if r.code == 0 {
+                let names = r.out.components(separatedBy: "\n").first { $0.hasPrefix("SENT ") }?.dropFirst(5)
+                msg = "Sent to \(names.map(String.init) ?? "chat") ✓"
+            } else { msg = r.err.split(separator: "\n").last.map(String.init) ?? "Send failed" }
+            guard let data = try? JSONSerialization.data(withJSONObject: [msg]),
+                  let arr = String(data: data, encoding: .utf8) else { return }
+            panel.js("window.sendResult&&sendResult(\(arr.dropFirst().dropLast()))")
         }
     }
 

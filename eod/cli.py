@@ -17,7 +17,7 @@ from .hide import apply_hide
 def write_history():
     """Maintain a single readable worklog-history.md from all daily AI summaries."""
     files = sorted(glob.glob(os.path.join(CACHE, "polish-*.json")), reverse=True)
-    L = ["# EOD — work history", ""]
+    L = ["# EOD work history", ""]
     for f in files:
         date = os.path.basename(f)[len("polish-"):-len(".json")]
         try:
@@ -76,6 +76,7 @@ def main():
     share = False
     do_send = False
     standup = False
+    text_file = None
     args = sys.argv[1:]
     skip = set()
     for i, a in enumerate(args):
@@ -98,6 +99,10 @@ def main():
             do_send = True
         elif a == "--standup":
             standup = True
+        elif a == "--text-file" and i + 1 < len(args):
+            # Send exactly this text (the weekly report as previewed on the card).
+            text_file = args[i + 1]
+            skip.add(i + 1)
         elif a == "--hide" and i + 2 < len(args):
             # Never show this: one rule into hide.txt, then rebuild as usual.
             skip.update((i + 1, i + 2))
@@ -131,7 +136,7 @@ def main():
         wd = build_weekly(date, force=repolish)
         wbase = os.path.join(CACHE, "weekly-" + wd["week_start"])
         with open(wbase + ".html", "w") as f:
-            f.write(to_html_weekly(wd))
+            f.write(to_html_weekly(wd, send_to=send_labels()))
         with open(wbase + ".txt", "w") as f:
             f.write(to_text_weekly(wd))
         print("WEEKLY " + wbase + ".html")
@@ -147,7 +152,16 @@ def main():
                 sys.stderr.write("warning: send.txt is readable by other users; chmod 600 send.txt\n")
         except OSError:
             pass
-        sent, failed = send_day(card_data(date, build))
+        if text_file:
+            try:
+                with open(text_file) as fh:
+                    exact = fh.read()[:20000]
+            except OSError:
+                sys.stderr.write("EOD: could not read the text to send\n")
+                raise SystemExit(2)
+            sent, failed = send_day({"date": date, "_send_text": exact})
+        else:
+            sent, failed = send_day(card_data(date, build))
         if failed:
             msg = "; ".join(failed)
             if sent:

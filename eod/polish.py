@@ -428,18 +428,22 @@ WEEKLY_PROMPT = (
     "- collaboration: who the person worked with, only names or teams that appear in the dailies. Empty if none.\n"
     "- next_steps: 2-4 lines, only for work the dailies show as started, in progress or handed over and not "
     "finished. Start each with a verb (Continue, Finish, Follow up on). Empty if nothing is open.\n"
-    "Return a JSON OBJECT: {\"highlights\": [4-8 top weekly lines], "
+    "- tldr: ONE sentence (max 25 words) a manager can read on a phone, the week's main outcome. Same truth rules.\n"
+    "Return a JSON OBJECT: {\"tldr\": \"...\", \"highlights\": [4-8 top weekly lines], "
     '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}], '
     '"progress": ["..."], "blockers": ["..."], "collaboration": ["..."], "next_steps": ["..."]}. '
     "Output ONLY the JSON object."
 )
 
 REPORT_KEYS = ("progress", "blockers", "collaboration", "next_steps")
+REPORT_TEXT_KEYS = ("tldr",)
 
 
 def _clean_report(obj):
     """The weekly report sections, each a short list of one-line strings."""
     out = {}
+    t = obj.get("tldr") if isinstance(obj, dict) else None
+    out["tldr"] = oneline(t, 200) if isinstance(t, str) and t.strip() else ""
     for k in REPORT_KEYS:
         v = obj.get(k) if isinstance(obj, dict) else None
         out[k] = [oneline(x, 160) for x in (v if isinstance(v, list) else []) if isinstance(x, str) and x.strip()][:4]

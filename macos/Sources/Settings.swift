@@ -204,6 +204,18 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                 self?.app?.refreshFromSettings(); self?.reopen()
             } }
         }
+        let webFile = Paths.support.appendingPathComponent("brief-web.on")
+        let webBrief = check("Show sites on the daily receipt (otherwise only in Full day)",
+                             FileManager.default.fileExists(atPath: webFile.path)) { [weak self] on in
+            if on { FileManager.default.createFile(atPath: webFile.path, contents: Data()) } else { try? FileManager.default.removeItem(at: webFile) }
+            self?.app?.refreshFromSettings()
+        }
+        views.append(webBrief)
+        let shareFile = Paths.support.appendingPathComponent("share-lines.off")
+        views.append(check("Include work lines in the share image (otherwise totals only)",
+                           !FileManager.default.fileExists(atPath: shareFile.path)) { on in
+            if on { try? FileManager.default.removeItem(at: shareFile) } else { FileManager.default.createFile(atPath: shareFile.path, contents: Data()) }
+        })
         let fda = button("Open Full Disk Access (for Safari history)") {
             if let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") { NSWorkspace.shared.open(u) }
         }

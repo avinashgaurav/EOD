@@ -229,6 +229,12 @@ def _send_labels_env():
 
 # Sources you switched off, one name per line in sources.off (the Mac app's
 # Settings writes it): git, github, web, apps, docs, meetings, claude-code, codex.
+def brief_web_on():
+    """Sites on the daily receipt are opt-in (audit F36): they live on the full
+    day view unless brief-web.on exists (Settings writes it)."""
+    return os.path.exists(app_path("brief-web.on"))
+
+
 def load_sources_off():
     try:
         with open(app_path("sources.off")) as fh:

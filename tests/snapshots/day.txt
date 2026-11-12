@@ -1,4 +1,4 @@
-Daily update — Thu, Aug 6 2026
+Daily update: Thu, Aug 6 2026
 
 Users Me Work Checkout
   • Fixed the coupon rounding edge case

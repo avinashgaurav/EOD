@@ -74,6 +74,40 @@
  "sessions_seen": 3,
  "sessions_untitled": 1,
  "source_problems": [],
+ "sources_status": [
+  {
+   "name": "apps",
+   "state": "ok"
+  },
+  {
+   "name": "claude-code",
+   "state": "ok"
+  },
+  {
+   "name": "codex",
+   "state": "ok"
+  },
+  {
+   "name": "docs",
+   "state": "ok"
+  },
+  {
+   "name": "git",
+   "state": "ok"
+  },
+  {
+   "name": "github",
+   "state": "ok"
+  },
+  {
+   "name": "meetings",
+   "state": "ok"
+  },
+  {
+   "name": "web",
+   "state": "ok"
+  }
+ ],
  "transcripts_touched": 3,
  "web": []
 }
