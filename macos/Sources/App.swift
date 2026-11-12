@@ -119,6 +119,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
         menu.addItem(item(shown ? "Hide receipt" : "Show receipt", #selector(toggleMenu),
                           (defaults.string(forKey: "keyToggle") ?? "W").lowercased(), [.command, .option, .control]))
+        if copyKey?.ok == false {
+            let warn = NSMenuItem(title: "⌥⌃⌘\(defaults.string(forKey: "keyCopy") ?? "C") is in use by another app (change it in Settings)", action: nil, keyEquivalent: "")
+            warn.isEnabled = false; menu.addItem(warn)
+        }
         if hotkey?.ok == false {
             let warn = NSMenuItem(title: "⌥⌃⌘\(defaults.string(forKey: "keyToggle") ?? "W") is in use by another app (change it in Settings)", action: nil, keyEquivalent: "")
             warn.isEnabled = false; menu.addItem(warn)
@@ -299,15 +303,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func show(animate: Bool) {
         Counts.activeToday()
         // Full print-down on the first open of the day; every other open is quick (F27).
-        let first = defaults.string(forKey: "lastPrintDay") != Day.today()
-        if first { defaults.set(Day.today(), forKey: "lastPrintDay") }
+        let first = animate && defaults.string(forKey: "lastPrintDay") != Day.today()
         let path = Paths.cacheFile("\(curDate).html").path
         let exists = FileManager.default.fileExists(atPath: path)
         // A page with unsaved edits is shown as it is, never reloaded (F14).
         receipt.isEditing { [weak self] editing in
             guard let self = self else { return }
             if editing { return }
-            if exists { self.receipt.load(path: path, animate: animate && first, quick: animate && !first) }
+            if exists {
+                self.receipt.load(path: path, animate: first, quick: animate && !first)
+                if first { self.defaults.set(Day.today(), forKey: "lastPrintDay") }   // only once it really played
+            }
             else { self.rebuild(self.curDate, force: true, animate: animate) }
         }
         receipt.show(at: receipt.panel.isVisible ? receipt.panel.frame : receiptFrame())
@@ -358,9 +364,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     private func rebuild(_ date: String, force: Bool = false, animate: Bool = false,
                          repolish: Bool = false, cacheOnly: Bool = false) {
-        CalendarBridge.shared.export(date: date)          // EventKit titles for the engine (F26)
         var args = ["--date", date]
         if repolish { args.append("--repolish") }
+        // EventKit is synchronous and can be slow with many calendars: read it off
+        // the main thread, then run the engine (F26).
+        DispatchQueue.global(qos: .utility).async {
+            CalendarBridge.shared.export(date: date)
+            DispatchQueue.main.async { self.runEngine(args, date: date, force: force, animate: animate, repolish: repolish, cacheOnly: cacheOnly) }
+        }
+    }
+
+    private func runEngine(_ args: [String], date: String, force: Bool, animate: Bool, repolish: Bool, cacheOnly: Bool) {
         Engine.run(args) { [weak self] r in
             guard let self = self else { return }
             let wasManual = self.manualRefresh, wasDiscard = self.discarding
@@ -491,7 +505,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             case "snooze":
                 // Re-checked when it fires: no reminder if you copied or sent meanwhile.
                 self.snoozeTimer?.invalidate()
-                self.snoozeTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: false) { [weak self] _ in self?.remindIfNeeded() }
+                self.snoozeTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: false) { [weak app = self] _ in app?.remindIfNeeded() }
             default: self.curDate = Day.today(); self.show(animate: true)
             }
             done()
@@ -589,8 +603,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// Build today fresh, then remind only if there is work and it hasn't left the Mac yet.
     private func remindIfNeeded() {
         guard defaults.string(forKey: "sharedOn") != Day.today() else { return }
-        Engine.run(["--date", Day.today()]) { _ in
-            Engine.run(["--date", Day.today(), "--standup"]) { [weak self] r in
+        Engine.run(["--date", Day.today()]) { [weak self] _ in
+            Engine.run(["--date", Day.today(), "--standup"]) { r in
                 if r.code == 0 && !r.out.isEmpty { self?.notify() }
             }
         }

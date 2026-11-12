@@ -53,6 +53,11 @@ class TestProvenance(unittest.TestCase):
             self.assertIn(needle, page)
         self.assertNotIn("💾", page)
 
+    def test_quick_open_and_roll_up(self):
+        page = self.h.to_html(dict(self.day, highlights=["Fixed it."]))
+        self.assertIn("_h==='#quick'?'anim-quick'", page)
+        self.assertIn("classList.remove('anim-in','anim-quick')", page)   # the roll-up still plays
+
 
 if __name__ == "__main__":
     unittest.main()

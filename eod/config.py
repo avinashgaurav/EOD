@@ -232,7 +232,7 @@ def _send_labels_env():
 def load_sources_off():
     try:
         with open(app_path("sources.off")) as fh:
-            return {l.strip().lower() for l in fh if l.strip() and not l.startswith("#")}
+            return {l.strip().lower() for l in fh if l.strip() and not l.strip().startswith("#")}
     except OSError:
         return set()
 

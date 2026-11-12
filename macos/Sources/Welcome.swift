@@ -38,7 +38,7 @@ enum Welcome {
                                        size: 12, color: .secondaryLabelColor))
 
         // Opt-in: the one step that can leave the Mac starts off until the person ticks it.
-        let ai = NSButton(checkboxWithTitle: "Tidy the lines with AI through my own claude CLI (sends session titles and prompts to Claude)",
+        let ai = NSButton(checkboxWithTitle: "Tidy the lines with AI through my own claude CLI (sends session titles, some prompts and meeting titles to Claude)",
                           target: nil, action: nil)
         ai.state = .off
         stack.addArrangedSubview(ai)
@@ -84,7 +84,10 @@ enum Welcome {
         @objc func finish() {
             if ai.state == .on { try? FileManager.default.removeItem(at: Paths.support.appendingPathComponent("polish.off")) }
             for (name, box) in sources { SourceSwitch.set(name, on: box.state == .on) }
-            if sources.first(where: { $0.0 == "meetings" })?.1.state == .on { CalendarBridge.shared.enable { _ in } }
+            if sources.first(where: { $0.0 == "meetings" })?.1.state == .on {
+                // Rebuild once access is decided, so the first receipt has meetings.
+                CalendarBridge.shared.enable { _ in (NSApp.delegate as? AppDelegate)?.refreshFromSettings() }
+            }
             window.close()          // windowWillClose shows the receipt
         }
 

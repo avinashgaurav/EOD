@@ -37,6 +37,29 @@ class TestSourcesOff(unittest.TestCase):
         for n in ("web", "apps", "git", "github", "docs", "meetings"):
             self.assertNotIn(n, called)
 
+    def test_on_sources_are_still_read(self):
+        with open(os.path.join(self.tmp, "sources.off"), "w") as fh:
+            fh.write("  # an indented note\nweb\n")
+        self.assertEqual(self.cfg.load_sources_off(), {"web"})
+        pipe = mod(self.ex, "eod.pipeline")
+        reg = mod(self.ex, "eod.sources.base")
+        called = []
+        for src in reg.registry():
+            orig = src.collect
+            src.collect = (lambda o, n: (lambda d: (called.append(n), o(d))[1]))(orig, src.name)
+        pipe.collect_sources("2026-11-10")
+        self.assertNotIn("web", called)
+        self.assertIn("git", called)
+
+    def test_claude_and_codex_can_be_switched_off(self):
+        with open(os.path.join(self.tmp, "sources.off"), "w") as fh:
+            fh.write("claude-code\ncodex\n")
+        pipe = mod(self.ex, "eod.pipeline")
+        pipe.read_sessions = lambda d: (_ for _ in ()).throw(AssertionError("claude read while off"))
+        pipe.add_codex = lambda p, d: (_ for _ in ()).throw(AssertionError("codex read while off"))
+        projects, n, _, _ = pipe.build_projects("2026-11-10")
+        self.assertEqual((projects, n), ([], 0))
+
 
 class TestAppCalendar(unittest.TestCase):
     def test_app_calendar_wins_and_drops_attendees(self):

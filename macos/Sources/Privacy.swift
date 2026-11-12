@@ -99,7 +99,7 @@ enum Retention {
     static func deleteAll() -> Bool {
         let fm = FileManager.default
         try? fm.removeItem(at: Paths.cache)
-        for f in ["exclude.txt", "repos.txt", "hide.txt", "send.txt", "signature.txt", "ollama.txt", "polish.off"] {
+        for f in ["exclude.txt", "repos.txt", "hide.txt", "send.txt", "signature.txt", "ollama.txt", "polish.off", "sources.off", "brief-web.on"] {
             try? fm.removeItem(at: Paths.support.appendingPathComponent(f))
         }
         let keychainOK = Secrets.setSendTargets("")
@@ -107,7 +107,7 @@ enum Retention {
         // Start fully offline again until the person opts back in. The welcome
         // window is not shown again; the AI tidy-up menu turns it back on.
         fm.createFile(atPath: Paths.support.appendingPathComponent("polish.off").path, contents: Data())
-        for k in ["keepDays", "sendLabels"] { UserDefaults.standard.removeObject(forKey: k) }
+        for k in ["keepDays", "sendLabels", "keyToggle", "keyCopy"] { UserDefaults.standard.removeObject(forKey: k) }
         let cacheGone = (try? fm.contentsOfDirectory(atPath: Paths.cache.path))?.isEmpty ?? true
         return keychainOK && cacheGone
     }

@@ -261,7 +261,7 @@ function copyWork(){
   }else{copyEl('workText','Work update copied');}
 }
 function drag(e){if(e.button===0)send({action:'dragStart'})}
-window.playOut=function(){var h=document.documentElement;h.classList.remove('anim-in');h.classList.add('anim-out')};
+window.playOut=function(){var h=document.documentElement;h.classList.remove('anim-in','anim-quick');h.classList.add('anim-out')};
 """
 
 

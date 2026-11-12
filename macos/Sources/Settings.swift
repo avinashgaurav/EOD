@@ -18,7 +18,8 @@ enum SourceSwitch {
 
     static var off: Set<String> {
         guard let s = try? String(contentsOf: file, encoding: .utf8) else { return [] }
-        return Set(s.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty })
+        return Set(s.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") })
     }
 
     static func set(_ name: String, on: Bool) {
@@ -57,19 +58,39 @@ final class CalendarBridge {
         else { store.requestAccess(to: .event, completion: finish) }
     }
 
-    func disable() { try? FileManager.default.removeItem(at: marker) }
-
-    /// Write cache/calendar-<date>.json for the engine. Timed events only.
-    func export(date: String) {
-        guard enabled, authorized, let day = Day.fmt.date(from: date),
-              let end = Calendar.current.date(byAdding: .day, value: 1, to: day) else { return }
-        let pred = store.predicateForEvents(withStart: day, end: end, calendars: nil)
-        let f = DateFormatter(); f.dateFormat = "HH:mm"
-        let events = store.events(matching: pred).filter { !$0.isAllDay }.sorted { $0.startDate < $1.startDate }
-            .map { ["title": $0.title ?? "", "time": f.string(from: $0.startDate)] }
-        if let data = try? JSONSerialization.data(withJSONObject: events) {
-            try? data.write(to: Paths.cacheFile("calendar-\(date).json"), options: .atomic)
+    /// Off means off: the marker and every exported day go, so nothing stale is served.
+    func disable() {
+        try? FileManager.default.removeItem(at: marker)
+        let fm = FileManager.default
+        for n in (try? fm.contentsOfDirectory(atPath: Paths.cache.path)) ?? [] where n.hasPrefix("calendar-") && n.hasSuffix(".json") {
+            try? fm.removeItem(at: Paths.cacheFile(n))
         }
+    }
+
+    /// Write cache/calendar-<date>.json for the engine. Timed events only; no
+    /// cancelled or declined ones; titles and start times, never attendees.
+    /// Called off the main thread.
+    func export(date: String) {
+        let file = Paths.cacheFile("calendar-\(date).json")
+        guard enabled, !SourceSwitch.off.contains("meetings") else { return }
+        guard authorized else {               // access was revoked: drop the stale marker and data
+            disable(); return
+        }
+        guard let day = Day.fmt.date(from: date),
+              let end = Calendar.current.date(byAdding: .day, value: 1, to: day) else { return }
+        store.refreshSourcesIfNecessary()
+        let pred = store.predicateForEvents(withStart: day, end: end, calendars: nil)
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; f.locale = Locale(identifier: "en_US_POSIX")
+        let events = store.events(matching: pred)
+            .filter { e in
+                guard !e.isAllDay, e.status != .canceled, e.startDate >= day,
+                      !(e.title ?? "").trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+                let me = e.attendees?.first { $0.isCurrentUser }
+                return me?.participantStatus != .declined
+            }
+            .sorted { $0.startDate < $1.startDate }
+            .map { ["title": $0.title ?? "", "time": f.string(from: $0.startDate)] }
+        if let data = try? JSONSerialization.data(withJSONObject: events) { try? data.write(to: file, options: .atomic) }
     }
 }
 
@@ -150,7 +171,14 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         func keyPopup(_ key: String, _ fallback: String) -> NSPopUpButton {
             let p = ClosurePopUp(); p.addItems(withTitles: letters)
             p.selectItem(withTitle: d.string(forKey: key) ?? fallback)
-            p.onChange = { [weak self] sel in d.set(sel, forKey: key); self?.app?.registerHotKeys() }
+            p.onChange = { [weak self, weak p] sel in
+                let other = key == "keyToggle" ? (d.string(forKey: "keyCopy") ?? "C") : (d.string(forKey: "keyToggle") ?? "W")
+                if sel == other {           // two shortcuts on one key would silently drop one
+                    p?.selectItem(withTitle: d.string(forKey: key) ?? fallback)
+                    let a = NSAlert(); a.messageText = "⌥⌃⌘\(sel) is already the other shortcut"; a.runModal(); return
+                }
+                d.set(sel, forKey: key); self?.app?.registerHotKeys()
+            }
             return p
         }
         let row1 = NSStackView(views: [NSTextField(labelWithString: "Show or hide the receipt:  ⌥⌃⌘"), keyPopup("keyToggle", "W")])
@@ -168,8 +196,9 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             })
         }
         let cal = CalendarBridge.shared
-        let calBtn = button(cal.enabled && cal.authorized ? "Calendar access: on (turn off)" : "Use Calendar (asks permission)") { [weak self] in
-            if cal.enabled { cal.disable(); self?.reopen() }
+        let calOn = cal.enabled && cal.authorized
+        let calBtn = button(calOn ? "Calendar access: on (turn off)" : "Use Calendar (asks permission)") { [weak self] in
+            if calOn { cal.disable(); self?.app?.refreshFromSettings(); self?.reopen() }
             else { cal.enable { ok in
                 if !ok, let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") { NSWorkspace.shared.open(u) }
                 self?.app?.refreshFromSettings(); self?.reopen()
@@ -195,14 +224,28 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         switch mode { case .off: isOff = true; case .claude: isClaude = true; case .ollama: isOllama = true }
         let r1 = radio("Off: fully offline, lines are tidied by simple rules", isOff) { [weak self] in Polish.set(.off); self?.app?.refreshFromSettings() }
         let r2 = radio("Claude, through my own claude CLI login", isClaude) { [weak self] in Polish.set(.claude); self?.app?.refreshFromSettings() }
-        let r3 = radio("Ollama on this Mac (nothing leaves it). Model:", isOllama) { [weak self] in
+        let r3 = radio("Ollama on this Mac (nothing leaves it). Model:", isOllama) {}
+        // One group: AppKit only links radios that share a parent, so the state is set by hand.
+        let group = [r1, r2, r3]
+        func select(_ b: NSButton) { group.forEach { $0.state = ($0 === b) ? .on : .off } }
+        let applyOllama: () -> Void = { [weak self] in
             let m = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if m.range(of: #"^[A-Za-z0-9._:/-]{1,80}$"#, options: .regularExpression) != nil { Polish.set(.ollama(m)); self?.app?.refreshFromSettings() }
+            guard m.range(of: #"^[A-Za-z0-9._:/-]{1,80}$"#, options: .regularExpression) != nil else {
+                let a = NSAlert(); a.messageText = "That model name won't work"
+                a.informativeText = "Use the name Ollama shows in `ollama list`, for example llama3.1."; a.runModal()
+                return
+            }
+            select(r3); Polish.set(.ollama(m)); self?.app?.refreshFromSettings()
         }
+        (r1 as! ClosureButton).onClick = { [weak self] b in select(b); Polish.set(.off); self?.app?.refreshFromSettings() }
+        (r2 as! ClosureButton).onClick = { [weak self] b in select(b); Polish.set(.claude); self?.app?.refreshFromSettings() }
+        (r3 as! ClosureButton).onClick = { _ in applyOllama() }
+        field.target = OllamaField.shared; OllamaField.shared.apply = { if r3.state == .on { applyOllama() } }
+        field.action = #selector(OllamaField.fire)
         let prev = button("Preview exactly what is sent…") { [weak self] in self?.app?.previewPayload() }
         return stack([note("The AI step rewrites your work lines into a manager-ready update. Choose where it runs."),
                       r1, r2, NSStackView(views: [r3, field]), prev,
-                      note("Claude sends session titles and a few prompts per session through your own login. Ollama keeps everything on this Mac.")])
+                      note("Claude sends session titles, a few prompts per session and meeting titles through your own login. Ollama keeps everything on this Mac.")])
     }
 
     private func sendTab() -> NSView {
@@ -234,10 +277,19 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     private func reopen() {
-        let a = app
-        window.close()
-        DispatchQueue.main.async { if let a = a { SettingsWindow.show(app: a) } }
+        let a = app, keep = self                // stay alive across the hop
+        DispatchQueue.main.async {
+            keep.window.close()
+            if let a = a { SettingsWindow.show(app: a) }
+        }
     }
+}
+
+/// Applies the Ollama model when you press Return in its field.
+final class OllamaField: NSObject {
+    static let shared = OllamaField()
+    var apply: (() -> Void)?
+    @objc func fire() { apply?() }
 }
 
 /// Small helpers so controls can take a closure instead of a target/selector.
