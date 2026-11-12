@@ -17,6 +17,8 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     private var dragMonitor: Any?
     private var dragOffset = NSPoint.zero
     private var pendingHide: DispatchWorkItem?
+    /// Script to run once the next page has loaded (a toast or an Undo bar).
+    var afterLoad: String?
     /// Where the person last left the panel; nil until they move it.
     var savedFrame: NSRect?
 
@@ -61,9 +63,21 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
 
     func js(_ s: String) { web.evaluateJavaScript(s, completionHandler: nil) }
 
+    /// Whether the person is in the middle of editing lines on the page.
+    func isEditing(_ done: @escaping (Bool) -> Void) {
+        web.evaluateJavaScript("window.isEditing ? window.isEditing() : false") { v, _ in done((v as? Bool) ?? false) }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if let s = afterLoad { afterLoad = nil; js(s) }
+    }
+
     func show(at frame: NSRect) {
         pendingHide?.cancel(); pendingHide = nil       // a show beats a roll-up still in flight
-        panel.setFrame(savedFrame ?? frame, display: true)
+        // A dragged position is kept, but only on the display it was dragged on.
+        let target = NSScreen.screens.first { $0.frame.intersects(frame) }
+        let saved = savedFrame.flatMap { f in NSScreen.screens.first { $0.frame.intersects(f) } == target ? f : nil }
+        panel.setFrame(saved ?? frame, display: true)
         panel.orderFrontRegardless()
     }
 

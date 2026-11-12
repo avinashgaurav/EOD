@@ -138,6 +138,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
   background:var(--ink);color:var(--paper);font-size:10px;letter-spacing:2px;text-transform:uppercase;
   padding:8px 16px;border-radius:3px;opacity:0;transition:.22s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.status{font-size:10px;color:var(--accent);border:1px dashed var(--accent);padding:4px 6px;margin:6px 0;display:flex;gap:6px;align-items:center;justify-content:center}
+.status button{padding:2px 6px}
+.undo{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:10px;
+  letter-spacing:1px;padding:6px 8px 6px 14px;display:flex;gap:10px;align-items:center;z-index:5}
+.undo button{color:var(--paper);border-color:var(--paper);padding:3px 8px}
+.prov{font-size:9.5px;color:var(--ink2);margin:2px 0 4px;letter-spacing:.3px}
 
 /* ── print / unroll animation (paper fed from a slot at the top) ── */
 .roll{transform-origin:top center}
@@ -158,12 +164,18 @@ JS = """
 function send(m){try{window.webkit.messageHandlers.eod.postMessage(m);return true}catch(e){return false}}
 function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
 clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},1300)}
-function copyText(txt,label){
-  if(!send({action:'copy',text:txt})){ // browser fallback
+function copyText(txt,label,what){
+  if(!send({action:'copy',text:txt,what:what||''})){ // browser fallback
     var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
     ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
   toast((label||'Copied')+' ✓');}
-function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
+function copyEl(id,label){copyText(document.getElementById(id).textContent,label,id)}
+// Refresh status from the app (F11): a quiet line that stays until the next good refresh.
+window.setStatus=function(msg,retry){var r=document.querySelector('.receipt');if(!r)return;
+  var el=document.getElementById('status');if(!msg){if(el)el.remove();return}
+  if(!el){el=document.createElement('div');el.id='status';el.className='status';el.setAttribute('role','status');r.insertBefore(el,r.children[2]||null)}
+  el.textContent=msg+' ';if(retry){var b=document.createElement('button');b.textContent='Retry';b.onclick=function(){refresh()};el.appendChild(b)}};
+window.isEditing=function(){var l=document.getElementById('workList');return !!(l&&l.getAttribute('data-edit')==='1')};
 function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hiding…');else toast('Hiding works from the app')}
 function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
   document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
@@ -176,7 +188,20 @@ function regen(){send({action:'regen'});toast('Re-summarizing…')}
 function _enterEdit(){
   var list=document.getElementById('workList'),b=document.getElementById('editBtn');
   list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='true';s.classList.add('editing');});
-  list.setAttribute('data-edit','1');if(b)b.textContent='💾';
+  list.setAttribute('data-edit','1');if(b)b.textContent='Save';
+  if(!list._keys){list._keys=true;list.addEventListener('keydown',_editKeys)}
+}
+// Keyboard model while editing (F16): Enter adds a line, Cmd+Enter or Cmd+S saves,
+// Esc throws the edits away, Backspace on an empty line deletes it.
+function _editKeys(e){
+  var list=document.getElementById('workList');if(!list||list.getAttribute('data-edit')!=='1')return;
+  var cur=e.target.closest&&e.target.closest('.item');
+  if((e.metaKey||e.ctrlKey)&&(e.key==='Enter'||e.key==='s')){e.preventDefault();toggleEdit();return}
+  if(e.key==='Escape'){e.preventDefault();send({action:'refresh'});toast('Edits discarded');return}
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();addLine(cur);return}
+  if(e.key==='Backspace'&&cur&&!e.target.textContent.trim()){
+    e.preventDefault();var prev=cur.previousElementSibling;cur.remove();
+    if(prev){var t=prev.querySelector('.htext');if(t){t.focus();document.getSelection().selectAllChildren(t);document.getSelection().collapseToEnd()}}}
 }
 function _collect(){
   var items=[];document.querySelectorAll('#workList .htext').forEach(function(s){
@@ -188,23 +213,32 @@ function toggleEdit(){
   if(!list)return;
   if(list.getAttribute('data-edit')!=='1'){
     _enterEdit();var f=list.querySelector('.htext');if(f)f.focus();
-    toast('Edit / add — click 💾 to save');
+    toast('Enter adds a line, Cmd+Enter saves, Esc cancels');
   }else{
     var items=_collect();
     list.querySelectorAll('.htext').forEach(function(s){s.contentEditable='false';s.classList.remove('editing');});
-    list.setAttribute('data-edit','0');if(b)b.textContent='✎';
-    send({action:'saveEdits',items:items});toast('Saved ✓');
+    list.setAttribute('data-edit','0');if(b)b.textContent='Edit';
+    send({action:'saveEdits',items:items});toast('Saved');
   }
 }
-function addLine(){
+function addLine(after){
   var list=document.getElementById('workList');if(!list)return;
   if(list.getAttribute('data-edit')!=='1')_enterEdit();
   var d=document.createElement('div');d.className='item';
   d.innerHTML="<span class='t'><b>•</b><span class='htext editing' contenteditable='true'></span></span>"+
-    "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button>";
-  list.appendChild(d);d.querySelector('.htext').focus();
+    "<button class='del' onclick='delLine(this)' title='Delete line' aria-label='Delete line'>✕</button>";
+  if(after&&after.parentNode===list)list.insertBefore(d,after.nextSibling);else list.appendChild(d);
+  d.querySelector('.htext').focus();
 }
-function delLine(el){var it=el.closest('.item');if(it)it.remove();}
+// Undo (F15): a short bar with an Undo button instead of a silent, final delete.
+function showUndo(msg,fn){var old=document.getElementById('undoBar');if(old)old.remove();
+  var u=document.createElement('div');u.id='undoBar';u.className='undo';u.setAttribute('role','status');
+  u.textContent=msg+' ';var b=document.createElement('button');b.textContent='Undo';
+  b.onclick=function(){u.remove();fn()};u.appendChild(b);document.body.appendChild(u);
+  clearTimeout(window._ut);window._ut=setTimeout(function(){u.remove()},6000)}
+window.showUndo=showUndo;
+function delLine(el){var it=el.closest('.item');if(!it)return;var parent=it.parentNode,next=it.nextSibling;it.remove();
+  showUndo('Line deleted.',function(){parent.insertBefore(it,next)})}
 function copyWork(){
   var list=document.getElementById('workList');
   if(list&&list.getAttribute('data-edit')==='1'){           // copy straight from your edits + persist
@@ -252,6 +286,25 @@ def clip_path(w=340, step=10, depth=6):
     bot = [f"{i*step}px " + ("100%" if i % 2 == 0 else f"calc(100% - {depth}px)")
            for i in range(n, -1, -1)]
     return "polygon(" + ", ".join(top + bot) + ")"
+
+
+def provenance(data):
+    """Where the WORK lines came from, in one line (audit F13)."""
+    sm = data.get("summary") or {}
+    by, at, note = sm.get("by"), sm.get("at", ""), sm.get("note", "")
+    if by == "claude":
+        return "Summarized by Claude" + (" at " + at if at else "")
+    if by == "ollama":
+        return "Summarized on this Mac by Ollama" + (" at " + at if at else "")
+    if by == "edited":
+        return "Edited by you"
+    if by == "stale":
+        return ("Last summary " + at + ". " if at else "Last summary. ") + note
+    if by == "offline":
+        return "Offline summary. " + note
+    if by == "off":
+        return "Offline summary: AI tidy-up is off"
+    return ""
 
 
 def to_html(data, send_to=()):
@@ -311,7 +364,7 @@ def to_html(data, send_to=()):
         _warn = parse_warning(data)
         if _warn:
             P.append("<div class='empty'>! " + esc(_warn.upper()) +
-                     "<br><span style='font-size:9px'>SEE cache/polish-error.log</span></div>")
+                     "<br><span style='font-size:9px'>EOD couldn't read today's sessions. Update EOD, or report it on GitHub.</span></div>")
         else:
             P.append("<div class='empty'>— NO ACTIVITY LOGGED —</div>")
     else:
@@ -322,10 +375,13 @@ def to_html(data, send_to=()):
                      "<span class='dots'></span>"
                      f"<span class='qty'>×{len(data['highlights'])}</span>"
                      "<button class='cp' onclick='copyWork()' title='Copy work update'>⧉</button>"
-                     "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines'>✎</button>"
+                     "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines' aria-label='Edit lines'>Edit</button>"
                      "<button class='cp' onclick='addLine()' title='Add a line'>＋</button>"
                      "<button class='cp' onclick='regen()' title='Re-summarize with AI'>⟳</button>"
                      "</div>")
+            _pv = provenance(data)
+            if _pv:
+                P.append(f"<div class='prov' role='note'>{esc(_pv)}</div>")
             P.append("<div class='dept' id='workList' data-edit='0'>")
             for h in data["highlights"]:
                 P.append("<div class='item'>"
@@ -338,6 +394,9 @@ def to_html(data, send_to=()):
         # ── Fallback: per-project view (only when AI polish unavailable) ──
         elif data["projects"]:
             P.append("<div class='sect'>WORK</div>")
+            _pv = provenance(data)
+            if _pv:
+                P.append(f"<div class='prov' role='note'>{esc(_pv)}</div>")
             for i, p in enumerate(data["projects"]):
                 pid = f"p{i}"
                 items = display_items(p)
@@ -703,7 +762,7 @@ def to_html_weekly(data):
         P.append("<div class='depthead'><span class='nm'>KEY ACHIEVEMENTS" + wk_edited + "</span><span class='dots'></span>"
                  f"<span class='qty'>×{len(data['highlights'])}</span>"
                  "<button class='cp' onclick='copyWork()' title='Copy weekly update'>⧉</button>"
-                 "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines'>✎</button>"
+                 "<button class='cp' id='editBtn' onclick='toggleEdit()' title='Edit lines' aria-label='Edit lines'>Edit</button>"
                  "<button class='cp' onclick='addLine()' title='Add a line'>＋</button>"
                  "<button class='cp' onclick='regen()' title='Re-summarize the week'>⟳</button></div>")
         P.append("<div class='dept' id='workList' data-edit='0'>")

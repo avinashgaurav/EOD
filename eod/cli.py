@@ -95,6 +95,18 @@ def main():
             share = True
         elif a == "--send":
             do_send = True
+        elif a == "--standup":
+            # The work update as text, exactly what Copy update and Send share.
+            # Used by the app's one-key copy and the reminder's Copy action.
+            from .send import card_data
+            from .render.text import to_standup
+            d = args[args.index("--date") + 1] if "--date" in args else datetime.now().astimezone().strftime("%Y-%m-%d")
+            text = to_standup(apply_hide(card_data(d, build)))
+            if text is None:
+                sys.stderr.write("EOD: no work recorded for %s yet\n" % d)
+                raise SystemExit(3)
+            sys.stdout.write(text)
+            return
         elif a == "--hide" and i + 2 < len(args):
             # Never show this: one rule into hide.txt, then rebuild as usual.
             skip.update((i + 1, i + 2))
