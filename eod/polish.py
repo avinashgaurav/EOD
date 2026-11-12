@@ -142,10 +142,13 @@ def _open_local(req, timeout):
     return _local_opener().open(req, timeout=timeout)
 
 
-def _run_ollama(model, prompt):
-    """One generate call. Returns the model's text, or raises with a reason worth logging."""
-    body = json.dumps({"model": model, "prompt": prompt, "stream": False, "format": "json",
-                       "options": {"num_ctx": OLLAMA_NUM_CTX}}).encode("utf-8")
+def _run_ollama(model, prompt, raw=False):
+    """One generate call. Returns the model's text, or raises with a reason worth logging.
+    raw=True asks for free text (brag doc, Ask) instead of a JSON object."""
+    req_body = {"model": model, "prompt": prompt, "stream": False, "options": {"num_ctx": OLLAMA_NUM_CTX}}
+    if not raw:
+        req_body["format"] = "json"
+    body = json.dumps(req_body).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=body,
                                  headers={"Content-Type": "application/json"})
     try:
@@ -207,7 +210,13 @@ def _clean_detailed(raw):
 
 
 def _polish_input(data):
-    """Compact, stable text of everything the curator should consider."""
+    """Compact, stable text of everything the curator should consider,
+    with secrets, emails, internal hosts and home paths redacted (B11)."""
+    from .features import redact
+    return redact(_polish_input_raw(data))
+
+
+def _polish_input_raw(data):
     lines = []
     for p in data["projects"]:
         lines.append("## " + p["name"])
@@ -278,6 +287,23 @@ def _polish_log(msg):
             f.write(datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S ") + oneline(msg, 600) + "\n")
     except Exception:
         pass
+
+
+def run_ai_text(prompt):
+    """One free-text AI call that follows the AI tidy-up choice: None when it is
+    off or no CLI is found, else the text from Ollama or the claude CLI."""
+    if os.path.exists(app_path("polish.off")):
+        return None
+    model = load_ollama_model()
+    if model:
+        return _run_ollama(model, prompt, raw=True)
+    cb = _claude_bin()
+    if not cb:
+        return None
+    cwd = os.path.join(CACHE, ".polish")
+    os.makedirs(cwd, exist_ok=True)
+    r = _run_claude(cb, POLISH_SENTINEL + " (automated task, ignore):\n" + prompt, cwd)
+    return r.stdout if r.returncode == 0 else None
 
 
 def friendly_reason(msg):
@@ -428,18 +454,22 @@ WEEKLY_PROMPT = (
     "- collaboration: who the person worked with, only names or teams that appear in the dailies. Empty if none.\n"
     "- next_steps: 2-4 lines, only for work the dailies show as started, in progress or handed over and not "
     "finished. Start each with a verb (Continue, Finish, Follow up on). Empty if nothing is open.\n"
-    "Return a JSON OBJECT: {\"highlights\": [4-8 top weekly lines], "
+    "- tldr: ONE sentence (max 25 words) a manager can read on a phone, the week's main outcome. Same truth rules.\n"
+    "Return a JSON OBJECT: {\"tldr\": \"...\", \"highlights\": [4-8 top weekly lines], "
     '"detailed": [{"area":"<theme>","items":["<bullet>", ...]}], '
     '"progress": ["..."], "blockers": ["..."], "collaboration": ["..."], "next_steps": ["..."]}. '
     "Output ONLY the JSON object."
 )
 
 REPORT_KEYS = ("progress", "blockers", "collaboration", "next_steps")
+REPORT_TEXT_KEYS = ("tldr",)
 
 
 def _clean_report(obj):
     """The weekly report sections, each a short list of one-line strings."""
     out = {}
+    t = obj.get("tldr") if isinstance(obj, dict) else None
+    out["tldr"] = oneline(t, 200) if isinstance(t, str) and t.strip() else ""
     for k in REPORT_KEYS:
         v = obj.get(k) if isinstance(obj, dict) else None
         out[k] = [oneline(x, 160) for x in (v if isinstance(v, list) else []) if isinstance(x, str) and x.strip()][:4]

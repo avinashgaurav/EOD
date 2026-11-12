@@ -56,7 +56,7 @@ class TestSendTargetsFromEnv(unittest.TestCase):
             t = cfg.load_send_targets()
         finally:
             os.environ.pop("EOD_SEND_TARGETS", None)
-        self.assertEqual(t[0], {"kind": "slack", "url": "https://hooks.slack.com/services/T/B/x"})
+        self.assertEqual(t[0], {"kind": "slack", "url": "https://hooks.slack.com/services/T/B/x", "format": None})
         self.assertEqual(t[1], {"kind": None, "bad": 2})
         self.assertEqual(len(t), 2)
 
@@ -89,7 +89,7 @@ class TestCopyDefaults(unittest.TestCase):
              "time": {"days": [{"date": "2026-11-09", "secs": 3600}], "total": 3600,
                       "top_apps": [{"name": "Chrome", "secs": 3600}]}, "tickets": {}}
         page = self.ex.to_html_weekly(w)
-        self.assertRegex(page, r"data-title='Time by app'><div class='depthead'>.*?<input type='checkbox' id='inc\d+'>")
+        self.assertRegex(page, r"data-title='Time by app'>.*?<input type='checkbox' id='inc\d+'>")
         self.assertRegex(page, r"data-title='Time spent'>.*?<input type='checkbox' id='inc\d+' checked>")
 
 

@@ -99,7 +99,7 @@ enum Retention {
     static func deleteAll() -> Bool {
         let fm = FileManager.default
         try? fm.removeItem(at: Paths.cache)
-        for f in ["exclude.txt", "repos.txt", "hide.txt", "send.txt", "signature.txt", "ollama.txt", "polish.off", "sources.off", "brief-web.on"] {
+        for f in ["exclude.txt", "repos.txt", "hide.txt", "send.txt", "signature.txt", "ollama.txt", "polish.off", "sources.off", "brief-web.on", "share-lines.off", "redact.off", "insight.on"] {
             try? fm.removeItem(at: Paths.support.appendingPathComponent(f))
         }
         let keychainOK = Secrets.setSendTargets("")

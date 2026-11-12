@@ -1,6 +1,7 @@
 import AppKit
 import EventKit
 import ServiceManagement
+import UserNotifications
 
 /// Sources the person can switch off. Names match the engine's (sources.off).
 enum SourceSwitch {
@@ -183,7 +184,15 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         }
         let row1 = NSStackView(views: [NSTextField(labelWithString: "Show or hide the receipt:  ⌥⌃⌘"), keyPopup("keyToggle", "W")])
         let row2 = NSStackView(views: [NSTextField(labelWithString: "Copy today's update:  ⌥⌃⌘"), keyPopup("keyCopy", "C")])
-        return stack([login, start, rem, remEdit, NSBox.separator(), row1, row2,
+        let morning = check("Morning standup reminder, 9:00 on weekdays", d.bool(forKey: "morningOn")) { [weak self] on in
+            d.set(on, forKey: "morningOn"); self?.app?.scheduleExtras()
+            if on { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
+        }
+        let friday = check("Friday weekly reminder, 16:00", d.bool(forKey: "fridayOn")) { [weak self] on in
+            d.set(on, forKey: "fridayOn"); self?.app?.scheduleExtras()
+            if on { UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in } }
+        }
+        return stack([login, start, rem, remEdit, morning, friday, NSBox.separator(), row1, row2,
                       note("Shortcuts need no Accessibility permission. If one is taken by another app, the menu says so.")])
     }
 
@@ -204,6 +213,18 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                 self?.app?.refreshFromSettings(); self?.reopen()
             } }
         }
+        let webFile = Paths.support.appendingPathComponent("brief-web.on")
+        let webBrief = check("Show sites on the daily receipt (otherwise only in Full day)",
+                             FileManager.default.fileExists(atPath: webFile.path)) { [weak self] on in
+            if on { FileManager.default.createFile(atPath: webFile.path, contents: Data()) } else { try? FileManager.default.removeItem(at: webFile) }
+            self?.app?.refreshFromSettings()
+        }
+        views.append(webBrief)
+        let shareFile = Paths.support.appendingPathComponent("share-lines.off")
+        views.append(check("Include work lines in the share image (otherwise totals only)",
+                           !FileManager.default.fileExists(atPath: shareFile.path)) { on in
+            if on { try? FileManager.default.removeItem(at: shareFile) } else { FileManager.default.createFile(atPath: shareFile.path, contents: Data()) }
+        })
         let fda = button("Open Full Disk Access (for Safari history)") {
             if let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") { NSWorkspace.shared.open(u) }
         }
@@ -271,8 +292,18 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                 try? text.write(to: f, atomically: true, encoding: .utf8)
             }
         }
+        let redactFile = Paths.support.appendingPathComponent("redact.off")
+        let redact = check("Redact secrets, emails, internal hosts and home paths before anything leaves",
+                           !FileManager.default.fileExists(atPath: redactFile.path)) { on in
+            if on { try? FileManager.default.removeItem(at: redactFile) } else { FileManager.default.createFile(atPath: redactFile.path, contents: Data()) }
+        }
+        let insFile = Paths.support.appendingPathComponent("insight.on")
+        let insight = check("One gentle line about the day on the receipt", FileManager.default.fileExists(atPath: insFile.path)) { [weak self] on in
+            if on { FileManager.default.createFile(atPath: insFile.path, contents: Data()) } else { try? FileManager.default.removeItem(at: insFile) }
+            self?.app?.refreshFromSettings()
+        }
         let del = button("Delete all EOD data…") { [weak self] in self?.app?.deleteAllFromSettings() }
-        return stack([NSStackView(views: [NSTextField(labelWithString: "Keep history for"), pop]), hide, NSBox.separator(), del,
+        return stack([NSStackView(views: [NSTextField(labelWithString: "Keep history for"), pop]), hide, redact, insight, NSBox.separator(), del,
                       note("Uninstall: quit EOD, then remove /Applications/EOD.app and ~/Library/Application Support/EOD.")])
     }
 

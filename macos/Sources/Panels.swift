@@ -27,6 +27,9 @@ final class WebPanel: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
                              backing: .buffered, defer: false)
         let cfg = WKWebViewConfiguration()
         let ucc = WKUserContentController()
+        // Tells the page it runs in the Mac app, so it shows controls only the app
+        // can act on (print, settings, weekly send, timesheet export).
+        ucc.addUserScript(WKUserScript(source: "window.EOD_APP=true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         cfg.userContentController = ucc
         web = WKWebView(frame: NSRect(origin: .zero, size: frame.size), configuration: cfg)
         super.init()
