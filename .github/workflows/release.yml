@@ -1,0 +1,30 @@
+name: release
+
+# Push a tag like v1.0.0 and this builds EOD.app (universal, ad-hoc signed) on a
+# Mac runner and attaches EOD.zip to a GitHub release for that tag. The one-line
+# installer always downloads the latest release's EOD.zip.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tests
+        run: ./run_tests.sh
+      - name: Build EOD.app
+        run: VERSION="${GITHUB_REF_NAME#v}" macos/build.sh
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" macos/build/EOD.zip \
+            --title "EOD $GITHUB_REF_NAME" \
+            --notes "Install: curl -fsSL https://eodreceipt.vercel.app/install.sh | bash"
