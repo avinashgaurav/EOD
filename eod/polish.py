@@ -207,7 +207,13 @@ def _clean_detailed(raw):
 
 
 def _polish_input(data):
-    """Compact, stable text of everything the curator should consider."""
+    """Compact, stable text of everything the curator should consider,
+    with secrets, emails, internal hosts and home paths redacted (B11)."""
+    from .features import redact
+    return redact(_polish_input_raw(data))
+
+
+def _polish_input_raw(data):
     lines = []
     for p in data["projects"]:
         lines.append("## " + p["name"])
@@ -278,6 +284,23 @@ def _polish_log(msg):
             f.write(datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S ") + oneline(msg, 600) + "\n")
     except Exception:
         pass
+
+
+def run_ai_text(prompt):
+    """One free-text AI call that follows the AI tidy-up choice: None when it is
+    off or no CLI is found, else the text from Ollama or the claude CLI."""
+    if os.path.exists(app_path("polish.off")):
+        return None
+    model = load_ollama_model()
+    if model:
+        return _run_ollama(model, prompt)
+    cb = _claude_bin()
+    if not cb:
+        return None
+    cwd = os.path.join(CACHE, ".polish")
+    os.makedirs(cwd, exist_ok=True)
+    r = _run_claude(cb, POLISH_SENTINEL + " (automated task, ignore):\n" + prompt, cwd)
+    return r.stdout if r.returncode == 0 else None
 
 
 def friendly_reason(msg):

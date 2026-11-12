@@ -1,0 +1,17 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "eod",
+  "title": "EOD",
+  "description": "Copy today's work update or your morning standup from EOD, without opening anything.",
+  "icon": "icon.png",
+  "author": "avinashgaurav",
+  "license": "MIT",
+  "categories": ["Productivity"],
+  "commands": [
+    { "name": "copy-update", "title": "Copy Today's Update", "description": "Copy today's work update to the clipboard.", "mode": "no-view" },
+    { "name": "copy-standup", "title": "Copy Morning Standup", "description": "Yesterday, today and blockers, to the clipboard.", "mode": "no-view" }
+  ],
+  "dependencies": { "@raycast/api": "^1.83.0" },
+  "devDependencies": { "typescript": "^5.4.0" },
+  "scripts": { "build": "ray build -e dist", "dev": "ray develop" }
+}

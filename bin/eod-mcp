@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""EOD as an MCP server (audit B8), so Claude Code can call it.
+
+    claude mcp add eod -- python3 "$HOME/Library/Application Support/EOD/bin/eod-mcp"
+
+Stdio, JSON-RPC 2.0, no dependencies. Read-only: it reads the receipts EOD
+already keeps on this Mac and never sends anything anywhere. Hide rules and
+redaction apply to everything it returns.
+"""
+
+import json
+import os
+import sys
+from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
+from eod import features                                   # noqa: E402
+from eod.hide import hide_lines                            # noqa: E402
+
+PROTOCOLS = ("2025-06-18", "2025-03-26", "2024-11-05")
+
+
+def _today():
+    return datetime.now().astimezone().strftime("%Y-%m-%d")
+
+
+def _date_arg(args):
+    d = str((args or {}).get("date") or _today())
+    if not features.DAY_RE.match(d):
+        raise ValueError("date must be YYYY-MM-DD")
+    return d
+
+
+def _lines(d):
+    return [features.redact(x) for x in hide_lines(features.day_lines(d))]
+
+
+def tool_day(args):
+    d = _date_arg(args)
+    lines = _lines(d)
+    if not lines:
+        return "No work update recorded for %s yet." % d
+    return "Work update for %s:\n" % d + "\n".join("- " + x for x in lines)
+
+
+def tool_week(args):
+    d = _date_arg(args)
+    start = datetime.strptime(d, "%Y-%m-%d")
+    from datetime import timedelta
+    monday = (start - timedelta(days=start.weekday())).strftime("%Y-%m-%d")
+    out = []
+    cur = monday
+    while cur <= d:
+        ls = _lines(cur)
+        if ls:
+            out.append("## %s\n" % cur + "\n".join("- " + x for x in ls))
+        cur = (datetime.strptime(cur, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+    return "\n\n".join(out) if out else "Nothing recorded this week yet."
+
+
+def tool_standup(args):
+    t = features.morning_standup(_date_arg(args))
+    return features.redact(t) if t else "Nothing to put in a standup yet."
+
+
+def tool_search(args):
+    q = str((args or {}).get("query") or "")
+    hits = [(d, features.redact(h)) for d, h in features.search(q) if hide_lines([h])]
+    if not hits:
+        return "No past work lines match %r." % q
+    return "\n".join("%s: %s" % (d, h) for d, h in hits)
+
+
+TOOLS = {
+    "eod_day": (tool_day, "The finished work update for a day (default today), as you would send it.",
+                {"date": {"type": "string", "description": "YYYY-MM-DD, default today"}}),
+    "eod_week": (tool_week, "Every work update from Monday to the given day (default today).",
+                 {"date": {"type": "string", "description": "YYYY-MM-DD, default today"}}),
+    "eod_standup": (tool_standup, "A morning standup: yesterday's work, today's meetings and open PRs, blockers.",
+                    {"date": {"type": "string", "description": "YYYY-MM-DD, default today"}}),
+    "eod_search": (tool_search, "Search every past work line for words, newest first.",
+                   {"query": {"type": "string", "description": "Words to look for"}}),
+}
+
+
+def handle(msg):
+    method, mid = msg.get("method"), msg.get("id")
+    if method == "initialize":
+        want = (msg.get("params") or {}).get("protocolVersion")
+        return {"jsonrpc": "2.0", "id": mid, "result": {
+            "protocolVersion": want if want in PROTOCOLS else PROTOCOLS[0],
+            "capabilities": {"tools": {}},
+            "serverInfo": {"name": "eod", "version": "1.0"},
+            "instructions": "EOD's tools return the person's own work updates from their Mac. Read-only."}}
+    if method == "ping":
+        return {"jsonrpc": "2.0", "id": mid, "result": {}}
+    if method == "tools/list":
+        return {"jsonrpc": "2.0", "id": mid, "result": {"tools": [
+            {"name": n, "description": d, "inputSchema": {"type": "object", "properties": p, "additionalProperties": False},
+             "annotations": {"readOnlyHint": True, "openWorldHint": False}}
+            for n, (_, d, p) in TOOLS.items()]}}
+    if method == "tools/call":
+        p = msg.get("params") or {}
+        t = TOOLS.get(p.get("name"))
+        if not t:
+            return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32602, "message": "unknown tool"}}
+        try:
+            text, err = t[0](p.get("arguments") or {}), False
+        except Exception as e:                       # a tool error, not a protocol error
+            text, err = "EOD could not do that: %s" % e, True
+        return {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}], "isError": err}}
+    if mid is None:
+        return None                                   # notifications get no reply
+    return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": "method not found"}}
+
+
+def main():
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            reply = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}}
+        else:
+            reply = handle(msg) if isinstance(msg, dict) else None
+        if reply is not None:
+            sys.stdout.write(json.dumps(reply) + "\n")
+            sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()
