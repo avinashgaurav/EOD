@@ -136,9 +136,9 @@ local function saveEdits(items)
   local rf = io.open(path, "r")
   if rf then
     local prev = hs.json.decode(rf:read("*a")); rf:close()
-    if type(prev) == "table" then detailed = prev.detailed; report = prev.report end
+    if type(prev) == "table" then detailed = prev.detailed end
   end
-  local ok, raw = pcall(hs.json.encode, { key = "edited", highlights = hl, detailed = detailed, report = report, edited = true })
+  local ok, raw = pcall(hs.json.encode, { key = "edited", highlights = hl, detailed = detailed, edited = true })
   if ok then
     local f = io.open(path, "w")
     if f then f:write(raw); f:close() end

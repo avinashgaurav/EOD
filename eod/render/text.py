@@ -241,6 +241,13 @@ def web_text(data):
     return "\n".join(L)
 
 
+def _day_name(date):
+    try:
+        return datetime.strptime(date, "%Y-%m-%d").strftime("%a")
+    except (TypeError, ValueError):
+        return str(date)
+
+
 def weekly_sections(data):
     """The weekly report, section by section, as (title, lines). Shared by the
     text and HTML recaps so both say the same thing. Time and tickets come from
@@ -253,11 +260,13 @@ def weekly_sections(data):
         out.append(("Key achievements", list(data["highlights"])))
     if rep.get("progress"):
         out.append(("Overall progress", rep["progress"]))
-    if data.get("highlights"):
+    # Only say "none seen" when the summary actually ran and found none. With the
+    # AI off or failed there is no report, and silence must not read as a claim.
+    if rep and data.get("highlights"):
         out.append(("Challenges or blockers", rep.get("blockers") or ["None seen this week."]))
     t = data.get("time") or {}
     if t.get("total"):
-        per_day = ", ".join("%s %s" % (pretty_date(d["date"]).split(",")[0], fmt_dur(d["secs"])) for d in t["days"])
+        per_day = ", ".join("%s %s" % (_day_name(d["date"]), fmt_dur(d["secs"])) for d in t["days"])
         lines = ["Screen time: %s across %d day%s (%s)." % (fmt_dur(t["total"]), len(t["days"]),
                                                            "" if len(t["days"]) == 1 else "s", per_day)]
         if t.get("top_apps"):
@@ -276,7 +285,7 @@ def weekly_sections(data):
             lines.append("%s: %s." % (label[state], ", ".join("%s #%s" % (x["repo"].split("/")[-1], x["number"]) for x in prs)))
     for state, prs in (tk.get("prs") or {}).items():
         if state not in label and prs:
-            lines.append("%s PRs: %s." % (state.title(), ", ".join("%s #%s" % (x["repo"].split("/")[-1], x["number"]) for x in prs)))
+            lines.append("Other PRs: %s." % (", ".join("%s #%s" % (x["repo"].split("/")[-1], x["number"]) for x in prs)))
     if tk.get("commits"):
         lines.append("Commits: %d." % tk["commits"])
     if lines:

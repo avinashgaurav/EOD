@@ -7,7 +7,7 @@ For EOD the Claude Code CLI is the production path, so these runs used the real 
 - **Auto-built daily** from your local activity; rolls over at midnight, refreshes through the day.
 - **Multi-source**: Claude Code + Codex sessions, git commits, documents, browsing, and screen time on one receipt.
 - **Daily receipt + weekly recap**: one keystroke from the menu bar.
-- **Weekly report**: the recap reads as a status report: key achievements, overall progress, challenges or blockers, time spent, collaboration, next steps, and tickets and PRs. Time spent and tickets are counted from your receipts, not written by the AI. Blockers, collaborators and next steps only appear when your daily updates show them; with no blocker it says "None seen this week." **⎙ Copy report** copies the whole thing.
+- **Weekly report**: the recap reads as a status report: key achievements, overall progress, challenges or blockers, time spent, collaboration, next steps, and tickets and PRs. Time spent and tickets are counted from your receipts, not written by the AI. Blockers, collaborators and next steps only appear when your daily updates show them; when the AI summary ran and found no blocker it says "None seen this week." **⎙ Copy report** copies the whole thing.
 - **Copy all** or per-project **copy**, straight to the clipboard.
 - **Share as an image**: **⇪** copies the day as a 16:9 PNG (2400×1350) for X or LinkedIn, with a small "made with EOD" footer. Highlights and totals only, no prompts.
 - **Edit inline**: fix a line, **＋ add** one, or **✕ delete** one before you copy. On the **weekly recap** your hand-edits stick and survive a re-summarize (unless you force one with **⟳**).

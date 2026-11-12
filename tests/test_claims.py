@@ -584,9 +584,6 @@ class TestConfigClaims(ClaimCase):
         self.assertIn("repos.txt", inspect.getsource(self.ex._git_repos))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestWeeklyReport(TestWeeklySourceClaims):
     """The weekly reads as a report: achievements, progress, blockers, time,
@@ -613,14 +610,21 @@ class TestWeeklyReport(TestWeeklySourceClaims):
         self.assertEqual(list(data["tickets"]["prs"]), ["MERGED"])   # newest state wins
         self.assertEqual(data["tickets"]["commits"], 3)
         text = ex.to_text_weekly(data)
-        for head in ("KEY ACHIEVEMENTS", "CHALLENGES OR BLOCKERS", "TIME SPENT", "TICKETS AND PRS"):
+        for head in ("KEY ACHIEVEMENTS", "TIME SPENT", "TICKETS AND PRS"):
             self.assertIn(head, text)
-        self.assertIn("None seen this week.", text)          # no blocker is invented
         self.assertIn("Merged PRs: eod #7.", text)
         self.assertIn("Commits: 3.", text)
         page = ex.to_html_weekly(data)
         self.assertIn("TIME SPENT", page)
         self.assertIn("COPY REPORT", page)
+
+    def test_no_blocker_claim_without_a_summary(self):
+        ex = self.ex
+        self.cache_full_day(ex, self.WEEK[0], ["Fixed the parser."])
+        data = self.weekly(ex)                    # no model: fallback, no report
+        self.assertEqual(data["report"], {})
+        self.assertNotIn("CHALLENGES OR BLOCKERS", ex.to_text_weekly(data))
+        self.assertNotIn("None seen", ex.to_html_weekly(data))
 
     def test_model_sections_are_kept_and_cleaned(self):
         ex = self.ex
@@ -631,3 +635,7 @@ class TestWeeklyReport(TestWeeklySourceClaims):
         self.assertEqual(rep["blockers"], [])
         self.assertEqual(rep["collaboration"], [])
         self.assertEqual(rep["next_steps"], ["Finish the parser."])
+
+
+if __name__ == "__main__":
+    unittest.main()

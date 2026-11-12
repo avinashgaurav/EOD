@@ -85,7 +85,7 @@ def week_tickets(dates):
                 "state": str(p.get("state", "")).upper(), "title": p.get("title", "")}
     by_state = {}
     for pr in sorted(prs.values(), key=lambda x: (x["repo"], str(x["number"]))):
-        by_state.setdefault(pr["state"] or "OPEN", []).append(pr)
+        by_state.setdefault(pr["state"] or "OTHER", []).append(pr)
     return {"prs": by_state, "commits": commits}
 
 

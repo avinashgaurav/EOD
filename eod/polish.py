@@ -37,22 +37,22 @@ POLISH_PROMPT = (
     "MERGE many small related sessions into ONE themed line (e.g. all website work → one line).\n\n"
     "STYLE: past-tense achievement lines, the way a strong status report reads. Match these "
     "examples (voice, tone, length):\n"
-    "- Shipped the v2.4.0 changelog to stage and prod.\n"
+    "- Shipped the v2.4.0 release notes to staging and production.\n"
     "- Fixed the coupon rounding bug in checkout (#412) and added a regression test.\n"
-    "- Raised 8 PRs for the docs fixes found in the website audit.\n"
-    "- Wrote onboarding copy for 9 access scenarios and handed it over to Engineering.\n"
-    "- Reviewed the pricing page design and shared feedback with Design.\n"
+    "- Opened 3 PRs for the flaky test fixes found in CI.\n"
+    "- Wrote the API error messages for 6 edge cases and handed them over to Engineering.\n"
+    "- Reviewed the settings page design and shared feedback with Design.\n"
     "- Drafted the Q3 roadmap deck and shared it with the team.\n"
-    "- Started the competitor pricing analysis for the reviews page.\n"
+    "- Started the churn analysis for the March cohort.\n"
     "- Met with Design to review the new onboarding flow.\n\n"
     "RULES:\n"
     "- Start each line with the most specific past-tense verb the input supports: Shipped, Published, "
     "Merged, Fixed, Built, Developed, Wrote, Drafted, Created, Reviewed, Audited, Researched, Analysed, "
     "Raised, Finalized, Completed, Reworked, Started, Discussed, Met with, Worked with <name> on. Use "
     "'Worked on' only when nothing more specific is true, and 'Started' for work begun but not finished.\n"
-    "- Put counts and versions in the line when the input has them (8 PRs, 184 terms, v1.57.0, "
-    "9 scenarios), and end with the outcome or hand-off the input shows (and shared it with Design; "
-    "to stage and prod).\n"
+    "- Put counts and versions in the line when the input has them (3 PRs, 40 pages, v2.4.0, "
+    "6 cases), and end with the outcome or hand-off the input shows (and shared it with Design; "
+    "to staging and production).\n"
     "- Never repeat a line: the same work across several sessions becomes one line.\n"
     "- Use real specifics from the prompts: issue/PR numbers (#253, #254), names that appear in the prompts, "
     "document/deliverable/product names. Never invent details not in the input.\n"
@@ -379,7 +379,7 @@ WEEKLY_PROMPT = (
     "become 'Shipped' or 'Merged'.\n"
     "- Never add people, teams, meetings, recipients or cadence words (weekly, daily) that are not in the "
     "input. 'Worked with <name>' only when the input shows that person working on it, not just asking for it.\n"
-    "- progress: 2-4 lines that sum up the week's direction (e.g. 'Continued steady delivery of changelogs.'), "
+    "- progress: 2-4 lines that sum up the week's direction (e.g. 'Kept a steady release cadence.'), "
     "only from what the dailies show.\n"
     "- blockers: only problems the dailies state (a revert, a failed build, something on hold). If none are "
     "stated, return an empty list. Never guess.\n"
@@ -400,7 +400,7 @@ def _clean_report(obj):
     out = {}
     for k in REPORT_KEYS:
         v = obj.get(k) if isinstance(obj, dict) else None
-        out[k] = [oneline(x, 160) for x in (v if isinstance(v, list) else []) if isinstance(x, str) and x.strip()][:6]
+        out[k] = [oneline(x, 160) for x in (v if isinstance(v, list) else []) if isinstance(x, str) and x.strip()][:4]
     return out
 
 
@@ -421,10 +421,13 @@ def polish_weekly(data, force=False):
         if c.get("edited") and not force:          # hand-edited weekly → keep
             data["highlights"] = c.get("highlights", [])
             data["detailed"] = c.get("detailed", [])
-            data["report"] = _clean_report(c.get("report"))
+            if "report" in c:
+                data["report"] = _clean_report(c.get("report"))
             data["edited"] = True
             return
-        if c.get("key") == key and not force:
+        # A cache from before the report sections has no "report": treat it as a
+        # miss so the first view after upgrading re-summarises.
+        if c.get("key") == key and "report" in c and not force:
             data["highlights"] = c.get("highlights", [])
             data["detailed"] = c.get("detailed", [])
             data["report"] = _clean_report(c.get("report"))
