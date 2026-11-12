@@ -101,10 +101,10 @@ class MeetingsSource(Source):
     section = "MEETINGS"
     key = "meetings"
     summary = "Calendar events for the day"
-    requires = "icalBuddy (brew install ical-buddy)"
+    requires = "Calendar access in the Mac app, or icalBuddy (brew install ical-buddy)"
 
     def available(self):
-        return any(os.path.exists(p) for p in
+        return meetings.app_calendar_on() or any(os.path.exists(p) for p in
                    ("/opt/homebrew/bin/icalBuddy", "/usr/local/bin/icalBuddy"))
 
     def read(self, date):
