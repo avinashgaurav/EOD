@@ -76,6 +76,22 @@ def build_projects(target):
         add_codex(projects, target)   # merge Codex sessions into the same project buckets
 
     # shape output, ordered by busiest project
+    # B9: sessions you moved to another project (Full day timeline) go there,
+    # so the timesheet counts them where they belong.
+    from .features import load_assignments
+    moves = load_assignments()
+    if moves:
+        for pn in list(projects):
+            keep = []
+            for s in projects[pn]:
+                dest = moves.get((target, s.get("start", ""), (s.get("title") or "").strip()))
+                if dest and dest != pretty_project(pn):
+                    projects.setdefault("~assigned~" + dest, []).append(s)
+                else:
+                    keep.append(s)
+            projects[pn] = keep
+        projects = {k: v for k, v in projects.items() if v}
+
     out_projects = []
     # Walk the raw project keys in sorted order so the stable sort below falls
     # back to the key itself when everything else ties: pretty names can collide.
@@ -83,7 +99,7 @@ def build_projects(target):
         sessions.sort(key=lambda s: s["start"])
         total = sum(len(s["prompts"]) for s in sessions)
         out_projects.append({
-            "name": pretty_project(pn), "total": total,
+            "name": pn[len("~assigned~"):] if pn.startswith("~assigned~") else pretty_project(pn), "total": total,
             "sessions": [{
                 "title": s["title"], "start": s["start"], "end": s["end"],
                 "source": s.get("source", "claude"),

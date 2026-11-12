@@ -113,6 +113,11 @@ def _extra(cmd, a, date):
         with open(real) as fh:
             features.save_plan(date, fh.read(4000))
         print("PLAN " + date)
+    elif cmd == "--assign":
+        if len(a) != 3 or not features.assign_session(date, a[0], a[1], a[2]):
+            sys.stderr.write("EOD: --assign wants HH:MM, the session title and a project name\n")
+            raise SystemExit(2)
+        print("ASSIGNED " + date)
     elif cmd == "--share-week":
         wd = build_weekly(date)
         apply_hide(wd)
@@ -160,9 +165,9 @@ def main():
             do_send = True
         elif a == "--standup":
             standup = True
-        elif a in ("--morning", "--search", "--ask", "--brag", "--history", "--plan-file", "--share-week"):
+        elif a in ("--morning", "--search", "--ask", "--brag", "--history", "--plan-file", "--share-week", "--assign"):
             extra_cmd = a
-            n = {"--search": 1, "--ask": 1, "--brag": 2, "--history": 1, "--plan-file": 1}.get(a, 0)
+            n = {"--search": 1, "--ask": 1, "--brag": 2, "--history": 1, "--plan-file": 1, "--assign": 3}.get(a, 0)
             extra_args = args[i + 1:i + 1 + n]
             skip.update(range(i + 1, i + 1 + n))
         elif a == "--text-file" and i + 1 < len(args):

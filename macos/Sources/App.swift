@@ -628,6 +628,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 curDate = c; hideDetail(); show(animate: false); rebuild(c, force: true)
             }
         case "shareWeek": shareWeek()
+        case "assign":
+            let start = b["start"] as? String ?? "", title = b["title"] as? String ?? ""
+            NSApp.activate(ignoringOtherApps: true)
+            let a = NSAlert(); a.messageText = "Assign this session to a project"
+            a.informativeText = "\(start)  \(title)\nTimesheets will count it under the project you type."
+            let f = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24)); f.placeholderString = "Project name"
+            a.accessoryView = f; a.addButton(withTitle: "Assign"); a.addButton(withTitle: "Cancel")
+            a.window.initialFirstResponder = f
+            guard a.runModal() == .alertFirstButtonReturn, !f.stringValue.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            Engine.run(["--date", curDate, "--assign", start, title, f.stringValue]) { [weak self] r in
+                guard let self = self else { return }
+                if r.code == 0 { self.rebuild(self.curDate, force: true) }
+                else { self.detail.js("window.toast&&toast('Couldn’t assign that session')") }
+            }
         case "print": printPanel(detail)
         case "timesheet": exportTimesheet()
         case "postWeekly", "postText": postText(b["text"] as? String ?? "", panel: detail)

@@ -721,11 +721,12 @@ def timeline_svg(data, width=476):
         for s in p.get("sessions") or []:
             a, b = _mins(s.get("start")), _mins(s.get("end"))
             if a is not None:
-                blocks.append(("work", a, max(b or a, a + 10), "%s: %s" % (p.get("name", ""), s.get("title", ""))))
+                blocks.append(("work", a, max(b or a, a + 10), "%s: %s" % (p.get("name", ""), s.get("title", "")),
+                               s.get("start", ""), s.get("title", "")))
     for m in data.get("meetings") or []:
         a = _mins(m.get("time"))
         if a is not None:
-            blocks.append(("meet", a, a + 30, "Meeting: %s" % m.get("title", "")))
+            blocks.append(("meet", a, a + 30, "Meeting: %s" % m.get("title", ""), "", ""))
     if not blocks:
         return ""
     lo = max(0, (min(b[1] for b in blocks) // 60) * 60)
@@ -737,11 +738,17 @@ def timeline_svg(data, width=476):
     for h in range(lo, hi + 1, 60):
         out.append(f"<line x1='{x(h)}' y1='0' x2='{x(h)}' y2='34' stroke='var(--line)'/>"
                    f"<text x='{x(h)}' y='44' font-size='9' text-anchor='middle' fill='var(--ink2)'>{h // 60:02d}</text>")
-    for kind, a, b, title in blocks:
+    for kind, a, b, title, start, stitle in blocks:
         y, fill = (4, "var(--carbon)") if kind == "work" else (20, "var(--accent)")
-        out.append(f"<rect x='{x(a)}' y='{y}' width='{max(2, x(b) - x(a))}' height='12' fill='{fill}' opacity='.85'>"
+        click = ""
+        if kind == "work" and start:
+            # Clicking a work block moves that session to another project (B9).
+            click = (f" class='tlw' tabindex='0' role='button' aria-label='{esc(title)}. Assign to a project' "
+                     f"onclick=\"send({{action:'assign',start:{esc(json.dumps(start))},title:{esc(json.dumps(stitle))}}})\"")
+        out.append(f"<rect x='{x(a)}' y='{y}' width='{max(2, x(b) - x(a))}' height='12' fill='{fill}' opacity='.85'{click}>"
                    f"<title>{esc(title)}</title></rect>")
-    out.append("</svg><div class='prov'>Top row: work sessions. Bottom row: meetings. Hover a block for its title.</div>")
+    out.append("</svg><div class='prov'>Top row: work sessions (click one to assign it to a project for timesheets). "
+               "Bottom row: meetings.</div>")
     return "".join(out)
 
 

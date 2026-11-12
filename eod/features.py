@@ -229,6 +229,40 @@ def plan_status(date, done_lines):
     return out
 
 
+# ── B9: assign a session to a project (for timesheets) ──────────────────────────
+def _assign_path():
+    return app_path("assign.txt")
+
+
+def load_assignments():
+    """{(date, start, title): project} from assign.txt lines 'date start | title => project'."""
+    out = {}
+    try:
+        with open(_assign_path()) as fh:
+            for line in fh:
+                if "=>" not in line or "|" not in line or line.lstrip().startswith("#"):
+                    continue
+                left, project = line.rsplit("=>", 1)
+                when, title = left.split("|", 1)
+                parts = when.split()
+                if len(parts) == 2 and project.strip():
+                    out[(parts[0], parts[1], title.strip())] = " ".join(project.split())[:80]
+    except OSError:
+        pass
+    return out
+
+
+def assign_session(date, start, title, project):
+    if not (DAY_RE.match(date or "") and re.match(r"^\d{2}:\d{2}$", start or "")):
+        return False
+    title, project = " ".join(str(title).split())[:200], " ".join(str(project).split())[:80]
+    if not title or not project or "=>" in title or "|" in title:
+        return False
+    with open(_assign_path(), "a") as fh:
+        fh.write("%s %s | %s => %s\n" % (date, start, title, project))
+    return True
+
+
 # ── B13: one gentle insight ────────────────────────────────────────────────────
 def insight_on():
     return os.path.exists(app_path("insight.on"))

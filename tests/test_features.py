@@ -176,6 +176,22 @@ class TestReviewFixes(FeatureCase):
         self.assertEqual(sent[1]["format"], "json")
 
 
+class TestAssign(FeatureCase):
+    def test_assigned_session_moves_project(self):
+        self.assertTrue(self.f.assign_session("2026-11-10", "09:12", "Fix parser", "Client A"))
+        self.assertFalse(self.f.assign_session("2026-11-10", "9am", "Fix parser", "Client A"))
+        self.assertFalse(self.f.assign_session("2026-11-10", "09:12", "a => b", "Client A"))
+        pipe = mod(self.ex, "eod.pipeline")
+        pipe.read_sessions = lambda d: ({"-Users-x-work-eod": [
+            {"start": "09:12", "end": "09:40", "title": "Fix parser", "prompts": [("09:12", "p")]},
+            {"start": "10:00", "end": "10:20", "title": "Docs", "prompts": [("10:00", "q")]}]}, 2, 0, 1)
+        pipe.add_codex = lambda p, d: None
+        projects = pipe.build_projects("2026-11-10")[0]
+        names = {p["name"]: [s["title"] for s in p["sessions"]] for p in projects}
+        self.assertEqual(names["Client A"], ["Fix parser"])
+        self.assertNotIn("Fix parser", sum((v for k, v in names.items() if k != "Client A"), []))
+
+
 class TestTimeline(unittest.TestCase):
     def test_sessions_and_meetings_drawn(self):
         h = mod(load_extract(), "eod.render.html")
