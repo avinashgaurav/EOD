@@ -12,21 +12,46 @@ enum Secrets {
          kSecAttrService as String: service, kSecAttrAccount as String: account]
     }
 
-    static func sendTargets() -> String? {
+    /// The stored text and the Keychain status. errSecItemNotFound means "none
+    /// saved"; any other failure (access denied after an update) is reported, never
+    /// treated as empty, so nothing gets overwritten by mistake.
+    static func read() -> (text: String?, status: OSStatus) {
         var q = query
         q[kSecReturnData as String] = true; q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let d = out as? Data else { return nil }
+        let st = SecItemCopyMatching(q as CFDictionary, &out)
+        guard st == errSecSuccess, let d = out as? Data else { return (nil, st) }
         let s = String(decoding: d, as: UTF8.self)
-        return s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : s
+        return (s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : s, st)
+    }
+
+    static func sendTargets() -> String? { read().text }
+
+    /// Destination names only ("Slack, Linear"), kept outside the Keychain so the
+    /// receipt can show the Send button without reading any secret.
+    static func labels(from text: String) -> String {
+        let names = ["slack": "Slack", "teams": "Teams", "linear": "Linear"]
+        var seen: [String] = []
+        for line in text.split(separator: "\n") {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            guard !t.isEmpty, !t.hasPrefix("#") else { continue }
+            let n = names[String(t.split(separator: " ").first ?? "").lowercased()] ?? "send.txt"
+            if !seen.contains(n) { seen.append(n) }
+        }
+        return seen.joined(separator: ",")
     }
 
     @discardableResult
     static func setSendTargets(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return SecItemDelete(query as CFDictionary) == errSecSuccess || true }
+        UserDefaults.standard.set(labels(from: trimmed), forKey: "sendLabels")
+        if trimmed.isEmpty {
+            let st = SecItemDelete(query as CFDictionary)
+            return st == errSecSuccess || st == errSecItemNotFound
+        }
         let data = Data(trimmed.utf8)
-        let st = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        let st = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly] as CFDictionary)
         if st == errSecItemNotFound {
             var add = query; add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
@@ -40,7 +65,11 @@ enum Secrets {
     static func importSendFileIfPresent() -> Bool {
         let f = Paths.support.appendingPathComponent("send.txt")
         guard let text = try? String(contentsOf: f, encoding: .utf8) else { return false }
-        let merged = [sendTargets(), text].compactMap { $0 }.joined(separator: "\n")
+        let existing = read()
+        guard existing.status == errSecSuccess || existing.status == errSecItemNotFound else {
+            Log.write("Keychain not readable (\(existing.status)); send.txt left in place"); return false
+        }
+        let merged = [existing.text, text].compactMap { $0 }.joined(separator: "\n")
         guard setSendTargets(merged) else { Log.write("could not move send.txt into the Keychain"); return false }
         try? FileManager.default.removeItem(at: f)
         return true
@@ -66,16 +95,21 @@ enum Retention {
 
     /// Everything EOD has stored: cache, settings files, hide rules and the
     /// Keychain item. The app and its engine stay, so it starts fresh.
-    static func deleteAll() {
+    @discardableResult
+    static func deleteAll() -> Bool {
         let fm = FileManager.default
         try? fm.removeItem(at: Paths.cache)
         for f in ["exclude.txt", "repos.txt", "hide.txt", "send.txt", "signature.txt", "ollama.txt", "polish.off"] {
             try? fm.removeItem(at: Paths.support.appendingPathComponent(f))
         }
-        Secrets.setSendTargets("")
+        let keychainOK = Secrets.setSendTargets("")
         try? fm.createDirectory(at: Paths.cache, withIntermediateDirectories: true)
-        // Start fully offline again until the person opts back in.
+        // Start fully offline again until the person opts back in. The welcome
+        // window is not shown again; the AI tidy-up menu turns it back on.
         fm.createFile(atPath: Paths.support.appendingPathComponent("polish.off").path, contents: Data())
+        for k in ["keepDays", "sendLabels"] { UserDefaults.standard.removeObject(forKey: k) }
+        let cacheGone = (try? fm.contentsOfDirectory(atPath: Paths.cache.path))?.isEmpty ?? true
+        return keychainOK && cacheGone
     }
 }
 

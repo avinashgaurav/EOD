@@ -56,6 +56,7 @@ def share_image(data):
             data["highlights"] = [h for h in hl if isinstance(h, str) and h.strip()]
     except Exception:
         pass                           # never polished: the card shows totals only
+    apply_hide(data)                   # hidden lines never reach the image
     base = os.path.join(CACHE, data["date"])
     with open(base + "-share.html", "w") as f:
         f.write(to_html_share(data))
@@ -75,9 +76,13 @@ def main():
     share = False
     do_send = False
     args = sys.argv[1:]
+    skip = set()
     for i, a in enumerate(args):
+        if i in skip:
+            continue
         if a == "--date" and i + 1 < len(args):
             date = args[i + 1]
+            skip.add(i + 1)
         elif a == "--print":
             do_print = True
         elif a == "--repolish":
@@ -92,6 +97,7 @@ def main():
             do_send = True
         elif a == "--hide" and i + 2 < len(args):
             # Never show this: one rule into hide.txt, then rebuild as usual.
+            skip.update((i + 1, i + 2))
             from .hide import add_hide_rule
             if not add_hide_rule(args[i + 1], args[i + 2]):
                 sys.stderr.write("EOD: --hide wants line|site|app and a value\n")

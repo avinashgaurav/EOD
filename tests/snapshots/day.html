@@ -59,6 +59,7 @@ button{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transfo
   color:var(--ink);background:transparent;border:1px dashed var(--line);border-radius:4px;
   padding:5px 9px;cursor:pointer;transition:.12s}
 button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
+button:disabled{opacity:.4;cursor:not-allowed}
 
 /* section label (CLAUDE CODE / SCREEN TIME / WEB) */
 .sect{font-size:9.5px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;
@@ -166,7 +167,7 @@ function copyText(txt,label){
     ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
   toast((label||'Copied')+' ✓');}
 function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
-function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hidden from now on');else toast('Hiding works from the app')}
+function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hiding…');else toast('Hiding works from the app')}
 function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
   document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
     L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\u2022 '+x.textContent)});L.push('')});

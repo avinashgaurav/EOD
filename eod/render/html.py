@@ -69,6 +69,7 @@ button{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;text-transfo
   color:var(--ink);background:transparent;border:1px dashed var(--line);border-radius:4px;
   padding:5px 9px;cursor:pointer;transition:.12s}
 button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
+button:disabled{opacity:.4;cursor:not-allowed}
 
 /* section label (CLAUDE CODE / SCREEN TIME / WEB) */
 .sect{font-size:9.5px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;
@@ -163,7 +164,7 @@ function copyText(txt,label){
     ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
   toast((label||'Copied')+' ✓');}
 function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
-function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hidden from now on');else toast('Hiding works from the app')}
+function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hiding…');else toast('Hiding works from the app')}
 function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
   document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
     L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\\u2022 '+x.textContent)});L.push('')});
@@ -414,12 +415,14 @@ def to_html(data, send_to=()):
     P.append(("<div class='actions' style='flex-wrap:wrap;row-gap:7px;white-space:nowrap'>"
               if send_to else "<div class='actions'>") +
              "<button class='copyall primary' onclick=\"copyEl('updText','Update copied')\" "
+             + ("disabled title='Nothing to copy yet: no work recorded' " if to_standup(data) is None else "") +
              "title='Copy the work update: work lines only, no screen time or sites'>⎙ Copy update</button>"
              "<button class='copyall seeall' onclick=\"send({action:'full'})\" title='Everything from today'>Full day</button>"
              "<button class='copyall' onclick=\"send({action:'share'});toast('Drawing the image…')\" "
              "title='Copy the day as an image for X / LinkedIn' aria-label='Share as image'>⇪</button>"
              + (f"<button id='sendBtn' onclick='postUpdate(this)' "
-                f"title='Post the work update to {esc(', '.join(send_to))}'>↗ Send</button>"
+                f"title='Post the work update to {esc(', '.join(send_to))}'"
+                + (" disabled" if to_standup(data) is None else "") + ">↗ Send</button>"
                 if send_to else "") +
              "</div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude{_sig_html()}</div>")
@@ -427,7 +430,7 @@ def to_html(data, send_to=()):
     P.append(f"<div id='allText' style='display:none'>{esc(to_text(data))}</div>")
     # What "Copy update" and Send share: work lines only (F01). Screen time and
     # browsing stay on the Mac unless you copy them on purpose.
-    P.append(f"<div id='updText' style='display:none'>{esc(to_standup(data) or to_text(data))}</div>")
+    P.append(f"<div id='updText' style='display:none'>{esc(to_standup(data) or '')}</div>")
     if send_to:
         P.append(f"<div id='sendTo' style='display:none'>{esc(', '.join(send_to))}</div>")
     P.append("</div></div></div>")  # receipt, roll, surface

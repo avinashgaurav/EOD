@@ -16,6 +16,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .config import CACHE, SEND_LABELS, app_path, load_send_targets
+from .hide import apply_hide
 from .render.text import to_standup
 
 TIMEOUT = 15
@@ -150,6 +151,10 @@ def _send_one(target, data):
 
 
 def card_data(date, build):
+    return apply_hide(_card_data(date, build))   # what is sent matches the preview, rules included
+
+
+def _card_data(date, build):
     """The day exactly as the card shows it, without asking the claude CLI for
     anything: the cached day (cache/<date>.json, written with the card), with
     hand edits saved since then laid over it. With no cached day, a fresh build
@@ -186,6 +191,7 @@ def send_day(data, targets=None):
     targets = load_send_targets() if targets is None else targets
     if not targets:
         return [], ["nothing to send to: add a destination to send.txt"]
+    data = apply_hide(data)
     if to_standup(data) is None:
         return [], ["no work recorded for this day, nothing sent"]
     sent, failed = [], []

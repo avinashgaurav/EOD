@@ -8,7 +8,7 @@
 <meta name="color-scheme" content="light dark">
 
 <meta property="og:title" content="EOD: your whole work day, printed as a receipt.">
-<meta property="og:description" content="A macOS widget that rebuilds your work day from files already on your Mac: AI coding sessions, commits, docs, browsing, screen time.">
+<meta property="og:description" content="A Mac menu-bar app that rebuilds your work day from files already on your Mac: AI coding sessions, commits, docs, browsing, screen time.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/screenshots/brief.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -755,7 +755,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
       and no telemetry. Three things can send, and each one only when you choose it:
     </p>
     <dl class="rows">
-      <div class="row"><dt>AI tidy-up</dt><dd>Off until you turn it on. Then it goes through your own <code>claude</code> CLI login,
+      <div class="row"><dt>AI tidy-up</dt><dd>Off in the Mac app until you turn it on. Then it goes through your own <code>claude</code> CLI login,
         or to a local Ollama model that never leaves the Mac. <em>Preview the exact text first from the menu.</em></dd></div>
       <div class="row"><dt>Send</dt><dd>Posts your work update to Slack, Teams or Linear, only when you press Send and confirm the preview.
         <em>Destinations are stored in your macOS Keychain.</em></dd></div>
@@ -763,18 +763,17 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
     </dl>
     <div class="statement">
       <p class="note">
-        <strong>The one exception is the optional AI-polish step.</strong>
-        If your <code>claude</code> CLI is logged in, EOD asks it to rewrite the day into
-        crisper, manager-ready bullets. That goes through your existing CLI login, not an
-        API key. Missing CLI? It falls back to fully-offline cleanup. This is the one path
-        that crosses the boundary in the diagram above.
+        <strong>The AI tidy-up is the only automatic path out, and only once you turn it on.</strong>
+        In the Mac app it starts off; you choose Claude (through your own <code>claude</code> CLI login,
+        not an API key), Ollama on your Mac, or Off. The older Hammerspoon widget uses Claude whenever the
+        CLI is logged in; <code>touch polish.off</code> turns that off.
       </p>
     </div>
 
     <h3 style="margin-top:36px">Exactly what that step sends</h3>
     <p class="note deck" style="margin-top:8px">
       Worth being specific, because "local-first" is easy to claim and hard to check.
-      Nothing else in EOD leaves your Mac.
+      Apart from Send and the share image, which only go where you put them, nothing else leaves your Mac.
       (This web page counts anonymous visits; the EOD app itself has no telemetry.)
     </p>
     <dl class="rows">
@@ -815,7 +814,8 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
     <p class="note">
       Read it first: <a href="/install.sh">install.sh</a> is about 60 lines. It checks for macOS 13+ and python3,
       downloads <code>EOD.zip</code> from the
-      <a href="https://github.com/avinashgaurav/EOD/releases/latest">latest GitHub release</a>, checks its SHA-256,
+      <a href="https://github.com/avinashgaurav/EOD/releases/latest">latest GitHub release</a>, checks it against the
+      published SHA-256 (this catches a broken download, not a tampered release),
       puts EOD in Applications and opens it. No sudo, nothing else installed.
       Uninstall: quit EOD, then <code>rm -rf /Applications/EOD.app ~/Library/Application\ Support/EOD</code>.
     </p>

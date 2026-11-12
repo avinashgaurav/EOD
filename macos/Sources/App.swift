@@ -173,8 +173,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         _ = TextWindow(title: "Send destinations", body: current,
                        note: "Where ↗ Send posts your update. Stored in the macOS Keychain on this Mac only.",
                        editable: true) { [weak self] text in
-            let lines = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
-            Secrets.setSendTargets(lines.joined(separator: "\n"))
+            guard Secrets.setSendTargets(text) else {      // comments are kept; the engine skips them
+                self?.alert("Couldn't save to the Keychain", "Your destinations were not saved. Try again, and allow access if macOS asks.")
+                return
+            }
             if let self = self { self.rebuild(self.curDate, force: true) }
         }
     }
@@ -188,8 +190,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         a.informativeText = "This removes every saved receipt, weekly report, screen-time record, your settings files, hide rules and the send destinations in the Keychain. It can't be undone. The app stays installed."
         a.addButton(withTitle: "Delete everything"); a.addButton(withTitle: "Cancel")
         guard a.runModal() == .alertFirstButtonReturn else { return }
-        hide(); usage.stop(); Retention.deleteAll(); usage.start()
-        alert("Deleted", "EOD starts fresh. AI tidy-up is off until you turn it on.")
+        hide(); usage.stop(); let ok = Retention.deleteAll(); usage.start()
+        rebuild(curDate, force: true, cacheOnly: true)
+        if ok { alert("Deleted", "EOD starts fresh. AI tidy-up is off until you turn it on.") }
+        else { alert("Some data could not be deleted", "Open the data folder from the menu to remove what is left, and check Keychain Access for \"com.avinashgaurav.eod\".") }
     }
 
     @objc private func toggleShowAtStart() { defaults.set(!defaults.bool(forKey: "showAtStart"), forKey: "showAtStart") }
@@ -379,7 +383,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             let kind = b["kind"] as? String ?? "", value = b["value"] as? String ?? ""
             guard ["line", "site", "app"].contains(kind), !value.isEmpty else { return }
             Engine.run(["--date", curDate, "--hide", kind, value]) { [weak self] r in
-                guard let self = self, r.code == 0, let t = r.tagged else { return }
+                guard let self = self else { return }
+                guard r.code == 0, let t = r.tagged else {
+                    self.receipt.js("window.toast&&toast('Couldn’t hide that. Try again.')"); return
+                }
                 self.receipt.load(path: t.rest, animate: false)
             }
         case "nav":

@@ -139,8 +139,8 @@ def load_send_targets():
     {'bad': line_number} so the send can say which line to fix, without ever
     echoing what is on it."""
     # The Mac app keeps destinations in the Keychain and hands them over in this
-    # variable for the one run that needs them, so no secret sits in a file.
-    env = os.environ.get("EOD_SEND_TARGETS")
+    # variable for the one --send run, so no secret sits in a file.
+    env = _send_env()
     if env is not None:
         lines = env.splitlines()
     else:
@@ -169,6 +169,9 @@ def send_labels():
     """Display names of the configured destinations, for the button's tooltip.
     A send.txt with only broken lines still shows the button, so pressing it
     can say what is wrong rather than the button silently not being there."""
+    labels = _send_labels_env()
+    if labels is not None:          # the app passes names only, never the secrets
+        return [x for x in labels.split(",") if x]
     seen = []
     for t in load_send_targets():
         name = SEND_LABELS.get(t["kind"], "send.txt")
@@ -202,6 +205,28 @@ CHROME_EPOCH = 11644473600   # seconds from 1601-01-01 to the unix epoch
 SAFARI_EPOCH = 978307200     # seconds from 2001-01-01 to the unix epoch
 
 
+# Secrets handed over by the Mac app are taken OUT of the environment the moment
+# the engine starts, so no child process (claude, git, gh, icalBuddy) inherits them.
+_SEND_ENV = os.environ.pop("EOD_SEND_TARGETS", None)
+_LABELS_ENV = os.environ.pop("EOD_SEND_LABELS", None)
+
+
+def _send_env():
+    global _SEND_ENV
+    v = os.environ.pop("EOD_SEND_TARGETS", None)
+    if v is not None:
+        _SEND_ENV = v
+    return _SEND_ENV
+
+
+def _send_labels_env():
+    global _LABELS_ENV
+    v = os.environ.pop("EOD_SEND_LABELS", None)
+    if v is not None:
+        _LABELS_ENV = v
+    return _LABELS_ENV
+
+
 def _full_env():
     """Env that subprocesses (claude/gh/icalBuddy) need to authenticate — Hammerspoon's
     task env omits USER/PATH, which breaks auth."""
@@ -211,6 +236,7 @@ def _full_env():
     except Exception:
         u = os.path.basename(os.path.expanduser("~")) or "user"
     e = dict(os.environ)
+    e.pop("EOD_SEND_TARGETS", None)       # never hand webhooks or API keys to a child process
     e["HOME"] = os.path.expanduser("~")
     e["USER"] = u
     e["LOGNAME"] = u

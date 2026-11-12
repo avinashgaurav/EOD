@@ -88,7 +88,20 @@ enum Engine {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         env["LANG"] = "en_US.UTF-8"
-        if let targets = Secrets.sendTargets() { env["EOD_SEND_TARGETS"] = targets }   // from the Keychain, never a file
+        // Destination NAMES go to every run (for the Send button). The secrets are
+        // read from the Keychain only for --send, and the engine removes them from
+        // its environment at start, so no child process ever inherits them.
+        env["EOD_SEND_LABELS"] = UserDefaults.standard.string(forKey: "sendLabels") ?? ""
+        if args.contains("--send") {
+            let k = Secrets.read()
+            guard k.status == errSecSuccess || k.status == errSecItemNotFound else {
+                Log.write("Keychain read failed for send: \(k.status)")
+                DispatchQueue.main.async { done(Result(code: 1, out: "",
+                    err: "Couldn't read your send destinations from the Keychain. Allow access when macOS asks, then try again.")) }
+                return nil
+            }
+            if let t = k.text { env["EOD_SEND_TARGETS"] = t }
+        }
         p.environment = env
         let outPipe = Pipe(), errPipe = Pipe()
         p.standardOutput = outPipe; p.standardError = errPipe

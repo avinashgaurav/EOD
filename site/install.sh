@@ -40,12 +40,11 @@ main() {
   tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
   say "Downloading EOD…"
   curl -fsSL "$URL" -o "$tmp/EOD.zip" || die "could not download $URL"
-  if curl -fsSL "$URL.sha256" -o "$tmp/EOD.zip.sha256" 2>/dev/null; then
-    want="$(awk '{print $1}' "$tmp/EOD.zip.sha256")"
-    got="$(shasum -a 256 "$tmp/EOD.zip" | awk '{print $1}')"
-    [ "$want" = "$got" ] || die "checksum mismatch: the download is not the published EOD.zip"
-    say "Checksum OK ($got)"
-  fi
+  curl -fsSL "$URL.sha256" -o "$tmp/EOD.zip.sha256" || die "could not download the checksum ($URL.sha256)"
+  want="$(awk '{print $1}' "$tmp/EOD.zip.sha256")"
+  got="$(shasum -a 256 "$tmp/EOD.zip" | awk '{print $1}')"
+  { [ -n "$want" ] && [ "$want" = "$got" ]; } || die "checksum mismatch: the download is not the published EOD.zip"
+  say "Checksum OK ($got)"
   ditto -x -k "$tmp/EOD.zip" "$tmp" || die "the download is not a valid zip"
   [ -d "$tmp/EOD.app" ] || die "the zip has no EOD.app inside"
 

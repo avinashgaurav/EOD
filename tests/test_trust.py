@@ -55,7 +55,7 @@ class TestSendTargetsFromEnv(unittest.TestCase):
         try:
             t = cfg.load_send_targets()
         finally:
-            del os.environ["EOD_SEND_TARGETS"]
+            os.environ.pop("EOD_SEND_TARGETS", None)
         self.assertEqual(t[0], {"kind": "slack", "url": "https://hooks.slack.com/services/T/B/x"})
         self.assertEqual(t[1], {"kind": None, "bad": 2})
         self.assertEqual(len(t), 2)
@@ -95,3 +95,55 @@ class TestCopyDefaults(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSecretsNeverReachChildren(unittest.TestCase):
+    def test_send_targets_are_removed_from_child_env(self):
+        os.environ["EOD_SEND_TARGETS"] = "slack https://hooks.slack.com/services/T/B/secret"
+        try:
+            cfg = mod(load_extract(), "eod.config")
+            self.assertNotIn("EOD_SEND_TARGETS", os.environ)          # popped at engine start
+            self.assertNotIn("EOD_SEND_TARGETS", cfg._full_env())     # and never handed to a child
+            self.assertEqual(cfg.load_send_targets()[0]["kind"], "slack")  # still usable for --send
+        finally:
+            os.environ.pop("EOD_SEND_TARGETS", None)
+
+    def test_labels_come_from_names_only(self):
+        os.environ["EOD_SEND_LABELS"] = "Slack,Linear"
+        try:
+            cfg = mod(load_extract(), "eod.config")
+            self.assertEqual(cfg.send_labels(), ["Slack", "Linear"])
+        finally:
+            os.environ.pop("EOD_SEND_LABELS", None)
+
+
+class TestHideEverywhere(unittest.TestCase):
+    def setUp(self):
+        self.ex = load_extract()
+        self.cfg = mod(self.ex, "eod.config")
+        self.tmp = tempfile.mkdtemp()
+        self.cfg.APP_DIR = self.tmp
+        hide = mod(self.ex, "eod.hide")
+        hide.add_hide_rule("line", "dentist", os.path.join(self.tmp, "hide.txt"))
+        self.hide = hide
+
+    def test_send_and_its_preview_agree(self):
+        send = mod(self.ex, "eod.send")
+        send.CACHE = self.tmp
+        with open(os.path.join(self.tmp, "2026-11-10.json"), "w") as fh:
+            json.dump({"date": "2026-11-10", "projects": [], "highlights": ["Fixed the parser.", "Booked the dentist."]}, fh)
+        d = send.card_data("2026-11-10", lambda _d: {})
+        self.assertEqual(d["highlights"], ["Fixed the parser."])
+
+    def test_weekly_never_sees_hidden_lines(self):
+        self.assertEqual(self.hide.hide_lines(["Fixed it.", "Dentist at 4."]), ["Fixed it."])
+
+    def test_meetings_prs_prompts_and_page_titles(self):
+        d = {"projects": [{"name": "p", "sessions": [{"title": "Work", "prompts": [{"text": "call the dentist"}, {"text": "fix"}]}]}],
+             "meetings": [{"title": "Dentist"}, {"title": "Standup"}], "prs": [{"title": "dentist bot"}],
+             "web": [{"host": "x.com", "titles": [{"title": "dentist near me"}, {"title": "docs"}]}]}
+        self.hide.apply_hide(d)
+        self.assertEqual([p["text"] for p in d["projects"][0]["sessions"][0]["prompts"]], ["fix"])
+        self.assertEqual([m["title"] for m in d["meetings"]], ["Standup"])
+        self.assertEqual(d["prs"], [])
+        self.assertEqual([t["title"] for t in d["web"][0]["titles"]], ["docs"])
