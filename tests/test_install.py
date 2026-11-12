@@ -133,5 +133,25 @@ class TestPartialInstall(InstallCase):
                           % combined[-600:])
 
 
+
+class TestOneLineInstaller(unittest.TestCase):
+    """site/install.sh is piped into bash from the web, so it must parse, never
+    use sudo, and never touch the Hammerspoon install."""
+
+    PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "site", "install.sh")
+
+    def test_parses(self):
+        import subprocess
+        self.assertEqual(subprocess.run(["bash", "-n", self.PATH]).returncode, 0)
+
+    def test_no_sudo_and_hammerspoon_untouched(self):
+        with open(self.PATH) as fh:
+            body = fh.read()
+        code = "\n".join(l for l in body.splitlines() if not l.lstrip().startswith("#"))
+        self.assertNotIn("sudo", code)
+        for line in code.splitlines():
+            if ".hammerspoon" in line:
+                self.assertFalse(any(w in line for w in ("rm ", "mv ", "cp ", "ditto ", "> ")), line)
+
 if __name__ == "__main__":
     unittest.main()

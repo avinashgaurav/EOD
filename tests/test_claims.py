@@ -616,7 +616,7 @@ class TestWeeklyReport(TestWeeklySourceClaims):
         self.assertIn("Commits: 3.", text)
         page = ex.to_html_weekly(data)
         self.assertIn("TIME SPENT", page)
-        self.assertIn("COPY REPORT", page)
+        self.assertIn("Copy report", page)
 
     def test_no_blocker_claim_without_a_summary(self):
         ex = self.ex

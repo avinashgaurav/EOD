@@ -131,29 +131,45 @@ def _sig_html():
 SEND_FILE = app_path("send.txt")
 
 
-SEND_LABELS = {"slack": "Slack", "teams": "Teams", "linear": "Linear"}
+SEND_LABELS = {"slack": "Slack", "teams": "Teams", "linear": "Linear", "email": "Email draft"}
 
 
 def load_send_targets():
     """Every line of send.txt, parsed. A line that does not parse is kept as
     {'bad': line_number} so the send can say which line to fix, without ever
     echoing what is on it."""
-    try:
-        with open(SEND_FILE) as fh:
-            lines = fh.read().splitlines()
-    except OSError:
-        return []
+    # The Mac app keeps destinations in the Keychain and hands them over in this
+    # variable for the one --send run, so no secret sits in a file.
+    env = _send_env()
+    if env is not None:
+        lines = env.splitlines()
+    else:
+        try:
+            with open(SEND_FILE) as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            return []
     out = []
     for n, line in enumerate(lines, 1):
         s = line.strip()
         if not s or s.startswith("#"):
             continue
         parts = s.split()
-        kind = parts[0].lower()
+        # Optional per-destination format (B10): format=plain|markdown at the end.
+        fmt = None
+        if parts and parts[-1].lower().startswith("format="):
+            fmt = parts.pop()[7:].lower()
+            if fmt not in ("plain", "markdown"):
+                out.append({"kind": None, "bad": n})
+                continue
+        kind = parts[0].lower() if parts else ""
         if kind in ("slack", "teams") and len(parts) == 2:
-            out.append({"kind": kind, "url": parts[1]})
+            out.append({"kind": kind, "url": parts[1], "format": fmt})
         elif kind == "linear" and len(parts) == 3:
-            out.append({"kind": kind, "key": parts[1], "issue": parts[2]})
+            out.append({"kind": kind, "key": parts[1], "issue": parts[2], "format": fmt})
+        elif kind == "email" and len(parts) == 2 and "@" in parts[1]:
+            # A draft to your manager: the app opens it in your mail app; EOD never sends email.
+            out.append({"kind": "email", "to": parts[1], "format": fmt})
         else:
             out.append({"kind": None, "bad": n})
     return out
@@ -163,6 +179,9 @@ def send_labels():
     """Display names of the configured destinations, for the button's tooltip.
     A send.txt with only broken lines still shows the button, so pressing it
     can say what is wrong rather than the button silently not being there."""
+    labels = _send_labels_env()
+    if labels is not None:          # the app passes names only, never the secrets
+        return [x for x in labels.split(",") if x]
     seen = []
     for t in load_send_targets():
         name = SEND_LABELS.get(t["kind"], "send.txt")
@@ -196,6 +215,44 @@ CHROME_EPOCH = 11644473600   # seconds from 1601-01-01 to the unix epoch
 SAFARI_EPOCH = 978307200     # seconds from 2001-01-01 to the unix epoch
 
 
+# Secrets handed over by the Mac app are taken OUT of the environment the moment
+# the engine starts, so no child process (claude, git, gh, icalBuddy) inherits them.
+_SEND_ENV = os.environ.pop("EOD_SEND_TARGETS", None)
+_LABELS_ENV = os.environ.pop("EOD_SEND_LABELS", None)
+
+
+def _send_env():
+    global _SEND_ENV
+    v = os.environ.pop("EOD_SEND_TARGETS", None)
+    if v is not None:
+        _SEND_ENV = v
+    return _SEND_ENV
+
+
+def _send_labels_env():
+    global _LABELS_ENV
+    v = os.environ.pop("EOD_SEND_LABELS", None)
+    if v is not None:
+        _LABELS_ENV = v
+    return _LABELS_ENV
+
+
+# Sources you switched off, one name per line in sources.off (the Mac app's
+# Settings writes it): git, github, web, apps, docs, meetings, claude-code, codex.
+def brief_web_on():
+    """Sites on the daily receipt are opt-in (audit F36): they live on the full
+    day view unless brief-web.on exists (Settings writes it)."""
+    return os.path.exists(app_path("brief-web.on"))
+
+
+def load_sources_off():
+    try:
+        with open(app_path("sources.off")) as fh:
+            return {l.strip().lower() for l in fh if l.strip() and not l.strip().startswith("#")}
+    except OSError:
+        return set()
+
+
 def _full_env():
     """Env that subprocesses (claude/gh/icalBuddy) need to authenticate — Hammerspoon's
     task env omits USER/PATH, which breaks auth."""
@@ -205,6 +262,7 @@ def _full_env():
     except Exception:
         u = os.path.basename(os.path.expanduser("~")) or "user"
     e = dict(os.environ)
+    e.pop("EOD_SEND_TARGETS", None)       # never hand webhooks or API keys to a child process
     e["HOME"] = os.path.expanduser("~")
     e["USER"] = u
     e["LOGNAME"] = u

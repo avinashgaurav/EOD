@@ -1,4 +1,6 @@
-# Install — EOD
+# Install: EOD
+
+> **New: the Mac app.** One command, no Hammerspoon: `curl -fsSL https://eodreceipt.vercel.app/install.sh | bash`. See [docs/mac-app.md](docs/mac-app.md). The Hammerspoon setup below still works.
 
 A little macOS desktop widget that turns your day (Claude Code and Codex sessions,
 commits, documents, browsing, meetings and screen time) into a daily "work

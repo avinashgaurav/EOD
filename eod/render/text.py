@@ -117,7 +117,7 @@ def extra_lines(data):
 
 def to_text(data):
     """Brief, paste-when-asked summary: the important items, lightly grouped."""
-    L = [f"Daily update — {pretty_date(data['date'])}", ""]
+    L = [f"Daily update: {pretty_date(data['date'])}", ""]
     warns = source_warnings(data)
     extras = extra_lines(data)
     # A quiet day is not the same as a day where something broke or a plugin
@@ -152,7 +152,7 @@ def to_text(data):
 
 def to_text_full(data):
     """Everything, verbose: titles + the actual prompts, all apps, all sites + pages."""
-    L = [f"Full work log — {pretty_date(data['date'])}", ""]
+    L = [f"Full work log: {pretty_date(data['date'])}", ""]
     warns = source_warnings(data)
     extras = extra_lines(data)
     if not (data["projects"] or data.get("apps") or data.get("web")
@@ -162,7 +162,7 @@ def to_text_full(data):
                  else "No activity recorded for this day.")
         return "\n".join(L)
     if data.get("detailed"):
-        L.append("WORK — DETAILED")
+        L.append("WORK IN DETAIL")
         for g in data["detailed"]:
             L.append("  " + g["area"])
             for it in g["items"]:
@@ -180,7 +180,7 @@ def to_text_full(data):
     if data.get("commits") or data.get("prs"):
         L.append("SHIPPED")
         for p in data.get("prs", []):
-            L.append(f"  PR #{p['number']} ({p['state']}) — {p['title']}  [{p['repo']}]")
+            L.append(f"  PR #{p['number']} ({p['state']}): {p['title']}  [{p['repo']}]")
         byrepo = {}
         for c in data.get("commits", []):
             byrepo.setdefault(c["repo"], []).append(c)
@@ -202,7 +202,7 @@ def to_text_full(data):
     if data.get("apps"):
         L.append("SCREEN TIME")
         for a in data["apps"][:APP_MAX]:
-            L.append(f"  {a['name']} — {fmt_dur(a['secs'])}")
+            L.append(f"  {a['name']}: {fmt_dur(a['secs'])}")
         L.append("")
     if data.get("web"):
         L.append("WEB")
@@ -228,7 +228,7 @@ def project_text(p):
 def apps_text(data):
     L = ["SCREEN TIME"]
     for a in data.get("apps", [])[:APP_MAX]:
-        L.append(f"  {a['name']} — {fmt_dur(a['secs'])}")
+        L.append(f"  {a['name']}: {fmt_dur(a['secs'])}")
     return "\n".join(L)
 
 
@@ -267,11 +267,11 @@ def weekly_sections(data):
     t = data.get("time") or {}
     if t.get("total"):
         per_day = ", ".join("%s %s" % (_day_name(d["date"]), fmt_dur(d["secs"])) for d in t["days"])
-        lines = ["Screen time: %s across %d day%s (%s)." % (fmt_dur(t["total"]), len(t["days"]),
-                                                           "" if len(t["days"]) == 1 else "s", per_day)]
+        out.append(("Time spent", ["Screen time: %s across %d day%s (%s)." % (
+            fmt_dur(t["total"]), len(t["days"]), "" if len(t["days"]) == 1 else "s", per_day)]))
         if t.get("top_apps"):
-            lines.append("Most time in: " + ", ".join("%s %s" % (a["name"], fmt_dur(a["secs"])) for a in t["top_apps"]) + ".")
-        out.append(("Time spent", lines))
+            out.append(("Time by app", ["Most time in: " + ", ".join(
+                "%s %s" % (a["name"], fmt_dur(a["secs"])) for a in t["top_apps"]) + "."]))
     if rep.get("collaboration"):
         out.append(("Collaboration", rep["collaboration"]))
     if rep.get("next_steps"):

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from .config import CACHE
 from .polish import polish_weekly
+from .hide import hide_lines, load_hide_rules
 from .util import split_problem
 
 
@@ -66,7 +67,8 @@ def week_time(dates):
             apps[a.get("name", "?")] = apps.get(a.get("name", "?"), 0) + s
         if secs:
             days.append({"date": d, "secs": secs})
-    top = sorted(apps.items(), key=lambda kv: -kv[1])[:3]
+    hidden_apps = load_hide_rules()["app"]
+    top = sorted(((n, s) for n, s in apps.items() if n.lower() not in hidden_apps), key=lambda kv: -kv[1])[:3]
     return {"days": days, "total": sum(x["secs"] for x in days),
             "top_apps": [{"name": n, "secs": s} for n, s in top]}
 
@@ -110,7 +112,8 @@ def week_source_problems(dates):
 
 def build_weekly(date, force=False):
     ws, we, dates = _week_dates(date)
-    days = [(d, _day_highlights(d)) for d in dates]
+    rules = load_hide_rules()
+    days = [(d, hide_lines(_day_highlights(d), rules)) for d in dates]   # hidden lines never reach the weekly AI call
     days = [(d, h) for d, h in days if h]
     data = {"week_start": ws, "week_end": we, "days": days,
             "generated_at": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S"),
