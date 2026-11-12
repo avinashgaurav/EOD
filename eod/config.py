@@ -131,7 +131,7 @@ def _sig_html():
 SEND_FILE = app_path("send.txt")
 
 
-SEND_LABELS = {"slack": "Slack", "teams": "Teams", "linear": "Linear"}
+SEND_LABELS = {"slack": "Slack", "teams": "Teams", "linear": "Linear", "email": "Email draft"}
 
 
 def load_send_targets():
@@ -155,11 +155,21 @@ def load_send_targets():
         if not s or s.startswith("#"):
             continue
         parts = s.split()
-        kind = parts[0].lower()
+        # Optional per-destination format (B10): format=plain|markdown at the end.
+        fmt = None
+        if parts and parts[-1].lower().startswith("format="):
+            fmt = parts.pop()[7:].lower()
+            if fmt not in ("plain", "markdown"):
+                out.append({"kind": None, "bad": n})
+                continue
+        kind = parts[0].lower() if parts else ""
         if kind in ("slack", "teams") and len(parts) == 2:
-            out.append({"kind": kind, "url": parts[1]})
+            out.append({"kind": kind, "url": parts[1], "format": fmt})
         elif kind == "linear" and len(parts) == 3:
-            out.append({"kind": kind, "key": parts[1], "issue": parts[2]})
+            out.append({"kind": kind, "key": parts[1], "issue": parts[2], "format": fmt})
+        elif kind == "email" and len(parts) == 2 and "@" in parts[1]:
+            # A draft to your manager: the app opens it in your mail app; EOD never sends email.
+            out.append({"kind": "email", "to": parts[1], "format": fmt})
         else:
             out.append({"kind": None, "bad": n})
     return out

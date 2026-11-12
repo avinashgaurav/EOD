@@ -56,7 +56,7 @@ class TestSendTargetsFromEnv(unittest.TestCase):
             t = cfg.load_send_targets()
         finally:
             os.environ.pop("EOD_SEND_TARGETS", None)
-        self.assertEqual(t[0], {"kind": "slack", "url": "https://hooks.slack.com/services/T/B/x"})
+        self.assertEqual(t[0], {"kind": "slack", "url": "https://hooks.slack.com/services/T/B/x", "format": None})
         self.assertEqual(t[1], {"kind": None, "bad": 2})
         self.assertEqual(len(t), 2)
 
