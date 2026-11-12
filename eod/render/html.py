@@ -619,8 +619,10 @@ def to_html(data, send_to=()):
         P.append(f"<div class='kv tot'><span class='k'>Screen</span><span class='dots'></span><span class='v'>{fmt_dur(app_total)}</span></div>")
     if web and brief_web_on():
         P.append(f"<div class='kv tot'><span class='k'>Sites</span><span class='dots'></span><span class='v'>{len(web)}</span></div>")
-    P.append(f"<div class='kv tot'><span class='k'>From</span><span class='dots'></span><span class='v'>{t0}</span></div>")
-    P.append(f"<div class='kv tot'><span class='k'>To</span><span class='dots'></span><span class='v'>{t1}</span></div>")
+    # First and last activity seen, not hours worked (F48): a session with one
+    # prompt has no length, and breaks are not visible.
+    P.append(f"<div class='kv tot'><span class='k'>First activity</span><span class='dots'></span><span class='v'>{t0}</span></div>")
+    P.append(f"<div class='kv tot'><span class='k'>Last activity</span><span class='dots'></span><span class='v'>{t1}</span></div>")
     P.append("<div class='rule double'></div>")
 
     P.append("<div class='end'>END OF DAY</div>")

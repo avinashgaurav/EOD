@@ -3,17 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EOD: your whole work day, printed as a receipt.</title>
+<title>EOD: your standup, already written</title>
 <meta name="description" content="A Mac menu-bar app, styled as a printed receipt, that rebuilds everything you got done today from files already on your Mac. Local-first, no account.">
 <meta name="color-scheme" content="light dark">
 
-<meta property="og:title" content="EOD: your whole work day, printed as a receipt.">
+<meta property="og:title" content="EOD: your standup, already written">
 <meta property="og:description" content="A Mac menu-bar app that rebuilds your work day from files already on your Mac: AI coding sessions, commits, docs, browsing, screen time.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="/screenshots/brief.png">
+<meta property="og:image" content="https://eodreceipt.vercel.app/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23f3ecdd'/%3E%3Cg fill='%232a2620'%3E%3Crect x='7' y='9' width='18' height='2'/%3E%3Crect x='7' y='14' width='18' height='2'/%3E%3Crect x='7' y='19' width='12' height='2'/%3E%3C/g%3E%3Crect x='21' y='19' width='4' height='2' fill='%23bf3d1f'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
 <style>
 /* ---------- self-hosted, latin subset, no third-party requests ---------- */
@@ -37,7 +38,9 @@
    ============================================================ */
 
 :root{
-  --canvas:#faf9f5;
+  --canvas:#FBF4F2;          /* desk */
+  --carbon:#24357A;          /* carbon-copy ink: links, buttons, focus */
+  --stamp:#C8323C;           /* the one signature mark */
   --surface-soft:#efe9de;
   --surface-dark:#181715;
   --on-dark:#faf9f5;
@@ -46,12 +49,12 @@
   --ink:#141413;
   --body:#3d3d3a;
   --charcoal:#6c6a64;
-  --mute:#8f8b83;
+  --mute:#6c6a64;            /* 5.1:1 on the desk (was 3.2:1) */
 
   --hairline:#e6dfd8;
   --hairline-strong:#d8cfc4;
 
-  --accent:#bf3d1f;          /* EOD stamp red, Claude coral family */
+  --accent:#24357A;          /* carbon blue carries every interactive state */
   --accent-soft:#f7e8e2;
   /* Claude's secondary accents, darkened to hold contrast on a cream ground.
      One hue per source category so the card grid stops reading as monotone. */
@@ -82,16 +85,18 @@
 
 @media (prefers-color-scheme:dark){
   :root{
-    --canvas:#181715;
+    --canvas:#151416;
+    --carbon:#8FA0E0;
+    --stamp:#E5646C;
     --surface-soft:#252320;
     --surface-dark:#0f0e0d;
     --ink:#faf9f5;
     --body:#c9c5bd;
     --charcoal:#a9a49b;
-    --mute:#7d786f;
+    --mute:#a9a49b;           /* 7.2:1 on dark */
     --hairline:#302d29;
     --hairline-strong:#3d3a35;
-    --accent:#cc785c;        /* Claude coral: #bf3d1f goes muddy on dark */
+    --accent:#8FA0E0;
     --accent-soft:#31241f;
     --amber:#e8a55a;  --amber-soft:#2e2617;
     --teal:#5db8a6;   --teal-soft:#172a26;
@@ -398,6 +403,24 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
   .navlinks{gap:var(--lg)}
   .navlinks .hide-sm{display:none}
 }
+/* carbon-copy brand on the site */
+a{color:var(--carbon)}
+.eyebrow{color:var(--mute)!important}
+.btn-primary{background:var(--carbon)!important;border-color:var(--carbon)!important;color:#fff!important}
+:focus-visible{outline:2px solid var(--carbon);outline-offset:2px}
+.who{margin:-4px 0 16px;color:var(--charcoal)}
+.hero-snippet{margin:0 0 16px}
+/* the receipt prints down once, the product's best moment (#40) */
+.print-in{animation:printIn .9s cubic-bezier(.18,.86,.24,1) .2s both}
+@keyframes printIn{0%{clip-path:inset(0 0 100% 0);transform:translateY(-6px)}100%{clip-path:inset(0 0 0 0);transform:none}}
+@media (prefers-reduced-motion:reduce){.print-in{animation:none}}
+/* phone: the command wraps and keeps its Copy button; nav scrolls (#47) */
+.snippet{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.snippet code{white-space:pre-wrap;word-break:break-all;min-width:0;flex:1}
+@media (max-width:640px){
+  .navlinks{overflow-x:auto;white-space:nowrap;max-width:62vw}
+  .navlinks .hide-sm{display:inline}
+}
 </style>
 </head>
 <body>
@@ -417,25 +440,28 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
   <div class="wrap-wide">
     <div class="hero-grid">
       <div class="hero-copy">
-        <p class="eyebrow">macOS desktop widget</p>
-        <h1>Your whole work day, printed as a receipt.</h1>
+        <p class="eyebrow">Mac menu-bar app · free and open source</p>
+        <h1>Your standup, already written.</h1>
         <p class="lede deck">
-          Everything you got done today: your AI coding sessions, the sites and docs
-          you worked in, the commits you shipped. Grouped and copy-paste ready for a
-          standup, timesheet, or task sheet. It rebuilds itself from files already on
-          your Mac.
+          EOD rebuilds your day from Claude Code, Codex, git, docs and your calendar, on your Mac,
+          then writes the update your manager wants. One key copies it. One button sends it.
         </p>
+        <p class="note who">Best for people who build with Claude Code or Codex. It also reads git, documents, calendar and browser history.</p>
+        <div class="snippet hero-snippet">
+          <code id="cmd-hero">curl -fsSL https://eodreceipt.vercel.app/install.sh | bash</code>
+          <button type="button" data-copy="#cmd-hero">Copy</button>
+        </div>
         <div class="cta-row">
-          <a class="btn btn-primary" href="#install">Install</a>
+          <a class="btn btn-primary" href="#install">Download for Mac</a>
           <a class="btn btn-secondary" href="https://github.com/avinashgaurav/EOD">View source</a>
         </div>
         <p class="hero-meta">
-          Local-first <i>·</i> No EOD account <i>·</i> No telemetry <i>·</i> MIT <i>·</i> One-line install
+          Mac only <i>·</i> No account <i>·</i> No telemetry <i>·</i> MIT <i>·</i> In daily use by 5 people since mid-2026
         </p>
       </div>
       <figure class="hero-shot">
-        <img src="/screenshots/brief-cutout.png" width="680" height="1968" fetchpriority="high"
-             alt="The EOD daily receipt: a cream thermal-paper widget listing the day's work items, screen time and visited sites.">
+        <img class="print-in" src="/screenshots/brief-cutout.png" width="680" height="1781" fetchpriority="high"
+             alt="The EOD daily receipt: a white paper slip listing the day's work lines, screen time, totals and a Copy update button.">
         <figcaption>Sample data</figcaption>
       </figure>
     </div>
@@ -446,7 +472,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 <section id="how">
   <div class="wrap-wide">
     <p class="eyebrow">How it works</p>
-    <h2>Five local sources in, one receipt out.</h2>
+    <h2>Local sources in, one receipt out.</h2>
     <p class="note deck">
       Nothing is uploaded and nothing is indexed in advance. On a timer, the parser
       re-reads files that already exist on your disk and rewrites the receipt.
@@ -454,7 +480,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 
     <figure class="diagram">
       <svg class="d-wide" viewBox="0 4 980 348" role="img"
-           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. The only step that leaves the machine is the optional AI polish, which crosses the boundary through your existing Claude CLI login.">
+           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. Nothing leaves the Mac unless you choose it: the optional AI step through your own Claude CLI login (or a local Ollama model, which stays on the Mac), Send to Slack, Teams or Linear after a preview, and the share image you paste yourself.">
         <defs>
           <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
                   markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -524,9 +550,9 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
         <!-- eod.lua -->
         <rect x="738" y="121" width="176" height="60" fill="none" stroke="currentColor"/>
         <text x="826" y="146" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
-              fill="currentColor" text-anchor="middle">eod.lua</text>
+              fill="currentColor" text-anchor="middle">EOD.app</text>
         <text x="826" y="164" font-family="ui-monospace,monospace" font-size="10"
-              fill="currentColor" fill-opacity=".6" text-anchor="middle">hs.webview overlay</text>
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">menu-bar panel</text>
 
         <!-- the one hop that leaves the machine -->
         <g class="ac">
@@ -538,7 +564,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
           <text x="354" y="325" font-family="ui-monospace,monospace" font-size="10"
                 fill="currentColor" fill-opacity=".8" text-anchor="middle">AI polish</text>
           <text x="448" y="305" font-family="ui-monospace,monospace" font-size="10"
-                letter-spacing="1" fill="currentColor">OPTIONAL · your existing CLI login</text>
+                letter-spacing="1" fill="currentColor">OPTIONAL · off until you choose · or Ollama, stays local</text>
         </g>
         <text x="448" y="321" font-family="ui-monospace,monospace" font-size="10"
               fill="currentColor" fill-opacity=".55">skipped entirely if the CLI is missing</text>
@@ -547,7 +573,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
       <!-- Same mechanism, redrawn top-to-bottom for narrow screens. Own markers,
            because a marker defined inside a display:none sibling is not reliable. -->
       <svg class="d-narrow" viewBox="0 0 340 600" role="img"
-           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. The only step that leaves the machine is the optional AI polish, which crosses the boundary through your existing Claude CLI login.">
+           aria-label="Five local file sources feed extract.py, which writes a self-contained receipt into the cache folder; eod.lua renders it in a Hammerspoon webview. All of this happens inside your Mac. Nothing leaves the Mac unless you choose it: the optional AI step through your own Claude CLI login (or a local Ollama model, which stays on the Mac), Send to Slack, Teams or Linear after a preview, and the share image you paste yourself.">
         <defs>
           <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5"
                   markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -605,9 +631,9 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 
         <rect x="60" y="400" width="220" height="52" fill="none" stroke="currentColor"/>
         <text x="170" y="423" font-family="ui-monospace,monospace" font-size="13" font-weight="600"
-              fill="currentColor" text-anchor="middle">eod.lua</text>
+              fill="currentColor" text-anchor="middle">EOD.app</text>
         <text x="170" y="440" font-family="ui-monospace,monospace" font-size="10"
-              fill="currentColor" fill-opacity=".6" text-anchor="middle">hs.webview overlay</text>
+              fill="currentColor" fill-opacity=".6" text-anchor="middle">menu-bar panel</text>
 
         <g class="ac">
           <polyline points="60,254 30,254 30,562 56,562" fill="none"
@@ -618,16 +644,16 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
           <text x="170" y="577" font-family="ui-monospace,monospace" font-size="10"
                 fill="currentColor" fill-opacity=".8" text-anchor="middle">AI polish</text>
           <text x="44" y="500" font-family="ui-monospace,monospace" font-size="10"
-                letter-spacing="1" fill="currentColor">OPTIONAL · your CLI login</text>
+                letter-spacing="1" fill="currentColor">OPTIONAL · off until you choose</text>
         </g>
         <text x="44" y="516" font-family="ui-monospace,monospace" font-size="10"
               fill="currentColor" fill-opacity=".55">skipped if the CLI is missing</text>
       </svg>
       <figcaption class="cap">
         Everything inside the dashed boundary is a local file read and a local file
-        write. The one highlighted path leaving the box is the only step that leaves your
-        Mac, it is optional, and when the CLI is not logged in the parser falls back to
-        fully offline cleanup.
+        write. The highlighted path is the only automatic way out, and it is off until you
+        turn it on (or point it at Ollama, which stays on your Mac). Send and the share image
+        leave only when you press them.
       </figcaption>
     </figure>
   </div>
@@ -637,7 +663,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 <section id="sources">
   <div class="wrap-wide">
     <p class="eyebrow">Where it pulls from</p>
-    <h2>Five places you already work.</h2>
+    <h2>Every place you already work.</h2>
     <p class="note deck">
       Each line is the work done: the AI-generated session title from Claude Code or
       Codex, a clean one-liner. The receipt itself never prints your raw prompts.
@@ -670,9 +696,19 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
         <p>Where the hours actually went, read from local app-usage.</p>
       </div>
       <div class="card">
+        <span class="tag">Meetings</span>
+        <h3>Calendar</h3>
+        <p>Meeting titles and times, through macOS's own Calendar permission. Never attendee names.</p>
+      </div>
+      <div class="card">
+        <span class="tag teal">Shipped</span>
+        <h3>Pull requests</h3>
+        <p>PRs you opened, reviewed or merged, through your own <code>gh</code> login.</p>
+      </div>
+      <div class="card">
         <span class="tag">Private</span>
-        <h3>Except what you exclude</h3>
-        <p>Add a project name to <code>exclude.txt</code> and it never reaches the receipt.</p>
+        <h3>Except what you hide</h3>
+        <p>Switch any source off in Settings, or hover any line, site or app and choose hide.</p>
       </div>
     </div>
   </div>
@@ -683,17 +719,17 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
   <div class="wrap-wide">
     <h2>Frameless, transparent, and it prints down.</h2>
     <p class="note deck">
-      Only the cream paper shows on your wallpaper. Drag it by the masthead; it floats
-      over full-screen apps, prints down when opened and rolls up when closed.
+      Only the paper shows on your desktop. Drag it by the masthead; it floats over
+      full-screen apps, prints down the first time each day, and stays out of screen shares.
     </p>
     <div class="shots">
       <figure>
-        <img class="shot-brief" src="/screenshots/brief.png" width="720" height="2000"
+        <img class="shot-brief" src="/screenshots/brief.png" width="680" height="1781"
              alt="The daily receipt, listing work items, screen time and visited sites for one day.">
         <figcaption>Daily receipt</figcaption>
       </figure>
       <figure>
-        <img class="shot-weekly" src="/screenshots/weekly.png" width="1120" height="1073"
+        <img class="shot-weekly" src="/screenshots/weekly.png" width="1040" height="1551"
              alt="The weekly recap, summarising a week of work grouped by area.">
         <figcaption>Weekly recap</figcaption>
       </figure>
@@ -707,39 +743,32 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 <!-- ============ FEATURES ============ -->
 <section>
   <div class="wrap">
-    <p class="eyebrow">Features</p>
+    <p class="eyebrow">What it does for you</p>
     <h2>Built for the ten minutes before standup.</h2>
     <div class="grid-2">
       <div class="feat">
-        <span class="n">01</span>
-        <h3>Auto-built daily</h3>
-        <p>Rolls over at midnight and refreshes through the day, from your local activity.</p>
+        <h3>Your standup, written</h3>
+        <p>Strong, specific lines from what you actually did: "Fixed the coupon rounding bug (#412)". Copy it with ⌥⌃⌘C from anywhere, as plain text, Slack, Markdown or Jira.</p>
       </div>
       <div class="feat">
-        <span class="n">02</span>
-        <h3>Multi-source</h3>
-        <p>Sessions, commits, documents, browsing and screen time on one receipt.</p>
+        <h3>A weekly report your manager reads</h3>
+        <p>One-line summary, key achievements, blockers, time spent, next steps, tickets and PRs. Each section has an include-in-copy switch.</p>
       </div>
       <div class="feat">
-        <span class="n">03</span>
-        <h3>Daily and weekly</h3>
-        <p>The recap is one keystroke away from the menu bar.</p>
+        <h3>Send it where your team reads</h3>
+        <p>Slack, Teams or Linear, after a preview of the exact text. Destinations live in your macOS Keychain.</p>
       </div>
       <div class="feat">
-        <span class="n">04</span>
-        <h3>Copy all, or one project</h3>
-        <p>Straight to the clipboard, already formatted for a standup or a sheet.</p>
+        <h3>Timesheets without guessing</h3>
+        <p>Screen time per day and per app, counted by EOD itself, and a CSV of time per project for the week.</p>
       </div>
       <div class="feat">
-        <span class="n">05</span>
-        <h3>Edit inline</h3>
-        <p>Fix, add or delete a line before you copy. On the weekly recap your hand-edits
-           survive a re-summarize unless you force one.</p>
+        <h3>Edit before it leaves</h3>
+        <p>Fix or add a line, hide anything for good, undo a delete or a re-summarize. Enter adds a line, Cmd+Enter saves, Esc cancels.</p>
       </div>
       <div class="feat">
-        <span class="n">06</span>
-        <h3>Browse previous days</h3>
-        <p>Step back through the week when you are back-filling a timesheet.</p>
+        <h3>A reminder that stays quiet</h3>
+        <p>At the time and days you pick, only when there is work and you haven't sent it yet. Copy, open or snooze from the notification.</p>
       </div>
     </div>
   </div>
@@ -857,21 +886,20 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 <section id="controls">
   <div class="wrap">
     <p class="eyebrow">Controls</p>
-    <h2>Everything is on the paper.</h2>
+    <h2>Everything is one key or one click away.</h2>
     <div class="keys">
-      <div class="keyrow"><kbd>⌥⌃⌘W</kbd><span>Show / hide</span></div>
-      <div class="keyrow"><kbd>▤</kbd><span>Menu-bar toggle</span></div>
-      <div class="keyrow"><kbd>✕</kbd><span>Hide the receipt</span></div>
-      <div class="keyrow"><kbd>drag</kbd><span>Move it by the masthead</span></div>
-      <div class="keyrow"><kbd>⎙</kbd><span>Copy the whole day</span></div>
-      <div class="keyrow"><kbd>⧉</kbd><span>Copy one project</span></div>
-      <div class="keyrow"><kbd>✎</kbd><span>Edit lines, then 💾 to save</span></div>
-      <div class="keyrow"><kbd>＋</kbd><span>Add a line</span></div>
-      <div class="keyrow"><kbd>⟳</kbd><span>Re-summarize</span></div>
-      <div class="keyrow"><kbd>◀ ▶</kbd><span>Previous / next day</span></div>
-      <div class="keyrow"><kbd>↻</kbd><span>Refresh</span></div>
-      <div class="keyrow"><kbd>✕</kbd><span>Delete a line, while editing</span></div>
+      <div class="keyrow"><kbd>⌥⌃⌘W</kbd><span>Show or hide the receipt</span></div>
+      <div class="keyrow"><kbd>⌥⌃⌘C</kbd><span>Copy today's update, from anywhere</span></div>
+      <div class="keyrow"><kbd>⌘C</kbd><span>Copy the update, on the receipt</span></div>
+      <div class="keyrow"><kbd>← →</kbd><span>Previous or next day</span></div>
+      <div class="keyrow"><kbd>Esc</kbd><span>Hide the receipt</span></div>
+      <div class="keyrow"><kbd>Edit</kbd><span>Change lines; Enter adds one, Cmd+Enter saves</span></div>
+      <div class="keyrow"><kbd>More</kbd><span>Full day, share image, print, copy format</span></div>
+      <div class="keyrow"><kbd>hide</kbd><span>Never show a line, site or app again</span></div>
+      <div class="keyrow"><kbd>⌘,</kbd><span>Settings: sources, AI, send, privacy</span></div>
+      <div class="keyrow"><kbd>drag</kbd><span>Move the receipt by its masthead</span></div>
     </div>
+    <p class="note">Shortcut letters can be changed in Settings.</p>
   </div>
 </section>
 
@@ -879,7 +907,9 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
   <div class="footlinks">
     <a href="https://github.com/avinashgaurav/EOD">GitHub</a>
     <a href="https://github.com/avinashgaurav/EOD/blob/main/INSTALL.md">Install guide</a>
-    <a href="https://www.hammerspoon.org/">Hammerspoon</a>
+    <a href="https://github.com/avinashgaurav/EOD/releases">Changelog</a>
+    <a href="https://github.com/avinashgaurav/EOD/issues/new">Send feedback</a>
+    <a href="https://github.com/avinashgaurav/EOD/blob/main/docs/privacy.md">Privacy</a>
     <a href="https://github.com/avinashgaurav/EOD/blob/main/LICENSE">MIT License</a>
   </div>
   <p class="copy">MIT licensed. Built by
@@ -887,25 +917,6 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 </footer>
 
 <script>
-/* Reveal is added by script, never in the markup, so a visitor without JS is
-   never left staring at content that opacity:0 hid and nothing ever restored. */
-(function(){
-  if (!('IntersectionObserver' in window)) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  var sel = 'section:not(.hero) .eyebrow, section:not(.hero) h2, section:not(.hero) .deck,'
-          + '.diagram, .grid-3, .grid-2, .rows, .keys, .steps, .statement, .shots';
-  var els = Array.prototype.slice.call(document.querySelectorAll(sel));
-  els.forEach(function(el){ el.classList.add('rv'); });
-  var io = new IntersectionObserver(function(entries){
-    entries.forEach(function(e){
-      if (!e.isIntersecting) return;
-      e.target.classList.add('in');
-      io.unobserve(e.target);
-    });
-  }, {rootMargin:'0px 0px -6% 0px', threshold:0.04});
-  els.forEach(function(el){ io.observe(el); });
-})();
-
 document.querySelectorAll('[data-copy]').forEach(function(btn){
   btn.addEventListener('click', function(){
     var el = document.querySelector(btn.dataset.copy);

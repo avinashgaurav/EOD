@@ -77,3 +77,11 @@ touch polish.off                              # never run this step again
 
 </details>
 
+
+
+## Network requests the Mac app makes
+
+- **Check for updates** (menu, only when you click it): one request to `api.github.com` for the latest release tag. Nothing about you or your day is sent.
+- **Send** (only after you confirm the preview): your update to the Slack, Teams or Linear destinations you saved in the Keychain.
+- **AI tidy-up** (only if you turned it on): through your own `claude` CLI login, or to Ollama on this Mac.
+- **Usage counts** stay on your Mac; there is no server. You can copy them from the menu if you want to share them.

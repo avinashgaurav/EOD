@@ -1,13 +1,19 @@
 # EOD
 
-By evening, the standup or timesheet asks what you did today and you rebuild it from memory; EOD prints it as a receipt from the files already on your Mac.
+**Your standup, already written.** EOD is a Mac menu-bar app that rebuilds your day from Claude Code, Codex, git, docs and your calendar, on your Mac, then writes the update your manager wants. One key copies it; one button sends it.
 
-> [!TIP]
-> **In daily use:** 5 people across the author's product and marketing team have used EOD for their end-of-day updates since mid-2026.
+```sh
+curl -fsSL https://eodreceipt.vercel.app/install.sh | bash
+```
 
-**Live demo: [eodreceipt.vercel.app](https://eodreceipt.vercel.app)**
+1. Run the line above in Terminal ([read it first](site/install.sh): about 60 lines, no sudo).
+2. Pick what EOD may read on the first screen. AI tidy-up stays off until you tick it.
+3. Press ⌥⌃⌘W for the receipt, or ⌥⌃⌘C to copy today's update from anywhere.
 
-![EOD daily receipt and weekly recap, sample data](docs/demo.gif)
+Mac only (macOS 13+, Apple silicon or Intel). Free, MIT, no account, no telemetry. In daily use by 5 people since mid-2026.
+**Site: [eodreceipt.vercel.app](https://eodreceipt.vercel.app)** · [The Mac app](docs/mac-app.md) · [Privacy](docs/privacy.md)
+
+<p><img src="site/screenshots/brief.png" width="260" alt="EOD daily receipt, sample data"> &nbsp; <img src="site/screenshots/weekly.png" width="400" alt="EOD weekly report, sample data"></p>
 
 > [!NOTE]
 > **How I tested it: 10 made-up work days.** Before the test, I wrote down which facts each update must keep and what must never appear.
@@ -35,9 +41,9 @@ The AI is deliberately minimal. Code does the work; a model only rewords it, and
 | Turning the day (and the week) into manager-ready bullets | Your `claude` CLI or a local Ollama model, optional | The one step where wording matters more than exactness. Skipped when nothing changed and never run with `polish.off`; the daily summary also runs at most once per 30 minutes on its own. |
 | Fallback when the model is off, missing or fails | Code | The receipt still builds offline; a failed daily call keeps the last good summary. |
 
-## Install
+## Install with Hammerspoon instead
 
-~3 minutes on macOS with [Hammerspoon](https://www.hammerspoon.org/) and `python3`. Full guide in **[INSTALL.md](INSTALL.md)**. Short version:
+The older widget still works: about 3 minutes on macOS with [Hammerspoon](https://www.hammerspoon.org/) and `python3`. Full guide in **[INSTALL.md](INSTALL.md)**. Short version:
 
 ```sh
 # don't already use Hammerspoon? drop EOD straight into its config:
