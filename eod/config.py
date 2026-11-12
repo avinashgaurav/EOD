@@ -138,11 +138,17 @@ def load_send_targets():
     """Every line of send.txt, parsed. A line that does not parse is kept as
     {'bad': line_number} so the send can say which line to fix, without ever
     echoing what is on it."""
-    try:
-        with open(SEND_FILE) as fh:
-            lines = fh.read().splitlines()
-    except OSError:
-        return []
+    # The Mac app keeps destinations in the Keychain and hands them over in this
+    # variable for the one run that needs them, so no secret sits in a file.
+    env = os.environ.get("EOD_SEND_TARGETS")
+    if env is not None:
+        lines = env.splitlines()
+    else:
+        try:
+            with open(SEND_FILE) as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            return []
     out = []
     for n, line in enumerate(lines, 1):
         s = line.strip()

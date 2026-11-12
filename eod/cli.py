@@ -11,6 +11,7 @@ from .render.text import to_text, to_text_full, to_text_weekly
 from .render.html import SHARE_H, SHARE_W, to_html, to_html_full, to_html_share, to_html_weekly
 from .render.image import html_to_png
 from .weekly import build_weekly
+from .hide import apply_hide
 
 
 def write_history():
@@ -89,6 +90,12 @@ def main():
             share = True
         elif a == "--send":
             do_send = True
+        elif a == "--hide" and i + 2 < len(args):
+            # Never show this: one rule into hide.txt, then rebuild as usual.
+            from .hide import add_hide_rule
+            if not add_hide_rule(args[i + 1], args[i + 2]):
+                sys.stderr.write("EOD: --hide wants line|site|app and a value\n")
+                raise SystemExit(2)
     if not date:
         date = datetime.now().astimezone().strftime("%Y-%m-%d")
     if share and not _valid_date(date):
@@ -127,7 +134,7 @@ def main():
         print("SENT " + ", ".join(sent))
         return
 
-    data = build(date)
+    data = apply_hide(build(date))      # hide.txt: before the AI step, so hidden lines never reach it
 
     if share:
         # Before polish on purpose: a press of the share button must never send
@@ -154,6 +161,7 @@ def main():
         return
 
     polish(data, force=repolish)    # AI-rewrite items into manager bullets (cached; force = Regenerate)
+    apply_hide(data)                # and again after: a cached or hand-edited line can match a new rule
     write_history()                 # keep worklog-history.md current
     base = os.path.join(CACHE, date)
 

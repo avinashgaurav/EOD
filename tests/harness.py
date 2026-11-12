@@ -32,7 +32,7 @@ MODULES = [
     "eod.sources.base", "eod.sources.builtin",
     "eod.pipeline", "eod.polish", "eod.render.text", "eod.render.html",
     "eod.render.image",
-    "eod.weekly", "eod.timesheet", "eod.cli", "eod.send",
+    "eod.weekly", "eod.timesheet", "eod.hide", "eod.cli", "eod.send",
 ]
 
 

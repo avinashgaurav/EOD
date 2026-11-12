@@ -26,8 +26,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     // MARK: lifecycle
 
     func applicationDidFinishLaunching(_ n: Notification) {
-        defaults.register(defaults: ["reminderOn": true, "showAtStart": true])
+        defaults.register(defaults: ["reminderOn": true, "showAtStart": false, "keepDays": 0])
         EngineInstaller.installIfNeeded()
+        if Secrets.importSendFileIfPresent() {
+            Log.write("moved send.txt into the Keychain and removed the plain-text file")
+        }
+        Retention.prune(days: defaults.integer(forKey: "keepDays"))
         // Both versions at once overwrite each other's screen time and fight over
         // the hotkey. Say so once, plainly, instead of failing quietly.
         let hs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".hammerspoon/eod.lua")
@@ -96,6 +100,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         menu.addItem(item("Open work history", #selector(openHistory)))
         menu.addItem(item("Open data folder", #selector(openData)))
         menu.addItem(.separator())
+        let ai = NSMenuItem(title: "AI tidy-up", action: nil, keyEquivalent: ""); let aiMenu = NSMenu()
+        let mode = Polish.mode
+        let off = item("Off (fully offline)", #selector(aiOff)); off.state = { if case .off = mode { return .on }; return .off }()
+        let cl = item("Claude, through my claude CLI", #selector(aiClaude)); cl.state = { if case .claude = mode { return .on }; return .off }()
+        let ol = item("Ollama on this Mac…", #selector(aiOllama)); ol.state = { if case .ollama = mode { return .on }; return .off }()
+        [off, cl, ol].forEach { aiMenu.addItem($0) }
+        aiMenu.addItem(.separator()); aiMenu.addItem(item("Preview exactly what is sent…", #selector(aiPreview)))
+        ai.submenu = aiMenu; menu.addItem(ai)
+        menu.addItem(item("Send destinations…", #selector(editDestinations)))
+        let keep = NSMenuItem(title: "Keep history", action: nil, keyEquivalent: ""); let keepMenu = NSMenu()
+        for (t, d) in Retention.choices {
+            let i = item(t, #selector(setKeep(_:))); i.tag = d
+            i.state = defaults.integer(forKey: "keepDays") == d ? .on : .off; keepMenu.addItem(i)
+        }
+        keep.submenu = keepMenu; menu.addItem(keep)
+        menu.addItem(item("Delete all EOD data…", #selector(deleteAll)))
+        menu.addItem(.separator())
         let login = item("Open at login", #selector(toggleLogin))
         login.state = SMAppService.mainApp.status == .enabled ? .on
             : (SMAppService.mainApp.status == .requiresApproval ? .mixed : .off)
@@ -124,6 +145,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @objc private func toggleReminder() {
         defaults.set(!defaults.bool(forKey: "reminderOn"), forKey: "reminderOn"); scheduleReminder()
     }
+    @objc private func aiOff() { Polish.set(.off); rebuild(curDate, force: true) }
+    @objc private func aiClaude() { Polish.set(.claude); rebuild(curDate, force: true) }
+    @objc private func aiOllama() {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert(); a.messageText = "Use a local Ollama model"
+        a.informativeText = "The AI step runs on this Mac and nothing leaves it. Ollama must be installed and running. Model name:"
+        let f = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        if case .ollama(let m) = Polish.mode { f.stringValue = m } else { f.stringValue = "llama3.1" }
+        a.accessoryView = f; a.addButton(withTitle: "Use Ollama"); a.addButton(withTitle: "Cancel")
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let m = f.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard m.range(of: #"^[A-Za-z0-9._:/-]{1,80}$"#, options: .regularExpression) != nil else {
+            alert("That model name won't work", "Use the name Ollama shows in `ollama list`, for example llama3.1."); return
+        }
+        Polish.set(.ollama(m)); rebuild(curDate, force: true)
+    }
+    @objc private func aiPreview() {
+        Engine.run(["--date", curDate, "--show-polish-payload"]) { r in
+            let body = r.err.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n" + r.out
+            _ = TextWindow(title: "What the AI step sends for \(self.curDate)",
+                           body: body, note: "Nothing is sent by opening this. This is the exact text, for the selected day.", editable: false)
+        }
+    }
+    @objc private func editDestinations() {
+        let current = Secrets.sendTargets() ?? "# One destination per line. Saved in your macOS Keychain, never in a file.\n# slack  https://hooks.slack.com/services/...\n# teams  https://example.webhook.office.com/...\n# linear lin_api_...  ENG-123\n"
+        _ = TextWindow(title: "Send destinations", body: current,
+                       note: "Where ↗ Send posts your update. Stored in the macOS Keychain on this Mac only.",
+                       editable: true) { [weak self] text in
+            let lines = text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+            Secrets.setSendTargets(lines.joined(separator: "\n"))
+            if let self = self { self.rebuild(self.curDate, force: true) }
+        }
+    }
+    @objc private func setKeep(_ sender: NSMenuItem) {
+        defaults.set(sender.tag, forKey: "keepDays"); Retention.prune(days: sender.tag)
+    }
+    @objc private func deleteAll() {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert(); a.alertStyle = .warning
+        a.messageText = "Delete all EOD data on this Mac?"
+        a.informativeText = "This removes every saved receipt, weekly report, screen-time record, your settings files, hide rules and the send destinations in the Keychain. It can't be undone. The app stays installed."
+        a.addButton(withTitle: "Delete everything"); a.addButton(withTitle: "Cancel")
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        hide(); usage.stop(); Retention.deleteAll(); usage.start()
+        alert("Deleted", "EOD starts fresh. AI tidy-up is off until you turn it on.")
+    }
+
     @objc private func toggleShowAtStart() { defaults.set(!defaults.bool(forKey: "showAtStart"), forKey: "showAtStart") }
     @objc private func toggleLogin() {
         do {
@@ -246,6 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         midnightTimer = Timer(fire: fire, interval: 0, repeats: false) { [weak self] _ in
             guard let self = self else { return }
             self.curDate = Day.today()
+            Retention.prune(days: self.defaults.integer(forKey: "keepDays"))
             self.rebuild(self.curDate, force: true, cacheOnly: !self.shown)
             self.scheduleMidnight()
         }
@@ -306,6 +375,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             self.rebuild(self.curDate, force: true)
         }
         case "post": post()
+        case "neverShow":
+            let kind = b["kind"] as? String ?? "", value = b["value"] as? String ?? ""
+            guard ["line", "site", "app"].contains(kind), !value.isEmpty else { return }
+            Engine.run(["--date", curDate, "--hide", kind, value]) { [weak self] r in
+                guard let self = self, r.code == 0, let t = r.tagged else { return }
+                self.receipt.load(path: t.rest, animate: false)
+            }
         case "nav":
             let delta = (b["delta"] as? NSNumber)?.intValue ?? 0
             if let c = Day.shift(curDate, by: delta), c <= Day.today() { curDate = c; rebuild(c, force: true) }

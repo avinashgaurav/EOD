@@ -88,6 +88,7 @@ enum Engine {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         env["LANG"] = "en_US.UTF-8"
+        if let targets = Secrets.sendTargets() { env["EOD_SEND_TARGETS"] = targets }   // from the Keychain, never a file
         p.environment = env
         let outPipe = Pipe(), errPipe = Pipe()
         p.standardOutput = outPipe; p.standardError = errPipe

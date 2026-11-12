@@ -311,6 +311,16 @@ local function onMessage(msg)
     saveEdits(b.items)
   elseif action == "post" then
     postUpdate(curDate)
+  elseif action == "neverShow" then
+    -- Never show this: the engine appends the rule to hide.txt and rebuilds.
+    local kind, value = tostring(b.kind or ""), tostring(b.value or "")
+    if (kind == "line" or kind == "site" or kind == "app") and value ~= "" then
+      local t = hs.task.new(CFG.python, function(code, out)
+        local tag, path = (out or ""):gsub("%s+$", ""):match("^(%S+)%s+(.+)$")
+        if code == 0 and path and wv then loadN = loadN + 1; wv:url("file://" .. path .. "?n=" .. loadN) end
+      end, { CFG.script, "--date", curDate, "--hide", kind, value })
+      if t then t:setEnvironment(CFG.env); t:start() end
+    end
   elseif action == "nav" then
     local delta = tonumber(b.delta) or 0
     -- shift curDate by delta days, but never past today

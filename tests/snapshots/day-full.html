@@ -103,8 +103,21 @@ button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
 .actions{display:flex;gap:7px;justify-content:center;margin:12px 0 4px}
 .copyall{border-style:solid;border-color:var(--ink);font-weight:700;padding:7px 14px}
 .copyall:hover{background:var(--ink);color:var(--paper)}
-.copyall.seeall{border-style:dashed;border-color:var(--accent);color:var(--accent);font-weight:700}
-.copyall.seeall:hover{background:var(--accent);color:var(--paper)}
+.copyall.primary{background:var(--ink);color:var(--paper)}
+.copyall.primary:hover{opacity:.88}
+.copyall.seeall{border-style:solid;border-color:var(--line);color:var(--ink);font-weight:400}
+.copyall.seeall:hover{background:transparent;border-color:var(--ink);color:var(--ink)}
+/* never show this: a quiet control that appears on hover or keyboard focus */
+.inc{font-size:9px;letter-spacing:.5px;color:var(--ink2);display:flex;gap:4px;align-items:center;white-space:nowrap}
+.nv{border:0;background:transparent;color:var(--ink2);font-size:10px;padding:0 0 0 6px;opacity:0;cursor:pointer}
+.item:hover .nv,.kv:hover .nv,.nv:focus-visible{opacity:1}
+.nv:hover{color:var(--accent)}
+/* send preview */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.28);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.sheet .box{background:var(--paper);color:var(--ink);border:1px solid var(--ink);width:100%;max-height:80%;overflow:auto;padding:12px;font-size:10.5px}
+.sheet .to{font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.sheet pre{white-space:pre-wrap;font-family:var(--mono);font-size:10.5px;margin:0 0 10px;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:8px 0}
+.sheet .row{display:flex;gap:7px;justify-content:flex-end}
 .ts{text-align:center;font-size:9px;letter-spacing:1px;color:var(--ink2);margin-top:8px}
 .sig{color:var(--ink);font-weight:700;letter-spacing:2px}
 .warn{color:var(--accent);border:1px dashed var(--accent);border-radius:3px;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:4px 6px;margin:6px 0}
@@ -150,6 +163,11 @@ function copyText(txt,label){
     ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
   toast((label||'Copied')+' ✓');}
 function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
+function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hidden from now on');else toast('Hiding works from the app')}
+function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
+  document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
+    L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\u2022 '+x.textContent)});L.push('')});
+  copyText(L.join('\n').replace(/\n+$/,'\n'),'Weekly report copied')}
 function nav(d){send({action:'nav',delta:d})}
 function goDate(v){if(v)send({action:'goDate',date:v})}
 function refresh(){send({action:'refresh'});toast('Refreshing…')}

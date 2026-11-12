@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EOD — Your whole work day, printed as a receipt.</title>
-<meta name="description" content="A macOS desktop widget, styled as a printed receipt, that rebuilds everything you got done today from files already on your Mac. Local-first, no API keys.">
+<title>EOD: your whole work day, printed as a receipt.</title>
+<meta name="description" content="A Mac menu-bar app, styled as a printed receipt, that rebuilds everything you got done today from files already on your Mac. Local-first, no account.">
 <meta name="color-scheme" content="light dark">
 
-<meta property="og:title" content="EOD — Your whole work day, printed as a receipt.">
+<meta property="og:title" content="EOD: your whole work day, printed as a receipt.">
 <meta property="og:description" content="A macOS widget that rebuilds your work day from files already on your Mac: AI coding sessions, commits, docs, browsing, screen time.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="/screenshots/brief.png">
@@ -430,7 +430,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
           <a class="btn btn-secondary" href="https://github.com/avinashgaurav/EOD">View source</a>
         </div>
         <p class="hero-meta">
-          Local-first <i>·</i> No API keys <i>·</i> No telemetry <i>·</i> MIT <i>·</i> ~3 min setup
+          Local-first <i>·</i> No EOD account <i>·</i> No telemetry <i>·</i> MIT <i>·</i> One-line install
         </p>
       </div>
       <figure class="hero-shot">
@@ -749,11 +749,18 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 <section>
   <div class="wrap">
     <p class="eyebrow">Privacy</p>
-    <h2>It reads. It does not send.</h2>
+    <h2>Nothing leaves your Mac unless you say so.</h2>
     <p class="lede deck" style="font-size:16px">
-      EOD reads local files and writes a receipt to its own <code>cache/</code> folder.
-      There are no API keys and no telemetry.
+      EOD reads local files and writes a receipt to its own folder. There is no EOD account
+      and no telemetry. Three things can send, and each one only when you choose it:
     </p>
+    <dl class="rows">
+      <div class="row"><dt>AI tidy-up</dt><dd>Off until you turn it on. Then it goes through your own <code>claude</code> CLI login,
+        or to a local Ollama model that never leaves the Mac. <em>Preview the exact text first from the menu.</em></dd></div>
+      <div class="row"><dt>Send</dt><dd>Posts your work update to Slack, Teams or Linear, only when you press Send and confirm the preview.
+        <em>Destinations are stored in your macOS Keychain.</em></dd></div>
+      <div class="row"><dt>Share image</dt><dd>Copies a picture of the day to your clipboard. It goes nowhere until you paste it.</dd></div>
+    </dl>
     <div class="statement">
       <p class="note">
         <strong>The one exception is the optional AI-polish step.</strong>
@@ -800,37 +807,32 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
 <section id="install">
   <div class="wrap">
     <p class="eyebrow">Install</p>
-    <h2>About three minutes.</h2>
-    <ol class="steps">
-      <li>
-        <p>Install <a href="https://www.hammerspoon.org/">Hammerspoon</a>, the free
-        automation app that hosts the widget, and grant it Accessibility when it asks.</p>
-      </li>
-      <li>
-        <p>Don't already use Hammerspoon? Drop EOD straight into its config.</p>
-        <div class="snippet">
-          <code id="cmd">mkdir -p ~/.hammerspoon &amp;&amp; cp -R ./* ~/.hammerspoon/</code>
-          <button type="button" data-copy="#cmd">Copy</button>
-        </div>
-      </li>
-      <li>
-        <p>Open Hammerspoon, then <b>Reload Config</b> (<code>⌥⌃⌘R</code>).
-        The receipt prints down in the top-right.</p>
-      </li>
-    </ol>
+    <h2>One line in Terminal.</h2>
+    <div class="snippet">
+      <code id="cmd">curl -fsSL https://eodreceipt.vercel.app/install.sh | bash</code>
+      <button type="button" data-copy="#cmd">Copy</button>
+    </div>
     <p class="note">
-      Already have an <code>init.lua</code>? Don't overwrite it. See
-      <a href="https://github.com/avinashgaurav/EOD/blob/main/INSTALL.md">INSTALL.md</a>
-      for the two lines to add instead.
+      Read it first: <a href="/install.sh">install.sh</a> is about 60 lines. It checks for macOS 13+ and python3,
+      downloads <code>EOD.zip</code> from the
+      <a href="https://github.com/avinashgaurav/EOD/releases/latest">latest GitHub release</a>, checks its SHA-256,
+      puts EOD in Applications and opens it. No sudo, nothing else installed.
+      Uninstall: quit EOD, then <code>rm -rf /Applications/EOD.app ~/Library/Application\ Support/EOD</code>.
+    </p>
+    <p class="note">
+      <strong>Downloading the zip in a browser instead?</strong> EOD isn't signed with a paid Apple Developer ID,
+      so macOS blocks the first open. Open System Settings, then Privacy &amp; Security, scroll down and click
+      <b>Open Anyway</b> next to EOD. You only do this once. The command above avoids it.
+    </p>
+    <p class="note">
+      Prefer Hammerspoon? The <a href="https://github.com/avinashgaurav/EOD/blob/main/INSTALL.md">widget install</a> still works.
     </p>
 
     <h3 style="margin-top:32px">What you need</h3>
     <dl class="rows">
       <div class="row">
-        <dt>Hammerspoon <span class="req">required</span></dt>
-        <dd>Hosts and draws the widget.
-          <em>Grant Accessibility in System Settings, Privacy &amp; Security, Accessibility.
-          Needed for dragging and the hotkey.</em></dd>
+        <dt>macOS 13 or later <span class="req">required</span></dt>
+        <dd>Apple silicon or Intel. <em>No Accessibility permission needed.</em></dd>
       </div>
       <div class="row">
         <dt>python3 <span class="req">required</span></dt>
@@ -845,7 +847,7 @@ footer{border-top:1px solid var(--hairline);margin-top:var(--section);padding:va
       <div class="row">
         <dt>Browser history</dt>
         <dd>Powers the WEB section. Chrome and Brave are automatic.
-          <em>Safari may need Full Disk Access for the Hammerspoon process.</em></dd>
+          <em>Safari needs Full Disk Access for EOD (the first-run screen has a shortcut).</em></dd>
       </div>
     </dl>
   </div>

@@ -267,11 +267,11 @@ def weekly_sections(data):
     t = data.get("time") or {}
     if t.get("total"):
         per_day = ", ".join("%s %s" % (_day_name(d["date"]), fmt_dur(d["secs"])) for d in t["days"])
-        lines = ["Screen time: %s across %d day%s (%s)." % (fmt_dur(t["total"]), len(t["days"]),
-                                                           "" if len(t["days"]) == 1 else "s", per_day)]
+        out.append(("Time spent", ["Screen time: %s across %d day%s (%s)." % (
+            fmt_dur(t["total"]), len(t["days"]), "" if len(t["days"]) == 1 else "s", per_day)]))
         if t.get("top_apps"):
-            lines.append("Most time in: " + ", ".join("%s %s" % (a["name"], fmt_dur(a["secs"])) for a in t["top_apps"]) + ".")
-        out.append(("Time spent", lines))
+            out.append(("Time by app", ["Most time in: " + ", ".join(
+                "%s %s" % (a["name"], fmt_dur(a["secs"])) for a in t["top_apps"]) + "."]))
     if rep.get("collaboration"):
         out.append(("Collaboration", rep["collaboration"]))
     if rep.get("next_steps"):

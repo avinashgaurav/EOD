@@ -1,11 +1,11 @@
 """The receipt itself, as a self-contained document for hs.webview."""
 
-import html, time
+import html, json, time
 from datetime import datetime
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
 from ..config import APP_MAX, BRIEF_APPS, BRIEF_WEB, SIG, _sig_html
-from .text import extra_lines, source_warnings, weekly_source_warnings, weekly_sections, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_text, to_text_full, to_text_weekly, web_text, work_item_count
+from .text import extra_lines, source_warnings, weekly_source_warnings, weekly_sections, apps_text, display_items, highlights_text, parse_warning, project_text, time_window, to_standup, to_text, to_text_full, to_text_weekly, web_text, work_item_count
 
 
 CSS = """
@@ -113,8 +113,21 @@ button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
 .actions{display:flex;gap:7px;justify-content:center;margin:12px 0 4px}
 .copyall{border-style:solid;border-color:var(--ink);font-weight:700;padding:7px 14px}
 .copyall:hover{background:var(--ink);color:var(--paper)}
-.copyall.seeall{border-style:dashed;border-color:var(--accent);color:var(--accent);font-weight:700}
-.copyall.seeall:hover{background:var(--accent);color:var(--paper)}
+.copyall.primary{background:var(--ink);color:var(--paper)}
+.copyall.primary:hover{opacity:.88}
+.copyall.seeall{border-style:solid;border-color:var(--line);color:var(--ink);font-weight:400}
+.copyall.seeall:hover{background:transparent;border-color:var(--ink);color:var(--ink)}
+/* never show this: a quiet control that appears on hover or keyboard focus */
+.inc{font-size:9px;letter-spacing:.5px;color:var(--ink2);display:flex;gap:4px;align-items:center;white-space:nowrap}
+.nv{border:0;background:transparent;color:var(--ink2);font-size:10px;padding:0 0 0 6px;opacity:0;cursor:pointer}
+.item:hover .nv,.kv:hover .nv,.nv:focus-visible{opacity:1}
+.nv:hover{color:var(--accent)}
+/* send preview */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.28);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.sheet .box{background:var(--paper);color:var(--ink);border:1px solid var(--ink);width:100%;max-height:80%;overflow:auto;padding:12px;font-size:10.5px}
+.sheet .to{font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.sheet pre{white-space:pre-wrap;font-family:var(--mono);font-size:10.5px;margin:0 0 10px;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:8px 0}
+.sheet .row{display:flex;gap:7px;justify-content:flex-end}
 .ts{text-align:center;font-size:9px;letter-spacing:1px;color:var(--ink2);margin-top:8px}
 .sig{color:var(--ink);font-weight:700;letter-spacing:2px}
 .warn{color:var(--accent);border:1px dashed var(--accent);border-radius:3px;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:4px 6px;margin:6px 0}
@@ -150,6 +163,11 @@ function copyText(txt,label){
     ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
   toast((label||'Copied')+' ✓');}
 function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
+function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hidden from now on');else toast('Hiding works from the app')}
+function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
+  document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
+    L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\\u2022 '+x.textContent)});L.push('')});
+  copyText(L.join('\\n').replace(/\\n+$/,'\\n'),'Weekly report copied')}
 function nav(d){send({action:'nav',delta:d})}
 function goDate(v){if(v)send({action:'goDate',date:v})}
 function refresh(){send({action:'refresh'});toast('Refreshing…')}
@@ -207,12 +225,19 @@ SEND_JS = """
 function postUpdate(b){
   var l=document.getElementById('workList');
   if(l&&l.getAttribute('data-edit')==='1'){toast('Save your edits first');return}
-  if(b.getAttribute('data-armed')!=='1'){
-    b.setAttribute('data-armed','1');b.textContent='↗ Sure?';
-    clearTimeout(window._st);window._st=setTimeout(function(){b.setAttribute('data-armed','0');b.textContent='↗ Send'},3000);
-    return}
-  clearTimeout(window._st);b.setAttribute('data-armed','0');b.textContent='↗ Send';
-  if(send({action:'post'})){b.disabled=true;toast('Sending…')}else toast('Send works from the widget')}
+  // Show exactly what goes where before anything leaves the Mac (F09).
+  var old=document.getElementById('sendSheet');if(old)old.remove();
+  var sh=document.createElement('div');sh.className='sheet';sh.id='sendSheet';
+  sh.innerHTML="<div class='box' role='dialog' aria-modal='true' aria-label='Send preview'><div class='to'></div><pre></pre>"+
+    "<div class='row'><button class='copyall seeall' id='sendCancel'>Cancel</button><button class='copyall primary' id='sendGo'>Send now</button></div></div>";
+  sh.querySelector('.to').textContent='To: '+((document.getElementById('sendTo')||{}).textContent||'');
+  sh.querySelector('pre').textContent=(document.getElementById('updText')||{}).textContent||'';
+  document.body.appendChild(sh);
+  var close=function(){sh.remove();document.removeEventListener('keydown',esc)};
+  var esc=function(e){if(e.key==='Escape')close()};document.addEventListener('keydown',esc);
+  sh.querySelector('#sendCancel').onclick=close;
+  sh.querySelector('#sendGo').onclick=function(){close();if(send({action:'post'})){b.disabled=true;toast('Sending…')}else toast('Send works from the widget')};
+  sh.querySelector('#sendGo').focus()}
 function sendResult(t){var b=document.getElementById('sendBtn');if(b)b.disabled=false;
 var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
 clearTimeout(window._tt);window._tt=setTimeout(function(){el.classList.remove('show')},4000)}
@@ -304,7 +329,9 @@ def to_html(data, send_to=()):
             for h in data["highlights"]:
                 P.append("<div class='item'>"
                          f"<span class='t'><b>•</b><span class='htext'>{esc(h)}</span></span>"
-                         "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button></div>")
+                         "<button class='del' onclick='delLine(this)' title='Delete line'>✕</button>"
+                         f"<button class='nv' onclick=\"neverShow('line',{esc(json.dumps(h))})\" "
+                         "title='Never show lines like this' aria-label='Never show this line'>hide</button></div>")
             P.append("</div>")
             P.append(f"<div id='workText' style='display:none'>{esc(highlights_text(data))}</div>")
         # ── Fallback: per-project view (only when AI polish unavailable) ──
@@ -336,7 +363,9 @@ def to_html(data, send_to=()):
             for a in apps[:BRIEF_APPS]:
                 P.append(f"<div class='kv'><span class='k'>{esc(a['name'])}</span>"
                          "<span class='dots'></span>"
-                         f"<span class='v'>{fmt_dur(a['secs'])}</span></div>")
+                         f"<span class='v'>{fmt_dur(a['secs'])}</span>"
+                         f"<button class='nv' onclick=\"neverShow('app',{esc(json.dumps(a['name']))})\" "
+                         f"title='Never show this app' aria-label='Never show {esc(a['name'])}'>hide</button></div>")
             P.append(f"<div id='appsText' style='display:none'>{esc(apps_text(data))}</div>")
 
         # ── Web (browser history) ──
@@ -349,7 +378,9 @@ def to_html(data, send_to=()):
             for d in web[:BRIEF_WEB]:
                 P.append("<div class='item'>"
                          f"<span class='t'><b>•</b>{esc(d['host'])}</span>"
-                         f"<span class='tm'>×{d['count']}</span></div>")
+                         f"<span class='tm'>×{d['count']}</span>"
+                         f"<button class='nv' onclick=\"neverShow('site',{esc(json.dumps(d['host']))})\" "
+                         f"title='Never show this site' aria-label='Never show {esc(d['host'])}'>hide</button></div>")
             P.append(f"<div id='webText' style='display:none'>{esc(web_text(data))}</div>")
 
     # totals
@@ -382,8 +413,9 @@ def to_html(data, send_to=()):
     # labels across lines. Only when Send is there, so other receipts are unchanged.
     P.append(("<div class='actions' style='flex-wrap:wrap;row-gap:7px;white-space:nowrap'>"
               if send_to else "<div class='actions'>") +
-             "<button class='copyall' onclick=\"copyEl('allText','Summary copied')\">⎙ Copy</button>"
-             "<button class='copyall seeall' onclick=\"send({action:'full'})\">⊞ See full bill</button>"
+             "<button class='copyall primary' onclick=\"copyEl('updText','Update copied')\" "
+             "title='Copy the work update: work lines only, no screen time or sites'>⎙ Copy update</button>"
+             "<button class='copyall seeall' onclick=\"send({action:'full'})\" title='Everything from today'>Full day</button>"
              "<button class='copyall' onclick=\"send({action:'share'});toast('Drawing the image…')\" "
              "title='Copy the day as an image for X / LinkedIn' aria-label='Share as image'>⇪</button>"
              + (f"<button id='sendBtn' onclick='postUpdate(this)' "
@@ -393,6 +425,11 @@ def to_html(data, send_to=()):
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])} · ~/.claude{_sig_html()}</div>")
 
     P.append(f"<div id='allText' style='display:none'>{esc(to_text(data))}</div>")
+    # What "Copy update" and Send share: work lines only (F01). Screen time and
+    # browsing stay on the Mac unless you copy them on purpose.
+    P.append(f"<div id='updText' style='display:none'>{esc(to_standup(data) or to_text(data))}</div>")
+    if send_to:
+        P.append(f"<div id='sendTo' style='display:none'>{esc(', '.join(send_to))}</div>")
     P.append("</div></div></div>")  # receipt, roll, surface
     P.append("<div class='toast' id='toast'></div>")
     P.append(f"<script>{JS}</script>" + (f"<script>{SEND_JS}</script>" if send_to else "")
@@ -633,6 +670,9 @@ def to_html_share(data):
     return "".join(P)
 
 
+WEEKLY_COPY_OFF = {"Time by app"}
+
+
 def to_html_weekly(data):
     css = CSS.replace("%CLIP%", clip_path(520)).replace("%W%", "520")
     esc = html.escape
@@ -671,11 +711,20 @@ def to_html_weekly(data):
         P.append("</div>")
         P.append(f"<div id='workText' style='display:none'>{esc(chr(10).join('• ' + h for h in data['highlights']))}</div>")
         # The rest of the report. Key achievements are the editable list above.
-        for title, lines in weekly_sections(data)[1:]:
-            P.append("<div class='rule'></div><div class='dept'><div class='depthead'>"
-                     f"<span class='nm'>{esc(title.upper())}</span><span class='dots'></span></div>")
+        # Every section has an "include in copy" switch (F08). Time by app is
+        # off by default: app hours read as surveillance in a manager update.
+        secs = weekly_sections(data)
+        if secs:
+            t0, l0 = secs[0]
+            P.append(f"<div class='wsec' data-title='{esc(t0)}' style='display:none'>"
+                     + "".join(f"<span class='wl'>{esc(x)}</span>" for x in l0) + "</div>")
+        for i, (title, lines) in enumerate(secs[1:], 1):
+            on = "" if title in WEEKLY_COPY_OFF else " checked"
+            P.append(f"<div class='rule'></div><div class='dept wsec' data-title='{esc(title)}'><div class='depthead'>"
+                     f"<span class='nm'>{esc(title.upper())}</span><span class='dots'></span>"
+                     f"<label class='inc'><input type='checkbox' id='inc{i}'{on}> include in copy</label></div>")
             for it in lines:
-                P.append(f"<div class='item'><span class='t'><b>•</b>{esc(it)}</span></div>")
+                P.append(f"<div class='item'><span class='t'><b>•</b><span class='wl'>{esc(it)}</span></span></div>")
             P.append("</div>")
         if data.get("detailed"):
             P.append("<div class='rule'></div><div class='sect'>BY AREA</div>")
@@ -689,8 +738,9 @@ def to_html_weekly(data):
     P.append("<div class='rule double'></div>")
     P.append("<div class='end'>END OF WEEK</div>")
     if data.get("highlights"):
-        P.append("<div class='actions'><button class='copyall' onclick=\"copyEl('wkText','Weekly report copied')\" "
-                 "title='Copy the whole weekly report'>⎙ COPY REPORT</button></div>")
+        P.append("<div class='actions'><button class='copyall primary' onclick='copyReport()' "
+                 "title='Copy the sections switched on above'>⎙ Copy report</button></div>")
+        P.append(f"<div id='wkHead' style='display:none'>Weekly update: {esc(pretty_date(data['week_start']))} → {esc(pretty_date(data['week_end']))}</div>")
     P.append(f"<div id='wkText' style='display:none'>{esc(to_text_weekly(data))}</div>")
     P.append(f"<div class='ts'>updated {esc(data['generated_at'][11:16])}{_sig_html()}</div>")
     P.append("</div></div></div><div class='toast' id='toast'></div>")

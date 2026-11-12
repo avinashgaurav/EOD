@@ -103,8 +103,21 @@ button:hover{border-color:var(--ink);background:rgba(0,0,0,.04)}
 .actions{display:flex;gap:7px;justify-content:center;margin:12px 0 4px}
 .copyall{border-style:solid;border-color:var(--ink);font-weight:700;padding:7px 14px}
 .copyall:hover{background:var(--ink);color:var(--paper)}
-.copyall.seeall{border-style:dashed;border-color:var(--accent);color:var(--accent);font-weight:700}
-.copyall.seeall:hover{background:var(--accent);color:var(--paper)}
+.copyall.primary{background:var(--ink);color:var(--paper)}
+.copyall.primary:hover{opacity:.88}
+.copyall.seeall{border-style:solid;border-color:var(--line);color:var(--ink);font-weight:400}
+.copyall.seeall:hover{background:transparent;border-color:var(--ink);color:var(--ink)}
+/* never show this: a quiet control that appears on hover or keyboard focus */
+.inc{font-size:9px;letter-spacing:.5px;color:var(--ink2);display:flex;gap:4px;align-items:center;white-space:nowrap}
+.nv{border:0;background:transparent;color:var(--ink2);font-size:10px;padding:0 0 0 6px;opacity:0;cursor:pointer}
+.item:hover .nv,.kv:hover .nv,.nv:focus-visible{opacity:1}
+.nv:hover{color:var(--accent)}
+/* send preview */
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.28);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.sheet .box{background:var(--paper);color:var(--ink);border:1px solid var(--ink);width:100%;max-height:80%;overflow:auto;padding:12px;font-size:10.5px}
+.sheet .to{font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.sheet pre{white-space:pre-wrap;font-family:var(--mono);font-size:10.5px;margin:0 0 10px;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:8px 0}
+.sheet .row{display:flex;gap:7px;justify-content:flex-end}
 .ts{text-align:center;font-size:9px;letter-spacing:1px;color:var(--ink2);margin-top:8px}
 .sig{color:var(--ink);font-weight:700;letter-spacing:2px}
 .warn{color:var(--accent);border:1px dashed var(--accent);border-radius:3px;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:4px 6px;margin:6px 0}
@@ -130,7 +143,7 @@ html.anim-out .roll{animation:rollUp   .42s cubic-bezier(.45,0,.7,.25) both}
 </style></head><body><div class='surface'><div class='roll'><div class='receipt'><button class='hide' onclick="send({action:'hide'})" title='Hide (⌥⌃⌘W to reopen)'>✕</button><div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>DAILY WORK RECEIPT</div><div class='stamp'>WORK · SCREEN · WEB</div></div><div class='rule'></div><div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>Thu, Aug 6 2026</span></div><div class='kv'><span class='k'>Ref</span><span class='dots'></span><span class='v'>#20260806</span></div><div class='nav'><button onclick='nav(-1)' title='Previous day'>◀</button><input type='date' class='dpick' value='2026-08-06' max='2026-08-07' onchange='goDate(this.value)' title='Jump to date'><button onclick='nav(1)' title='Next day'>▶</button><button onclick='refresh()' title='Refresh'>↻</button></div><div class='rule double'></div><div class='sect'>WORK</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Checkout</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p0','Users Me Work Checkout copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Fixed the coupon rounding edge case</span><span class='tm'>09:12</span></div></div><div id='p0' style='display:none'>Users Me Work Checkout
   • Fixed the coupon rounding edge case</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Search</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p1','Users Me Work Search copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Reviewed the indexing pull request</span><span class='tm'>11:55</span></div></div><div id='p1' style='display:none'>Users Me Work Search
   • Reviewed the indexing pull request</div><div class='dept'><div class='depthead'><span class='nm'>Users Me Work Platform</span><span class='dots'></span><span class='qty'>×1</span><button class='cp' onclick="copyEl('p2','Users Me Work Platform copied')">⧉</button></div><div class='item'><span class='t'><b>•</b>Trace why the webhook retries twice</span><span class='tm'>15:30</span></div></div><div id='p2' style='display:none'>Users Me Work Platform
-  • Trace why the webhook retries twice</div><div class='rule'></div><div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>From</span><span class='dots'></span><span class='v'>09:12</span></div><div class='kv tot'><span class='k'>To</span><span class='dots'></span><span class='v'>15:30</span></div><div class='rule double'></div><div class='end'>END OF DAY</div><div class='barcode'></div><div class='bcnum'>20260806 · XY</div><div class='actions'><button class='copyall' onclick="copyEl('allText','Summary copied')">⎙ Copy</button><button class='copyall seeall' onclick="send({action:'full'})">⊞ See full bill</button><button class='copyall' onclick="send({action:'share'});toast('Drawing the image…')" title='Copy the day as an image for X / LinkedIn' aria-label='Share as image'>⇪</button></div><div class='ts'>updated 17:00 · ~/.claude · <span class='sig'>XY</span></div><div id='allText' style='display:none'>Daily update — Thu, Aug 6 2026
+  • Trace why the webhook retries twice</div><div class='rule'></div><div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>3</span></div><div class='kv tot'><span class='k'>From</span><span class='dots'></span><span class='v'>09:12</span></div><div class='kv tot'><span class='k'>To</span><span class='dots'></span><span class='v'>15:30</span></div><div class='rule double'></div><div class='end'>END OF DAY</div><div class='barcode'></div><div class='bcnum'>20260806 · XY</div><div class='actions'><button class='copyall primary' onclick="copyEl('updText','Update copied')" title='Copy the work update: work lines only, no screen time or sites'>⎙ Copy update</button><button class='copyall seeall' onclick="send({action:'full'})" title='Everything from today'>Full day</button><button class='copyall' onclick="send({action:'share'});toast('Drawing the image…')" title='Copy the day as an image for X / LinkedIn' aria-label='Share as image'>⇪</button></div><div class='ts'>updated 17:00 · ~/.claude · <span class='sig'>XY</span></div><div id='allText' style='display:none'>Daily update — Thu, Aug 6 2026
 
 Users Me Work Checkout
   • Fixed the coupon rounding edge case
@@ -138,6 +151,11 @@ Users Me Work Search
   • Reviewed the indexing pull request
 Users Me Work Platform
   • Trace why the webhook retries twice
+</div><div id='updText' style='display:none'>Daily update: Thu, Aug 6 2026
+
+• Users Me Work Checkout: Fixed the coupon rounding edge case
+• Users Me Work Search: Reviewed the indexing pull request
+• Users Me Work Platform: Trace why the webhook retries twice
 </div></div></div></div><div class='toast' id='toast'></div><script>
 function send(m){try{window.webkit.messageHandlers.eod.postMessage(m);return true}catch(e){return false}}
 function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
@@ -148,6 +166,11 @@ function copyText(txt,label){
     ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();}
   toast((label||'Copied')+' ✓');}
 function copyEl(id,label){copyText(document.getElementById(id).textContent,label)}
+function neverShow(k,v){if(send({action:'neverShow',kind:k,value:v}))toast('Hidden from now on');else toast('Hiding works from the app')}
+function copyReport(){var L=[document.getElementById('wkHead').textContent,''];
+  document.querySelectorAll('.wsec').forEach(function(sec){var cb=sec.querySelector('input');if(cb&&!cb.checked)return;
+    L.push(sec.getAttribute('data-title').toUpperCase());sec.querySelectorAll('.wl').forEach(function(x){L.push('\u2022 '+x.textContent)});L.push('')});
+  copyText(L.join('\n').replace(/\n+$/,'\n'),'Weekly report copied')}
 function nav(d){send({action:'nav',delta:d})}
 function goDate(v){if(v)send({action:'goDate',date:v})}
 function refresh(){send({action:'refresh'});toast('Refreshing…')}
