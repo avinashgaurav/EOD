@@ -12,6 +12,31 @@ The script is short; read it first: [site/install.sh](../site/install.sh). It ch
 
 The app is not signed with an Apple Developer ID yet. Installed with the command above it opens normally. If you download `EOD.zip` in a browser instead, macOS blocks the first open: go to System Settings, Privacy & Security, and click **Open Anyway**.
 
+### Or with Homebrew (free tap, no separate repo)
+
+```sh
+brew tap avinashgaurav/eod https://github.com/avinashgaurav/EOD
+brew install --cask eod
+```
+
+Homebrew downloads through the browser stack, so macOS may ask once: System Settings, Privacy & Security, **Open Anyway**.
+
+## Beyond the receipt
+
+| | Where |
+|---|---|
+| Morning standup (yesterday, today, blockers) | Menu: Copy morning standup; optional 9:00 reminder in Settings |
+| Plan versus done | Menu: Plan today… ; the receipt marks what got done |
+| Brag doc for reviews (3, 6 or 12 months) | Menu: Brag doc for reviews; saved to Downloads as Markdown |
+| Search and ask your history | Menu: Search history… (Ask uses your AI tidy-up choice) |
+| History shelf | Menu: History… ; a month of receipts, gaps dashed, sent days marked |
+| Week in a receipt image | Weekly report, More; optional Friday 16:00 reminder |
+| Day timeline | Full day view |
+| Email draft destination, per-destination format | Settings, Send: `email you@example.com`, `format=markdown` |
+| Redaction before anything leaves | Settings, Privacy (on by default) |
+| One gentle line about the day | Settings, Privacy (off by default) |
+| Claude Code (MCP + /eod) and Raycast | `integrations/` |
+
 ## What changes from the Hammerspoon version
 
 | | Hammerspoon | Mac app |

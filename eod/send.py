@@ -17,6 +17,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .config import CACHE, SEND_LABELS, app_path, load_send_targets
 from .hide import apply_hide
+from .features import redact
 from .render.text import to_standup
 
 TIMEOUT = 15
@@ -104,8 +105,9 @@ def _text(data, bullet="• "):
         if not t:
             return None
         lines = [(bullet + x[2:]) if x.startswith("\u2022 ") else x for x in t.split("\n")]
-        return "\n".join(lines) + "\n"
-    return to_standup(data, bullet=bullet)
+        return redact("\n".join(lines) + "\n")
+    out = to_standup(data, bullet=bullet)
+    return redact(out) if out else out
 
 
 def payload_for(target, data):
@@ -113,6 +115,16 @@ def payload_for(target, data):
     the tests can check the exact shape each service is sent. For Linear this
     is the comment itself; `target["issue_uuid"]` must already be resolved."""
     kind = target["kind"]
+    if target.get("format") == "markdown" and kind != "slack":
+        t = _text(data, bullet="- ")
+        if t:
+            lines = t.split("\n")
+            t = "\n".join(["**%s**" % lines[0]] + lines[1:])
+        if kind == "teams":
+            return target["url"], _teams_card(t), {}
+        if kind == "linear":
+            return LINEAR_API, {"query": LINEAR_MUTATION, "variables": {"input": {
+                "issueId": target.get("issue_uuid", target["issue"]), "body": t}}}, {"Authorization": target["key"]}
     if kind == "slack":
         # Slack reads &, < and > as markup, so a highlight mentioning <div>
         # would vanish without this.
@@ -210,6 +222,14 @@ def send_day(data, targets=None):
         return [], ["no work recorded for this day, nothing sent"]
     sent, failed = [], []
     for t in targets:
+        if t.get("kind") == "email":
+            # Not sent by EOD: the app opens a draft. Printed as a mailto: line.
+            from urllib.parse import quote
+            body = (_text(data, bullet="- ") or "")[:1800]      # mail apps drop very long mailto: links
+            subject = body.split("\n", 1)[0] if body else "Work update"
+            print("MAILTO mailto:%s?subject=%s&body=%s" % (quote(t["to"], safe="@"), quote(subject), quote(body)))
+            sent.append("Email draft")
+            continue
         if t.get("bad"):
             failed.append("send.txt line %d not understood" % t["bad"])
             continue

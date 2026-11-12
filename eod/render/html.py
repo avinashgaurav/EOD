@@ -220,7 +220,10 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .barcode{height:22px;width:60%}
 .toast{font-size:11px;letter-spacing:1px}
 .sheet .box{border-color:var(--carbon)}
+.sheet pre{background:var(--copy);padding:8px;outline-offset:2px}
+.sheet .cc{font-size:10.5px;color:var(--ink2);margin:-2px 0 6px}
 .stamp{display:none}
+.item.plan.done .t{color:var(--ink2);text-decoration:line-through}
 /* Controls only the Mac app can act on are hidden in the Hammerspoon widget. */
 .app-only{display:none!important}
 html.app .app-only{display:flex!important}
@@ -382,15 +385,20 @@ function postUpdate(b){
   // Show exactly what goes where before anything leaves the Mac (F09).
   var old=document.getElementById('sendSheet');if(old)old.remove();
   var sh=document.createElement('div');sh.className='sheet';sh.id='sendSheet';
-  sh.innerHTML="<div class='box' role='dialog' aria-modal='true' aria-label='Send preview'><div class='to'></div><pre></pre>"+
+  // The carbon copy (B3): the pink sheet is exactly what leaves, and you can edit it first.
+  sh.innerHTML="<div class='box' role='dialog' aria-modal='true' aria-label='Send preview'><div class='to'></div>"+
+    "<div class='cc'>This copy is what gets sent. Edit it first if you like.</div><pre></pre>"+
     "<div class='row'><button class='copyall seeall' id='sendCancel'>Cancel</button><button class='copyall primary' id='sendGo'>Send now</button></div></div>";
   sh.querySelector('.to').textContent='To: '+((document.getElementById('sendTo')||{}).textContent||'');
-  sh.querySelector('pre').textContent=(document.getElementById('updText')||{}).textContent||'';
+  var pre=sh.querySelector('pre');pre.textContent=(document.getElementById('updText')||{}).textContent||'';
+  if(window.EOD_APP){pre.contentEditable='true';pre.setAttribute('aria-label','Text to send, editable')}
   document.body.appendChild(sh);
   var close=function(){sh.remove();document.removeEventListener('keydown',esc)};
   var esc=function(e){if(e.key==='Escape')close()};document.addEventListener('keydown',esc);
   sh.querySelector('#sendCancel').onclick=close;
-  sh.querySelector('#sendGo').onclick=function(){close();if(send({action:'post'})){b.disabled=true;toast('Sending…')}else toast('Send works from the widget')};
+  sh.querySelector('#sendGo').onclick=function(){var t=pre.innerText;close();
+    var ok=window.EOD_APP?send({action:'postText',text:t}):send({action:'post'});
+    if(ok){b.disabled=true;toast('Sending…')}else toast('Send works from the widget')};
   sh.querySelector('#sendGo').focus()}
 // The weekly report: preview the exact composed text, then send that text.
 function postWeekly(b){var old=document.getElementById('sendSheet');if(old)old.remove();
@@ -398,11 +406,12 @@ function postWeekly(b){var old=document.getElementById('sendSheet');if(old)old.r
   sh.innerHTML="<div class='box' role='dialog' aria-modal='true' aria-label='Send preview'><div class='to'></div><pre></pre>"+
     "<div class='row'><button class='copyall seeall' id='sendCancel'>Cancel</button><button class='copyall primary' id='sendGo'>Send now</button></div></div>";
   sh.querySelector('.to').textContent='To: '+((document.getElementById('sendTo')||{}).textContent||'');
-  sh.querySelector('pre').textContent=text;document.body.appendChild(sh);
+  sh.querySelector('pre').textContent=text;var pre=sh.querySelector('pre');pre.contentEditable='true';
+  document.body.appendChild(sh);
   var close=function(){sh.remove();document.removeEventListener('keydown',esc);b.focus()};
   var esc=function(e){if(e.key==='Escape'){e.stopPropagation();close()}};document.addEventListener('keydown',esc);
   sh.querySelector('#sendCancel').onclick=close;
-  sh.querySelector('#sendGo').onclick=function(){close();if(send({action:'postWeekly',text:text})){b.disabled=true;toast('Sending…')}};
+  sh.querySelector('#sendGo').onclick=function(){var t=pre.innerText;close();if(send({action:'postText',text:t})){b.disabled=true;toast('Sending…')}};
   sh.querySelector('#sendGo').focus()}
 function sendResult(t){var b=document.getElementById('sendBtn');if(b)b.disabled=false;
 var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');
@@ -570,6 +579,19 @@ def to_html(data, send_to=()):
                 P.append("</div>")
                 P.append(f"<div id='{pid}' style='display:none'>{esc(project_text(p))}</div>")
 
+        # B6: the morning plan against what happened.
+        from ..features import plan_status
+        _plan = plan_status(data["date"], data.get("highlights") or [])
+        if not data.get("highlights"):          # nothing summarised yet: list the plan, don't judge it
+            _plan = [(line, "open") for line, _ in _plan]
+        if _plan:
+            P.append("<div class='rule'></div><div class='depthead'><span class='nm'>PLANNED</span><span class='dots'></span>"
+                     f"<span class='qty'>{sum(1 for _, st in _plan if st == 'done')}/{len(_plan)}</span></div>")
+            for line, st in _plan:
+                mark = "&#10003;" if st == "done" else "&bull;"
+                P.append(f"<div class='item plan {st}'><span class='t'><b>{mark}</b>{esc(line)}</span>"
+                         f"<span class='tm'>{'done' if st == 'done' else 'open'}</span></div>")
+
         # ── Screen time (app usage) ──
         if apps:
             P.append("<div class='rule'></div>")
@@ -619,8 +641,15 @@ def to_html(data, send_to=()):
         P.append(f"<div class='kv tot'><span class='k'>Screen</span><span class='dots'></span><span class='v'>{fmt_dur(app_total)}</span></div>")
     if web and brief_web_on():
         P.append(f"<div class='kv tot'><span class='k'>Sites</span><span class='dots'></span><span class='v'>{len(web)}</span></div>")
-    P.append(f"<div class='kv tot'><span class='k'>From</span><span class='dots'></span><span class='v'>{t0}</span></div>")
-    P.append(f"<div class='kv tot'><span class='k'>To</span><span class='dots'></span><span class='v'>{t1}</span></div>")
+    # First and last activity seen, not hours worked (F48): a session with one
+    # prompt has no length, and breaks are not visible.
+    P.append(f"<div class='kv tot'><span class='k'>First activity</span><span class='dots'></span><span class='v'>{t0}</span></div>")
+    P.append(f"<div class='kv tot'><span class='k'>Last activity</span><span class='dots'></span><span class='v'>{t1}</span></div>")
+    # B13: one gentle line about the day, off by default (insight.on).
+    from ..features import daily_insight
+    _ins = daily_insight(data)
+    if _ins:
+        P.append(f"<div class='prov' role='note'>{esc(_ins)}</div>")
     P.append("<div class='rule double'></div>")
 
     P.append("<div class='end'>END OF DAY</div>")
@@ -678,6 +707,54 @@ def to_html(data, send_to=()):
     return out
 
 
+def _mins(hm):
+    try:
+        h, m = str(hm).split(":")[:2]
+        return int(h) * 60 + int(m)
+    except (ValueError, AttributeError):
+        return None
+
+
+def timeline_svg(data, width=476):
+    """Work sessions (carbon) and meetings (stamp red) on one hour-ruled strip,
+    with each block titled for hover and screen readers. Read-only."""
+    blocks = []
+    for p in data.get("projects") or []:
+        for s in p.get("sessions") or []:
+            a, b = _mins(s.get("start")), _mins(s.get("end"))
+            if a is not None:
+                blocks.append(("work", a, max(b or a, a + 10), "%s: %s" % (p.get("name", ""), s.get("title", "")),
+                               s.get("start", ""), s.get("title", "")))
+    for m in data.get("meetings") or []:
+        a = _mins(m.get("time"))
+        if a is not None:
+            blocks.append(("meet", a, a + 30, "Meeting: %s" % m.get("title", ""), "", ""))
+    if not blocks:
+        return ""
+    lo = max(0, (min(b[1] for b in blocks) // 60) * 60)
+    hi = min(24 * 60, ((max(b[2] for b in blocks) + 59) // 60) * 60)
+    span = max(60, hi - lo)
+    x = lambda v: round((v - lo) * width / span, 1)
+    esc = html.escape
+    out = [f"<svg class='tl' viewBox='0 0 {width} 46' width='100%' role='img' aria-label='Timeline of the day, {len(blocks)} blocks'>"]
+    for h in range(lo, hi + 1, 60):
+        out.append(f"<line x1='{x(h)}' y1='0' x2='{x(h)}' y2='34' stroke='var(--line)'/>"
+                   f"<text x='{x(h)}' y='44' font-size='9' text-anchor='middle' fill='var(--ink2)'>{h // 60:02d}</text>")
+    for kind, a, b, title, start, stitle in blocks:
+        y, fill = (4, "var(--carbon)") if kind == "work" else (20, "var(--accent)")
+        click = ""
+        if kind == "work" and start:
+            # Clicking a work block moves that session to another project (B9).
+            act = f"send({{action:'assign',start:{esc(json.dumps(start))},title:{esc(json.dumps(stitle))}}})"
+            click = (f" class='tlw' tabindex='0' role='button' aria-label='{esc(title)}. Assign to a project' "
+                     f"onclick=\"{act}\" onkeydown=\"if(event.key==='Enter'||event.key===' '){{event.preventDefault();{act}}}\"")
+        out.append(f"<rect x='{x(a)}' y='{y}' width='{max(2, x(b) - x(a))}' height='12' fill='{fill}' opacity='.85'{click}>"
+                   f"<title>{esc(title)}</title></rect>")
+    out.append("</svg><div class='prov'>Top row: work sessions (click one to assign it to a project for timesheets). "
+               "Bottom row: meetings.</div>")
+    return "".join(out)
+
+
 def to_html_full(data):
     """The 'See full bill' card: everything, in detail (opened as a second window)."""
     css = CSS.replace("%CLIP%", clip_path(520)).replace("%W%", "520")
@@ -693,7 +770,7 @@ def to_html_full(data):
     P.append("<button class='hide' onclick=\"send({action:'hide'})\" title='Close (Esc)' aria-label='Close the full day'>" + ic("close") + "</button>")
     P.append("<div class='grip' onmousedown='drag(event)'>")
     P.append("<div class='brand'>E<b>O</b>D</div>")
-    P.append("<div class='tag'>FULL BILL · ALL ACTIVITY</div>")
+    P.append("<div class='tag'>FULL DAY · ALL ACTIVITY</div>")
     P.append("</div>")
     P.append("<div class='rule'></div>")
     P.append(f"<div class='kv'><span class='k'>Date</span><span class='dots'></span><span class='v'>{esc(pretty_date(data['date']))}</span></div>")
@@ -707,6 +784,10 @@ def to_html_full(data):
     # the exact bug the contract exists to prevent.
     for _sw in source_warnings(data):
         P.append("<div class='warn'>! " + esc(_sw) + "</div>")
+    # B9: the day as a timeline: work sessions and meetings on one strip.
+    _tl = timeline_svg(data)
+    if _tl:
+        P.append("<div class='rule'></div><div class='sect'>DAY TIMELINE</div>" + _tl)
     P.append("<div class='rule double'></div>")
 
     if not (data["projects"] or apps or web or data.get("commits") or data.get("meetings")):
@@ -862,6 +943,24 @@ body{background:var(--surface);font-family:var(--mono);-webkit-font-smoothing:an
 """
 
 
+def to_html_share_week(wd):
+    """The week as a share card (B7): the one-line summary and the top lines."""
+    from ..features import redact
+    d = {"date": wd.get("week_end") or wd["week_start"], "projects": [], "project_count": 0,
+         "highlights": [redact(h) for h in (wd.get("highlights") or [])], "apps": [], "web": [],
+         "sessions_seen": 0, "commits": [], "meetings": []}
+    page = to_html_share(d)
+    tl = ((wd.get("report") or {}).get("tldr")) or ""
+    page = page.replace("DAILY WORK RECEIPT", "WEEK IN A RECEIPT", 1)
+    page = page.replace("<span class='k'>Date</span>", "<span class='k'>Week</span>", 1)
+    page = page.replace(f"<span class='v'>{html.escape(pretty_date(d['date']))}</span>",
+                        f"<span class='v'>{html.escape(pretty_date(wd['week_start']))} → {html.escape(pretty_date(d['date']))}</span>", 1)
+    if tl:
+        page = page.replace("<div class='sect'>WORK</div>",
+                            f"<div class='item'><span class='t'><b>&rarr;</b>{html.escape(redact(tl))}</span></div><div class='sect'>WORK</div>", 1)
+    return page
+
+
 def to_html_share(data):
     """The day as a social image: highlights and totals only, no controls.
 
@@ -1000,6 +1099,7 @@ def to_html_weekly(data, send_to=()):
                  + (f"<button id='sendBtn' class='copyall sendb app-only' onclick='postWeekly(this)' "
                     f"title='Post the report to {esc(', '.join(send_to))}'>" + ic("send") + "Send</button>" if send_to else "")
                  + "<details class='more app-only'><summary aria-label='More actions'>" + ic("more") + "</summary><div class='menu'>"
+                 "<button onclick=\"closeMore(this);send({action:'shareWeek'});toast('Drawing the week…')\">" + ic("share") + "Share week as image</button>"
                  "<button onclick=\"closeMore(this);send({action:'timesheet'})\">" + ic("list") + "Export timesheet (CSV)</button>"
                  "<button onclick=\"closeMore(this);send({action:'print'})\">" + ic("print") + "Print report</button>"
                  "</div></details></div>")
