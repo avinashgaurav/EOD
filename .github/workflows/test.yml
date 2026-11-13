@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: Python 3.9 (what macOS ships) is not built for newer images
     strategy:
       fail-fast: false
       matrix:
