@@ -1,5 +1,8 @@
 #!/bin/bash
-# Build EOD.app (universal: Apple silicon + Intel) without Xcode, ad-hoc signed.
+# Build EOD.app (universal: Apple silicon + Intel) without Xcode.
+# Signing: with EOD_SIGN_P12 (base64 .p12) and EOD_SIGN_P12_PASSWORD set, it signs
+# with that one long-lived certificate, so macOS keeps Keychain, Calendar and
+# notification permissions across updates. Without them it signs ad-hoc.
 #   macos/build.sh            -> macos/build/EOD.app and macos/build/EOD.zip
 # Needs the Command Line Tools (swiftc). VERSION defaults to the latest git tag.
 set -euo pipefail
@@ -47,6 +50,24 @@ cp "$ROOT/extract.py" "$ROOT/exclude.txt.example" "$APP/Contents/Resources/engin
 cp -R "$ROOT/eod" "$ROOT/bin" "$APP/Contents/Resources/engine/"
 find "$APP/Contents/Resources/engine" -name '__pycache__' -type d -prune -exec rm -rf {} +
 
-codesign --force --deep --sign - "$APP"
+if [ -n "${EOD_SIGN_P12:-}" ] && [ -n "${EOD_SIGN_P12_PASSWORD:-}" ]; then
+  # A throwaway keychain for this build only: the login keychain is never touched.
+  KC="$(mktemp -d)/eod-sign.keychain-db"; KCPW="$(openssl rand -hex 16)"
+  P12="$(mktemp)"; printf '%s' "$EOD_SIGN_P12" | base64 --decode > "$P12"
+  cleanup_kc() { security delete-keychain "$KC" >/dev/null 2>&1 || true; rm -f "$P12"; }
+  trap cleanup_kc EXIT
+  security create-keychain -p "$KCPW" "$KC"
+  security set-keychain-settings -lut 3600 "$KC"
+  security unlock-keychain -p "$KCPW" "$KC"
+  security import "$P12" -k "$KC" -f pkcs12 -P "$EOD_SIGN_P12_PASSWORD" -T /usr/bin/codesign >/dev/null
+  security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC" >/dev/null
+  ID="$(security find-certificate -a -Z "$KC" | awk '/SHA-1 hash:/{print $3; exit}')"
+  [ -n "$ID" ] || { echo "signing certificate not found in the .p12" >&2; exit 1; }
+  codesign --force --deep --keychain "$KC" --sign "$ID" "$APP"
+  echo "signed with the EOD certificate ($ID)"
+else
+  codesign --force --deep --sign - "$APP"
+  echo "signed ad-hoc (no EOD_SIGN_P12 set)"
+fi
 (cd "$OUT" && ditto -c -k --keepParent EOD.app EOD.zip)
 echo "built $APP ($VERSION.$BUILD) and $OUT/EOD.zip"

@@ -1,6 +1,6 @@
 name: release
 
-# Push a tag like v1.0.0 and this builds EOD.app (universal, ad-hoc signed) on a
+# Push a tag like v1.0.0 and this builds EOD.app (universal, signed with the EOD certificate) on a
 # Mac runner and attaches EOD.zip to a GitHub release for that tag. The one-line
 # installer always downloads the latest release's EOD.zip.
 on:
@@ -23,7 +23,17 @@ jobs:
       - name: Tests
         run: ./run_tests.sh
       - name: Build EOD.app
+        env:
+          # One long-lived self-signed certificate, so macOS keeps Keychain and
+          # Calendar permissions across updates. Unset (forks): signs ad-hoc.
+          EOD_SIGN_P12: ${{ secrets.EOD_SIGN_P12 }}
+          EOD_SIGN_P12_PASSWORD: ${{ secrets.EOD_SIGN_P12_PASSWORD }}
         run: VERSION="${GITHUB_REF_NAME#v}" macos/build.sh
+      - name: Check the signature is the stable one
+        run: |
+          codesign -v macos/build/EOD.app
+          codesign -d -r- macos/build/EOD.app 2>&1 | grep -q 'certificate leaf = H"9f7240f887bda3a91ad775839ac269fb4c6fb020"' \
+            || { echo "EOD.app is not signed with the EOD certificate"; exit 1; }
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
