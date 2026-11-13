@@ -17,15 +17,13 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
 <style>
-/* ---------- self-hosted, latin subset, no third-party requests ---------- */
-@font-face{font-family:'Instrument Serif';src:url('/fonts/instrument-serif.woff2') format('woff2');
+/* ---------- self-hosted, no third-party requests: the app's own two faces ---------- */
+@font-face{font-family:'Archivo Narrow';src:url('/fonts/ArchivoNarrow.ttf') format('truetype');
+  font-weight:400 700;font-style:normal;font-display:swap}
+@font-face{font-family:'Courier Prime';src:url('/fonts/CourierPrime-Regular.ttf') format('truetype');
   font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Instrument Serif';src:url('/fonts/instrument-serif-italic.woff2') format('woff2');
-  font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:'Inter';src:url('/fonts/inter-var.woff2') format('woff2');
-  font-weight:400 600;font-style:normal;font-display:swap}
-@font-face{font-family:'JetBrains Mono';src:url('/fonts/jetbrains-mono-var.woff2') format('woff2');
-  font-weight:400 600;font-style:normal;font-display:swap}
+@font-face{font-family:'Courier Prime';src:url('/fonts/CourierPrime-Bold.ttf') format('truetype');
+  font-weight:700;font-style:normal;font-display:swap}
 
 /* ============================================================
    EOD
@@ -71,12 +69,10 @@
 
   --r-sm:6px; --r-lg:12px; --r-full:9999px;
 
-  /* Ollama bans a custom display face. Overridden: stock system type is what
-     made the page read as unfinished. Claude's rule takes over instead, a serif
-     display at weight 400 with negative tracking against a humanist sans body. */
-  --serif:'Instrument Serif',ui-serif,Georgia,"Times New Roman",serif;
-  --sans:'Inter',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --mono:'JetBrains Mono',ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  /* Carbon copy: Archivo Narrow for headings, Courier Prime for everything else. */
+  --serif:'Archivo Narrow','Arial Narrow',sans-serif;
+  --sans:'Courier Prime','Courier New',ui-monospace,monospace;
+  --mono:'Courier Prime','Courier New',ui-monospace,monospace;
 
   --col:720px;      /* Ollama reading column, for prose */
   --col-wide:1060px;/* Claude hero width, for the two figure sections */
@@ -200,7 +196,7 @@ nav{
 .hero-copy .cta-row{display:flex;flex-wrap:wrap;gap:var(--md);margin-top:var(--xl)}
 .hero-shot{position:relative}
 /* Cropped to roughly the height of the copy beside it. A receipt running off the
-   bottom edge still reads as a receipt, and the complete item, barcode and all,
+   bottom edge still reads as a receipt, and the complete item, stamp and all,
    is in the specimen band below. */
 .hero-shot img{
   display:block;width:100%;height:452px;object-fit:cover;object-position:top center;
@@ -415,6 +411,52 @@ a{color:var(--carbon)}
   .navlinks{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 12px;max-width:none}
   .navlinks .hide-sm{display:inline}
 }
+
+/* ============================================================
+   Carbon copy (design direction 02), applied over the skeleton above:
+   blue carbon ink on the pink duplicate sheet, the white top copy as the
+   raised surface, Archivo Narrow headings, Courier Prime text, square
+   corners and one red stamp. Same tokens the app's receipt uses.
+   ============================================================ */
+:root{
+  --canvas:#F6D9DC;--carbon:#24357A;--stamp:#C8323C;
+  --surface-soft:#FFFFFF;--surface-dark:#24357A;--on-dark:#F6D9DC;--on-dark-mute:#E2CBD6;
+  --ink:#24357A;--body:#24357A;--charcoal:#4A5590;--mute:#4A5590;
+  --hairline:#E0AEB5;--hairline-strong:#A3A0C4;
+  --accent:#24357A;--accent-soft:#FFFFFF;
+  --amber:#A82A33;--amber-soft:#FFFFFF;--teal:#24357A;--teal-soft:#FFFFFF;--paper:#FFFFFF;
+  --r-sm:0;--r-lg:0;--r-full:0;
+  --serif:'Archivo Narrow','Arial Narrow',sans-serif;
+  --sans:'Courier Prime','Courier New',ui-monospace,monospace;
+  --mono:'Courier Prime','Courier New',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --canvas:#231C21;--carbon:#8FA0E0;--stamp:#F07A82;
+    --surface-soft:#2E252B;--surface-dark:#1A1418;--on-dark:#F6D9DC;--on-dark-mute:#B7AFC2;
+    --ink:#C9D2F5;--body:#C9D2F5;--charcoal:#B7AFC2;--mute:#B7AFC2;
+    --hairline:#4A3A43;--hairline-strong:#6B5A66;
+    --accent:#8FA0E0;--accent-soft:#2E252B;
+    --amber:#F07A82;--amber-soft:#2E252B;--teal:#8FA0E0;--teal-soft:#2E252B;--paper:#2E252B;
+  }
+}
+h1,h2{font-weight:700;text-transform:uppercase;letter-spacing:0}
+h1{line-height:.98}
+h3{font-family:var(--serif);font-weight:700;font-size:18px;letter-spacing:.5px}
+.hero{background:none}
+.mark{font-family:var(--serif);font-weight:700;letter-spacing:3px}
+.mark b{color:var(--ink)}
+.btn{font-family:var(--serif);font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.btn-primary{background:var(--carbon);color:var(--canvas)}
+.btn-primary:hover{background:var(--ink);opacity:.9}
+.snippet{border:2px solid var(--carbon);background:var(--surface-soft)}
+.card,.diagram{border-color:var(--hairline-strong);background:var(--surface-soft);
+  box-shadow:6px 6px 0 var(--canvas),6px 6px 0 1px var(--hairline-strong)}
+.card .tag{border:1px solid currentColor;background:transparent}
+.hero-shot{position:relative}
+.hero-shot img{box-shadow:none}
+.eyebrow{font-family:var(--serif);font-weight:700;font-size:13px;letter-spacing:2.5px;color:var(--amber)}
+kbd{border:1px solid var(--hairline-strong)}
 </style>
 </head>
 <body>
@@ -454,7 +496,7 @@ a{color:var(--carbon)}
         </p>
       </div>
       <figure class="hero-shot">
-        <img class="print-in" src="/screenshots/brief-cutout.png" width="680" height="1781" fetchpriority="high"
+        <img class="print-in" src="/screenshots/brief-cutout.png" width="696" height="1759" fetchpriority="high"
              alt="The EOD daily receipt: a white paper slip listing the day's work lines, screen time, totals and a Copy update button.">
         <figcaption>Sample data</figcaption>
       </figure>
@@ -718,12 +760,12 @@ a{color:var(--carbon)}
     </p>
     <div class="shots">
       <figure>
-        <img class="shot-brief" src="/screenshots/brief.png" width="680" height="1781"
+        <img class="shot-brief" src="/screenshots/brief.png" width="696" height="1759"
              alt="The daily receipt, listing work items, screen time and visited sites for one day.">
         <figcaption>Daily receipt</figcaption>
       </figure>
       <figure>
-        <img class="shot-weekly" src="/screenshots/weekly.png" width="1040" height="1551"
+        <img class="shot-weekly" src="/screenshots/weekly.png" width="1056" height="1163"
              alt="The weekly recap, summarising a week of work grouped by area.">
         <figcaption>Weekly recap</figcaption>
       </figure>

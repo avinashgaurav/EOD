@@ -333,7 +333,7 @@ def history_month_html(ym, css):
 .legend{font-size:11px;color:var(--ink2);margin-top:10px}
 """, "</style></head><body><div class='surface'><div class='roll'><div class='receipt'>",
          "<button class='hide' onclick=\"send({action:'hide'})\" aria-label='Close history'>&times;</button>",
-         "<div class='grip' onmousedown='drag(event)'><div class='brand'>E<b>O</b>D</div><div class='tag'>HISTORY</div></div>",
+         "<div class='grip' onmousedown='drag(event)'><div class='brand wo'><span>WORK ORDER · E<b>O</b>D</span><span class='no'>No. H%02d%02d</span></div><div class='tag'>HISTORY · FILED COPIES</div></div>" % (y % 100, m),
          "<div class='mhead'><button onclick=\"send({action:'month',ym:'%s'})\" aria-label='Previous month'>&lsaquo;</button>"
          "<b>%s</b><button onclick=\"send({action:'month',ym:'%s'})\" aria-label='Next month'>&rsaquo;</button></div>"
          % (prev_ym, esc(datetime(y, m, 1).strftime("%B %Y")), next_ym),

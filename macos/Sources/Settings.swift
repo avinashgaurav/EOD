@@ -118,6 +118,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
             tabs.addTabViewItem(item)
         }
         window.contentView = tabs
+        Brand.style(window)
         window.delegate = self
         window.center()
         NSApp.activate(ignoringOtherApps: true)
@@ -137,13 +138,13 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     private func note(_ t: String) -> NSTextField {
         let l = NSTextField(wrappingLabelWithString: t)
-        l.font = .systemFont(ofSize: 11); l.textColor = .secondaryLabelColor; l.preferredMaxLayoutWidth = 500
+        l.font = Brand.body(11); l.textColor = Brand.ink2; l.preferredMaxLayoutWidth = 500
         return l
     }
 
     private func check(_ title: String, _ on: Bool, _ handler: @escaping (Bool) -> Void) -> NSButton {
         let b = ClosureButton(checkboxWithTitle: title, target: nil, action: nil)
-        b.state = on ? .on : .off
+        b.state = on ? .on : .off; Brand.ink(b)
         b.onClick = { handler($0.state == .on) }
         return b
     }

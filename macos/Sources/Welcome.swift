@@ -25,30 +25,32 @@ enum Welcome {
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 10
         stack.edgeInsets = NSEdgeInsets(top: 22, left: 24, bottom: 20, right: 24)
 
-        func label(_ s: String, size: CGFloat = 13, bold: Bool = false, color: NSColor = .labelColor) -> NSTextField {
+        func label(_ s: String, size: CGFloat = 13, bold: Bool = false, color: NSColor = Brand.ink) -> NSTextField {
             let l = NSTextField(wrappingLabelWithString: s)
-            l.font = bold ? .boldSystemFont(ofSize: size) : .systemFont(ofSize: size)
+            l.font = bold ? Brand.head(size + 2) : Brand.body(size)
             l.textColor = color; l.preferredMaxLayoutWidth = 470
             return l
         }
 
-        stack.addArrangedSubview(label("Your work day, as a receipt.", size: 20, bold: true))
-        stack.addArrangedSubview(label("EOD builds the receipt from files already on this Mac. Nothing is uploaded and there is no account.", color: .secondaryLabelColor))
+        let wo = label("WORK ORDER · EOD", size: 13, bold: true)
+        stack.addArrangedSubview(wo)
+        stack.addArrangedSubview(label("Your standup, already written.", size: 24, bold: true))
+        stack.addArrangedSubview(label("EOD builds the receipt from files already on this Mac. Nothing is uploaded and there is no account.", color: Brand.ink2))
         stack.addArrangedSubview(label("What it reads (untick anything you don't want)", bold: true))
         var sourceBoxes: [(String, NSButton)] = []
         for src in SourceSwitch.all {
             let title = src.name == "meetings" ? "Calendar: meeting titles (macOS will ask)" : "\(src.title): \(src.detail)"
             let b = NSButton(checkboxWithTitle: title, target: nil, action: nil)
-            b.state = .on
+            b.state = .on; Brand.ink(b)
             sourceBoxes.append((src.name, b)); stack.addArrangedSubview(b)
         }
         stack.addArrangedSubview(label("Safari history needs Full Disk Access for EOD (System Settings, Privacy & Security). Everything else works without it.",
-                                       size: 12, color: .secondaryLabelColor))
+                                       size: 12, color: Brand.ink2))
 
         // Opt-in: the one step that can leave the Mac starts off until the person ticks it.
         let ai = NSButton(checkboxWithTitle: "Tidy the lines with AI through my own claude CLI (sends session titles, some prompts and meeting titles to Claude)",
                           target: nil, action: nil)
-        ai.state = .off
+        ai.state = .off; Brand.ink(ai)
         stack.addArrangedSubview(ai)
 
         let fda = NSButton(title: "Open Full Disk Access settings", target: nil, action: nil)
@@ -57,7 +59,7 @@ enum Welcome {
         go.bezelStyle = .rounded; go.keyEquivalent = "\r"
         let row = NSStackView(views: [fda, go]); row.spacing = 10
         stack.addArrangedSubview(row)
-        stack.addArrangedSubview(label("Show or hide it any time with ⌥⌃⌘W or the menu-bar icon.", size: 12, color: .secondaryLabelColor))
+        stack.addArrangedSubview(label("Show or hide it any time with ⌥⌃⌘W or the menu-bar icon.", size: 12, color: Brand.ink2))
 
         // Opt-in for real: AI polish is off on disk before the window even shows,
         // so closing it any way leaves it off.
@@ -69,6 +71,7 @@ enum Welcome {
         objc_setAssociatedObject(w, &Welcome.key, handler, .OBJC_ASSOCIATION_RETAIN)
 
         w.contentView = stack
+        Brand.style(w)
         w.center()
         window = w
         NSApp.activate(ignoringOtherApps: true)

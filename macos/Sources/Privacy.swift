@@ -156,12 +156,13 @@ final class TextWindow: NSObject, NSWindowDelegate {
         let scroll = NSTextView.scrollableTextView()
         text = scroll.documentView as! NSTextView
         text.string = body; text.isEditable = editable; text.isRichText = false
-        text.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        text.font = Brand.body(12.5); text.textColor = Brand.ink
+        text.backgroundColor = Brand.paper; text.insertionPointColor = Brand.ink
         text.isAutomaticQuoteSubstitutionEnabled = false; text.isAutomaticDashSubstitutionEnabled = false
         self.onSave = onSave
         super.init()
         let label = NSTextField(wrappingLabelWithString: note)
-        label.font = .systemFont(ofSize: 12); label.textColor = .secondaryLabelColor
+        label.font = Brand.body(12); label.textColor = Brand.ink2
         let stack = NSStackView(views: [label, scroll])
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 10
         stack.edgeInsets = NSEdgeInsets(top: 14, left: 16, bottom: 14, right: 16)
@@ -173,6 +174,7 @@ final class TextWindow: NSObject, NSWindowDelegate {
             stack.addArrangedSubview(save)
         }
         window.contentView = stack
+        Brand.style(window)
         window.delegate = self
         window.center()
         TextWindow.open.append(self)
