@@ -50,18 +50,24 @@ cp "$ROOT/extract.py" "$ROOT/exclude.txt.example" "$APP/Contents/Resources/engin
 cp -R "$ROOT/eod" "$ROOT/bin" "$APP/Contents/Resources/engine/"
 find "$APP/Contents/Resources/engine" -name '__pycache__' -type d -prune -exec rm -rf {} +
 
-if [ -n "${EOD_SIGN_P12:-}" ] && [ -n "${EOD_SIGN_P12_PASSWORD:-}" ]; then
+if { [ -n "${EOD_SIGN_P12:-}" ] && [ -z "${EOD_SIGN_P12_PASSWORD:-}" ]; } || { [ -z "${EOD_SIGN_P12:-}" ] && [ -n "${EOD_SIGN_P12_PASSWORD:-}" ]; }; then
+  echo "set both EOD_SIGN_P12 and EOD_SIGN_P12_PASSWORD, or neither" >&2; exit 1
+fi
+if [ -n "${EOD_SIGN_P12:-}" ]; then
   # A throwaway keychain for this build only: the login keychain is never touched.
-  KC="$(mktemp -d)/eod-sign.keychain-db"; KCPW="$(openssl rand -hex 16)"
-  P12="$(mktemp)"; printf '%s' "$EOD_SIGN_P12" | base64 --decode > "$P12"
-  cleanup_kc() { security delete-keychain "$KC" >/dev/null 2>&1 || true; rm -f "$P12"; }
-  trap cleanup_kc EXIT
+  # The cleanup is armed before anything secret reaches the disk.
+  SIGNDIR="$(mktemp -d)"
+  cleanup_sign() { security delete-keychain "$SIGNDIR/eod-sign.keychain-db" >/dev/null 2>&1 || true; rm -rf "$SIGNDIR"; }
+  trap cleanup_sign EXIT
+  KC="$SIGNDIR/eod-sign.keychain-db"; KCPW="$(openssl rand -hex 16)"
+  P12="$SIGNDIR/eod.p12"; printf '%s' "$EOD_SIGN_P12" | base64 --decode > "$P12"
   security create-keychain -p "$KCPW" "$KC"
   security set-keychain-settings -lut 3600 "$KC"
   security unlock-keychain -p "$KCPW" "$KC"
   security import "$P12" -k "$KC" -f pkcs12 -P "$EOD_SIGN_P12_PASSWORD" -T /usr/bin/codesign >/dev/null
   security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC" >/dev/null
-  ID="$(security find-certificate -a -Z "$KC" | awk '/SHA-1 hash:/{print $3; exit}')"
+  # The identity (certificate with its private key) usable for code signing.
+  ID="$(security find-identity -p codesigning "$KC" | awk '/^ *1\)/{print $2; exit}')"
   [ -n "$ID" ] || { echo "signing certificate not found in the .p12" >&2; exit 1; }
   codesign --force --deep --keychain "$KC" --sign "$ID" "$APP"
   echo "signed with the EOD certificate ($ID)"

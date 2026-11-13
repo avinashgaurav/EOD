@@ -25,7 +25,8 @@ jobs:
       - name: Build EOD.app
         env:
           # One long-lived self-signed certificate, so macOS keeps Keychain and
-          # Calendar permissions across updates. Unset (forks): signs ad-hoc.
+          # Calendar permissions across updates. The next step fails the release
+          # if the app is not signed with it.
           EOD_SIGN_P12: ${{ secrets.EOD_SIGN_P12 }}
           EOD_SIGN_P12_PASSWORD: ${{ secrets.EOD_SIGN_P12_PASSWORD }}
         run: VERSION="${GITHUB_REF_NAME#v}" macos/build.sh
