@@ -60,9 +60,15 @@ if [ -n "${EOD_SIGN_P12:-}" ]; then
   # codesign only finds identities in keychains on the search list, so the
   # throwaway one is added for the build and the original list put back after.
   OLD_KCS=()
-  while IFS= read -r k; do k="${k#"${k%%[![:space:]]*}"}"; k="${k#\"}"; OLD_KCS+=("${k%\"}"); done < <(security list-keychains -d user)
+  while IFS= read -r k; do
+    k="$(printf '%s' "$k" | sed 's/^[[:space:]]*"//; s/"[[:space:]]*$//')"
+    [ -n "$k" ] && OLD_KCS+=("$k")
+  done < <(security list-keychains -d user)
+  # Stop before touching anything if the current list can't be read, so a Mac
+  # can never lose its login keychain from the list.
+  [ ${#OLD_KCS[@]} -gt 0 ] || { echo "cannot read the keychain search list" >&2; exit 1; }
   cleanup_sign() {
-    [ ${#OLD_KCS[@]} -gt 0 ] && security list-keychains -d user -s "${OLD_KCS[@]}" >/dev/null 2>&1 || true
+    security list-keychains -d user -s "${OLD_KCS[@]}" >/dev/null 2>&1 || true
     security delete-keychain "$SIGNDIR/eod-sign.keychain-db" >/dev/null 2>&1 || true
     rm -rf "$SIGNDIR"
   }
