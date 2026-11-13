@@ -21,15 +21,19 @@ enum Brand {
     static func registerFonts() {
         guard let dir = Bundle.main.resourceURL?.appendingPathComponent("engine/eod/render/fonts") else { return }
         for f in ["ArchivoNarrow.ttf", "CourierPrime-Regular.ttf", "CourierPrime-Bold.ttf"] {
-            CTFontManagerRegisterFontsForURL(dir.appendingPathComponent(f) as CFURL, .process, nil)
+            var err: Unmanaged<CFError>?
+            if !CTFontManagerRegisterFontsForURL(dir.appendingPathComponent(f) as CFURL, .process, &err) {
+                Log.write("font not registered: \(f) \(err?.takeRetainedValue().localizedDescription ?? "")")
+            }
         }
     }
 
     /// Archivo Narrow at a weight, falling back to the system face.
     static func head(_ size: CGFloat) -> NSFont {
-        let d = NSFontDescriptor(fontAttributes: [.family: "Archivo Narrow",
-                                                  .traits: [NSFontDescriptor.TraitKey.weight: NSFont.Weight.bold]])
-        return NSFont(descriptor: d, size: size) ?? .boldSystemFont(ofSize: size)
+        // The bundled face is variable, so ask the font manager for the bold
+        // instance; nil means the family is not registered.
+        NSFontManager.shared.font(withFamily: "Archivo Narrow", traits: .boldFontMask, weight: 9, size: size)
+            ?? .boldSystemFont(ofSize: size)
     }
     static func body(_ size: CGFloat, bold: Bool = false) -> NSFont {
         NSFont(name: bold ? "CourierPrime-Bold" : "CourierPrime-Regular", size: size)

@@ -69,9 +69,7 @@
 
   --r-sm:6px; --r-lg:12px; --r-full:9999px;
 
-  /* Ollama bans a custom display face. Overridden: stock system type is what
-     made the page read as unfinished. Claude's rule takes over instead, a serif
-     display at weight 400 with negative tracking against a humanist sans body. */
+  /* Carbon copy: Archivo Narrow for headings, Courier Prime for everything else. */
   --serif:'Archivo Narrow','Arial Narrow',sans-serif;
   --sans:'Courier Prime','Courier New',ui-monospace,monospace;
   --mono:'Courier Prime','Courier New',ui-monospace,monospace;
@@ -445,8 +443,7 @@ a{color:var(--carbon)}
 h1,h2{font-weight:700;text-transform:uppercase;letter-spacing:0}
 h1{line-height:.98}
 h3{font-family:var(--serif);font-weight:700;font-size:18px;letter-spacing:.5px}
-.hero,.hero{background:none}
-@media (prefers-color-scheme:dark){.hero{background:none}}
+.hero{background:none}
 .mark{font-family:var(--serif);font-weight:700;letter-spacing:3px}
 .mark b{color:var(--ink)}
 .btn{font-family:var(--serif);font-weight:700;letter-spacing:1.5px;text-transform:uppercase}

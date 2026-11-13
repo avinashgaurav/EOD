@@ -1,6 +1,6 @@
 """The receipt itself, as a self-contained document for hs.webview."""
 
-import html, json, os, time
+import functools, html, json, os, time
 from datetime import datetime
 
 from ..util import clean_title, fmt_dur, oneline, pretty_date
@@ -288,6 +288,7 @@ button{border-color:var(--faint)}
 .toast,.undo{background:var(--carbon);color:var(--on-carbon)}
 .undo button{color:var(--on-carbon);border-color:var(--on-carbon)}
 button,.dpick,.more summary,.chip,.shelf button,.warn,.status,.toast{border-radius:0}
+input[type=checkbox]{accent-color:var(--carbon)}
 @media print{.receipt{box-shadow:none}.stamp{opacity:1}}
 """
 
@@ -487,9 +488,9 @@ def ic(name):
     return "<svg class='ic' viewBox='0 0 16 16' aria-hidden='true'>" + _ICONS[name] + "</svg>"
 
 
-def masthead(no):
+def masthead(no, cls="brand wo"):
     """The work-order header: what this is on the left, its number on the right."""
-    return f"<div class='brand wo'><span>WORK ORDER · E<b>O</b>D</span><span class='no'>No. {html.escape(no)}</span></div>"
+    return f"<div class='{cls}'><span>WORK ORDER · E<b>O</b>D</span><span class='no'>No. {html.escape(no)}</span></div>"
 
 
 def clip_path(w=340, step=10, depth=6):
@@ -995,6 +996,7 @@ body{background:var(--surface);font-family:var(--mono);-webkit-font-smoothing:an
 """
 
 
+@functools.lru_cache(maxsize=1)
 def _font_faces():
     """The bundled faces as data URIs: the share card's CSP allows no file loads."""
     import base64
@@ -1051,7 +1053,7 @@ def to_html_share(data):
     P = ["<!doctype html><html><head><meta charset='utf-8'>",
          "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; font-src data:\">",
          f"<style>{css}</style></head><body><div class='stack'><div class='receipt'>",
-         masthead(data["date"][5:].replace("-", "")).replace(" wo'", "'"),
+         masthead(data["date"][5:].replace("-", ""), cls="brand"),
          "<div class='tag'>DAILY WORK RECEIPT</div>",
          "<div class='rule'></div>",
          f"<div class='kv'><span class='k'>Date</span><span class='dots'></span>"
