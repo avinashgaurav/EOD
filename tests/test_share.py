@@ -176,8 +176,10 @@ class TestPng(TranscriptCase):
             why = image.html_to_png("x.html", "x.png", 1200, 675)
         self.assertIn("timed out", why)
 
-    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/osascript"),
-                         "drawing needs macOS WebKit")
+    # Needs a logged-in Mac with a window server: CI machines have none, and the
+    # release build must not hang on it (it runs the suite on macOS).
+    @unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/osascript")
+                         and not os.environ.get("CI"), "drawing needs macOS WebKit on a desktop session")
     def test_draws_a_2x_png_at_the_social_size(self):
         html_path = os.path.join(self.tmp, "card.html")
         png_path = os.path.join(self.tmp, "card.png")

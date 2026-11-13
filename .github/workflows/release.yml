@@ -13,10 +13,13 @@ permissions:
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Toolchain
+        run: xcode-select -p && swiftc --version
       - name: Tests
         run: ./run_tests.sh
       - name: Build EOD.app
