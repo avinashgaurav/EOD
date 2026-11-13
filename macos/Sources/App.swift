@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     func applicationDidFinishLaunching(_ n: Notification) {
         defaults.register(defaults: ["reminderOn": true, "showAtStart": false, "keepDays": 0])
         EngineInstaller.installIfNeeded()
+        Brand.registerFonts()
         if Secrets.importSendFileIfPresent() {
             Log.write("moved send.txt into the Keychain and removed the plain-text file")
         }

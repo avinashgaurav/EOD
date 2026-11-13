@@ -244,6 +244,51 @@ details.wsec>summary .nm::before{content:"\\25B8 ";color:var(--ink2)}
 details.wsec[open]>summary .nm::before{content:"\\25BE "}
 @media (prefers-reduced-motion:reduce){.work .tools{transition:none}}
 
+/* ── Carbon copy (design direction 02) ───────────────────────────
+   A work order in blue carbon ink on the pink duplicate sheet, with the white
+   top copy offset behind it, Archivo Narrow for headings and a red DONE stamp.
+   Text pairs pass WCAG AA on the pink in both themes; the stamp is large text. */
+@font-face{font-family:'Archivo Narrow';src:url('../eod/render/fonts/ArchivoNarrow.ttf') format('truetype');font-weight:400 700}
+:root{
+  --paper:#F6D9DC;--ink:#24357A;--ink2:#4A5590;--line:#E0AEB5;--accent:#A82A33;
+  --carbon:#24357A;--copy:#FFFFFF;--dup:#FFFFFF;--faint:rgba(36,53,122,.33);--stampc:#C8323C;--on-carbon:#FFFFFF;
+  --head:'Archivo Narrow','Arial Narrow',sans-serif}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#231C21;--ink:#C9D2F5;--ink2:#B7AFC2;--line:#4A3A43;--accent:#F07A82;
+  --carbon:#8FA0E0;--copy:#33282E;--dup:#3A3036;--faint:rgba(201,210,245,.3);--stampc:#F07A82;--on-carbon:#231C21}}
+.receipt{clip-path:none;filter:none;background-image:none;
+  box-shadow:7px 7px 0 var(--dup),7px 7px 0 1px var(--faint);margin-right:7px}
+.receipt::after{display:none}
+.brand.wo{display:flex;justify-content:space-between;align-items:baseline;text-align:left;
+  font:700 15px/1.2 var(--head);letter-spacing:2px;color:var(--carbon);
+  border-bottom:2px solid var(--carbon);padding:0 26px 6px 0}
+.brand.wo b{color:var(--carbon)}
+.brand.wo .no{font-size:13px;letter-spacing:1px}
+.tag{text-align:left;letter-spacing:1px;color:var(--ink2)}
+.sect,.depthead,.end,.kv.tot .k,.more .menu .lbl{font-family:var(--head)}
+.sect{font-size:12px;letter-spacing:2px;text-align:left}
+.depthead{font-size:13px;letter-spacing:1px}
+.end{font-weight:700;font-size:13px;letter-spacing:4px;color:var(--carbon)}
+.rule.solid,.rule.double{border-top-color:var(--carbon)}
+.rule{border-top-color:var(--line)}
+.kv .dots,.depthead .dots{border-bottom-color:var(--faint)}
+.totals{position:relative;border:2px solid var(--carbon);padding:4px 8px;margin:8px 0}
+.totals .kv.tot{font-size:12px}
+.totals .kv.tot .k{color:var(--carbon);letter-spacing:1.5px;font-size:12.5px}
+.stamp{display:block;position:absolute;right:0;top:-8px;margin:0;border:3px solid var(--stampc);border-radius:0;
+  color:var(--stampc);font:700 22px/1 var(--head);letter-spacing:3px;padding:3px 10px;transform:rotate(-12deg);
+  opacity:.85;pointer-events:none;background:transparent}
+.barcode{display:none}
+.bcnum{font-size:11px;letter-spacing:2px;color:var(--ink2)}
+button{border-color:var(--faint)}
+.copyall.seeall{border-color:var(--faint)}
+.chip{border-color:var(--faint)}
+.more summary{border-color:var(--faint)}
+.htext.editing{background:var(--copy)}
+.toast,.undo{background:var(--carbon);color:var(--on-carbon)}
+.undo button{color:var(--on-carbon);border-color:var(--on-carbon)}
+button,.dpick,.more summary,.chip,.shelf button,.warn,.status,.toast{border-radius:0}
+@media print{.receipt{box-shadow:none}.stamp{opacity:1}}
 """
 
 
@@ -442,6 +487,11 @@ def ic(name):
     return "<svg class='ic' viewBox='0 0 16 16' aria-hidden='true'>" + _ICONS[name] + "</svg>"
 
 
+def masthead(no):
+    """The work-order header: what this is on the left, its number on the right."""
+    return f"<div class='brand wo'><span>WORK ORDER · E<b>O</b>D</span><span class='no'>No. {html.escape(no)}</span></div>"
+
+
 def clip_path(w=340, step=10, depth=6):
     """A torn-paper silhouette: zigzag top & bottom edges, straight sides."""
     n = w // step
@@ -490,8 +540,8 @@ def to_html(data, send_to=()):
     # masthead (doubles as the drag handle)
     P.append("<button class='hide' onclick=\"send({action:'hide'})\" title='Hide (Esc)' aria-label='Hide the receipt'>" + ic("close") + "</button>")
     P.append("<div class='grip' onmousedown='drag(event)'>")
-    P.append("<div class='brand'>E<b>O</b>D</div>")
-    P.append("<div class='tag'>DAILY WORK RECEIPT</div>")
+    P.append(masthead(data["date"][5:].replace("-", "")))
+    P.append("<div class='tag'>DAILY WORK RECEIPT · COPY FOR STANDUP</div>")
     P.append("</div>")
     P.append("<div class='rule'></div>")
     # Injectable so a snapshot is not hostage to the calendar. Production never
@@ -634,7 +684,7 @@ def to_html(data, send_to=()):
                 P.append("<div class='rule'></div><div class='sect'>" + esc(_label) + "</div>")
                 _seen = _label
             P.append("<div class='item'><span class='t'><b>&bull;</b>" + esc(_txt) + "</span></div>")
-    P.append("<div class='rule'></div>")
+    P.append("<div class='totals'>")
     P.append(f"<div class='kv tot'><span class='k'>Projects</span><span class='dots'></span><span class='v'>{pcount}</span></div>")
     P.append(f"<div class='kv tot'><span class='k'>Work items</span><span class='dots'></span><span class='v'>{icount}</span></div>")
     if apps:
@@ -645,6 +695,7 @@ def to_html(data, send_to=()):
     # prompt has no length, and breaks are not visible.
     P.append(f"<div class='kv tot'><span class='k'>First activity</span><span class='dots'></span><span class='v'>{t0}</span></div>")
     P.append(f"<div class='kv tot'><span class='k'>Last activity</span><span class='dots'></span><span class='v'>{t1}</span></div>")
+    P.append("</div>")
     # B13: one gentle line about the day, off by default (insight.on).
     from ..features import daily_insight
     _ins = daily_insight(data)
@@ -652,8 +703,8 @@ def to_html(data, send_to=()):
         P.append(f"<div class='prov' role='note'>{esc(_ins)}</div>")
     P.append("<div class='rule double'></div>")
 
-    P.append("<div class='end'>END OF DAY</div>")
-    P.append("<div class='barcode'></div>")
+    P.append("<div class='end' style='position:relative'>END OF DAY"
+             + ("<div class='stamp' aria-hidden='true'>DONE</div>" if icount else "") + "</div>")
     P.append(f"<div class='bcnum'>{data['date'].replace('-','')}{' · ' + esc(SIG) if SIG else ''}</div>")
     # Sources read today (F32): a failed one is a button that opens Settings.
     chips = []
@@ -769,7 +820,7 @@ def to_html_full(data):
 
     P.append("<button class='hide' onclick=\"send({action:'hide'})\" title='Close (Esc)' aria-label='Close the full day'>" + ic("close") + "</button>")
     P.append("<div class='grip' onmousedown='drag(event)'>")
-    P.append("<div class='brand'>E<b>O</b>D</div>")
+    P.append(masthead(data["date"][5:].replace("-", "")))
     P.append("<div class='tag'>FULL DAY · ALL ACTIVITY</div>")
     P.append("</div>")
     P.append("<div class='rule'></div>")
@@ -903,44 +954,62 @@ SHARE_W, SHARE_H = 1200, 675
 SHARE_MAX_LINES = 5              # six two-line highlights outgrow the card (measured)
 
 SHARE_CSS = """
-:root{--surface:#FBF4F2;--paper:#FFFFFF;--ink:#1B1A18;--ink2:#5F5B54;--line:#E7DAD6;--accent:#C8323C;
-  --carbon:#24357A;--copy:#F6D9DC;--mono:'Courier New',ui-monospace,monospace}
+%FONTS%
+:root{--surface:#E9E4F0;--paper:#F6D9DC;--dup:#FFFFFF;--ink:#24357A;--ink2:#4A5590;--line:#E0AEB5;--accent:#A82A33;
+  --carbon:#24357A;--faint:rgba(36,53,122,.33);--stampc:#C8323C;
+  --mono:'Courier Prime','Courier New',ui-monospace,monospace;--head:'Archivo Narrow','Arial Narrow',sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;width:%CW%px;height:%CH%px;overflow:hidden}
 body{background:var(--surface);font-family:var(--mono);-webkit-font-smoothing:antialiased;
   display:flex;align-items:center;justify-content:center;position:relative}
-/* The carbon copy: the white top sheet with its pink copy offset behind it. */
+/* The carbon copy: the pink duplicate on top, the white original offset behind it. */
 .stack{position:relative}
-.stack::before{content:"";position:absolute;inset:0;transform:translate(10px,10px);background:var(--copy);clip-path:%CLIP%}
+.stack::before{content:"";position:absolute;inset:0;transform:translate(10px,10px);background:var(--dup);
+  box-shadow:0 0 0 1px var(--faint)}
 .receipt{position:relative;width:%W%px;max-height:%MH%px;overflow:hidden;background:var(--paper);color:var(--ink);
-  padding:26px 34px 22px;clip-path:%CLIP%;letter-spacing:.2px}
-.brand{text-align:center;font-size:30px;font-weight:700;letter-spacing:7px;color:var(--carbon)}
-.brand b{color:var(--accent)}
-.tag{text-align:center;font-size:12px;letter-spacing:4px;color:var(--ink2);margin-top:4px}
+  padding:24px 34px 22px;letter-spacing:.2px}
+.brand{display:flex;justify-content:space-between;align-items:baseline;font:700 24px/1.2 var(--head);letter-spacing:3px;
+  color:var(--carbon);border-bottom:2px solid var(--carbon);padding-bottom:8px}
+.brand b{color:var(--carbon)}.brand .no{font-size:20px;letter-spacing:1px}
+.tag{font-size:13px;letter-spacing:1px;color:var(--ink2);margin-top:6px}
 .rule{border-top:1px dashed var(--line);margin:10px 0}
-.rule.double{border-top:2px double var(--ink)}
+.rule.double{border-top:2px solid var(--carbon)}
 .kv{display:flex;align-items:flex-end;font-size:14px;line-height:1.6}
-.kv .k{color:var(--ink2);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
-.kv .dots{flex:1;border-bottom:1px dotted var(--line);margin:0 6px 5px}
+.kv .k{color:var(--carbon);text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap;font:700 15px/1.6 var(--head)}
+.kv .dots{flex:1;border-bottom:1px dotted var(--faint);margin:0 6px 5px}
 .kv .v{white-space:nowrap;font-weight:700}
-.tots{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
-.sect{font-size:12px;letter-spacing:4px;color:var(--accent);font-weight:700;text-align:center;margin:0 0 6px}
+.tots{position:relative;display:grid;grid-template-columns:1fr 1fr;column-gap:28px;border:2px solid var(--carbon);padding:6px 12px}
+.sect{font:700 15px var(--head);letter-spacing:3px;color:var(--carbon);margin:0 0 6px}
 .item{display:flex;gap:10px;font-size:16px;line-height:1.4;margin:5px 0 0}
 .item b{color:var(--carbon)}
-.sect{color:var(--carbon)}
 .item .t{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .more{color:var(--ink2);font-size:13px;letter-spacing:1px;margin:6px 0 0 20px}
 .empty{text-align:center;color:var(--ink2);font-size:15px;letter-spacing:3px;padding:40px 0}
-.end{text-align:center;font-size:13px;letter-spacing:4px;margin:4px 0 0}
-.barcode{height:30px;width:60%;margin:9px auto 4px;background-repeat:repeat-x;background-size:21px 100%;
-  background-image:repeating-linear-gradient(90deg,
-    var(--ink) 0 2px, transparent 2px 5px, var(--ink) 5px 6px, transparent 6px 11px,
-    var(--ink) 11px 14px, transparent 14px 16px, var(--ink) 16px 17px, transparent 17px 21px)}
-.bcnum{text-align:center;font-size:11px;letter-spacing:3px}
+.end{text-align:center;font:700 15px var(--head);letter-spacing:5px;color:var(--carbon);margin:8px 0 0}
+.bcnum{text-align:center;font-size:11px;letter-spacing:3px;color:var(--ink2)}
+.stamp{position:absolute;right:0;top:-14px;border:4px solid var(--stampc);color:var(--stampc);font:700 30px/1 var(--head);
+  letter-spacing:4px;padding:4px 14px;transform:rotate(-12deg);opacity:.85}
 .madewith{position:absolute;right:30px;bottom:22px;color:var(--ink2);font-size:13px;letter-spacing:3px;display:flex;gap:8px;align-items:center}
 .madewith b{color:var(--carbon);letter-spacing:4px}
-.madewith i{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.madewith i{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--stampc)}
 """
+
+
+def _font_faces():
+    """The bundled faces as data URIs: the share card's CSP allows no file loads."""
+    import base64
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+    out = []
+    for fam, fn, wt in (("Courier Prime", "CourierPrime-Regular.ttf", "400"), ("Courier Prime", "CourierPrime-Bold.ttf", "700"),
+                        ("Archivo Narrow", "ArchivoNarrow.ttf", "400 700")):
+        try:
+            with open(os.path.join(d, fn), "rb") as fh:
+                b64 = base64.b64encode(fh.read()).decode()
+        except OSError:
+            continue
+        out.append(f"@font-face{{font-family:'{fam}';src:url(data:font/ttf;base64,{b64}) format('truetype');font-weight:{wt}}}")
+    return "\n".join(out)
+
 
 
 def to_html_share_week(wd):
@@ -972,7 +1041,7 @@ def to_html_share(data):
     carry your macOS username. No timestamp either, so the same day always
     draws the same picture. No script runs on it, and the CSP says so."""
     w = 700
-    css = (SHARE_CSS.replace("%CLIP%", clip_path(w)).replace("%W%", str(w))
+    css = (SHARE_CSS.replace("%FONTS%", _font_faces()).replace("%W%", str(w))
            .replace("%CW%", str(SHARE_W)).replace("%CH%", str(SHARE_H))
            .replace("%MH%", str(SHARE_H - 60)))
     esc = html.escape
@@ -980,9 +1049,9 @@ def to_html_share(data):
     t0, t1 = time_window(data)
 
     P = ["<!doctype html><html><head><meta charset='utf-8'>",
-         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'\">",
+         "<meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; style-src 'unsafe-inline'; font-src data:\">",
          f"<style>{css}</style></head><body><div class='stack'><div class='receipt'>",
-         "<div class='brand'>E<b>O</b>D</div>",
+         masthead(data["date"][5:].replace("-", "")).replace(" wo'", "'"),
          "<div class='tag'>DAILY WORK RECEIPT</div>",
          "<div class='rule'></div>",
          f"<div class='kv'><span class='k'>Date</span><span class='dots'></span>"
@@ -1009,7 +1078,7 @@ def to_html_share(data):
         P.append(f"<div class='kv'><span class='k'>{k}</span><span class='dots'></span>"
                  f"<span class='v'>{esc(v)}</span></div>")
     P.append("</div><div class='rule double'></div>")
-    P.append("<div class='end'>END OF DAY</div><div class='barcode'></div>")
+    P.append("<div class='end' style='position:relative'>END OF DAY" + ("<div class='stamp'>DONE</div>" if lines else "") + "</div>")
     P.append(f"<div class='bcnum'>{esc(data['date'].replace('-',''))}{' · ' + esc(SIG) if SIG else ''}</div>")
     P.append("</div></div><div class='madewith'><i></i>made with <b>EOD</b></div></body></html>")
     return "".join(P)
@@ -1027,8 +1096,8 @@ def to_html_weekly(data, send_to=()):
          "<body><div class='surface'><div class='roll'><div class='receipt'>"]
     P.append("<button class='hide' onclick=\"send({action:'hide'})\" title='Close (Esc)' aria-label='Close the weekly report'>" + ic("close") + "</button>")
     P.append("<div class='grip' onmousedown='drag(event)'>")
-    P.append("<div class='brand'>E<b>O</b>D</div>")
-    P.append("<div class='tag'>WEEKLY RECAP</div>")
+    P.append(masthead("W" + str(data.get("week_start") or "")[5:].replace("-", "")))
+    P.append("<div class='tag'>WEEKLY RECAP · COPY FOR YOUR MANAGER</div>")
     P.append("</div>")
     P.append("<div class='rule'></div>")
     P.append(f"<div class='kv'><span class='k'>Week</span><span class='dots'></span>"
@@ -1091,7 +1160,8 @@ def to_html_weekly(data, send_to=()):
                     P.append(f"<div class='item'><span class='t'><b>•</b>{esc(it)}</span></div>")
                 P.append("</div>")
     P.append("<div class='rule double'></div>")
-    P.append("<div class='end'>END OF WEEK</div>")
+    P.append("<div class='end' style='position:relative'>END OF WEEK"
+             + ("<div class='stamp' aria-hidden='true'>FILED</div>" if data.get("highlights") else "") + "</div>")
     if data.get("highlights"):
         # Same action set as the daily (F33): Copy, Send, and More.
         P.append("<div class='actions'><button class='copyall primary' onclick='copyReport()' "

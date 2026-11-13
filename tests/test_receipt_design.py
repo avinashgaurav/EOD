@@ -66,6 +66,9 @@ class TestReceipt(unittest.TestCase):
     def test_contrast_tokens(self):
         css = self.h.CSS
         self.assertIn("--ink2:#5F5B54", css)
+        # Carbon copy (direction 02): pink sheet, carbon ink, AA-checked secondary and red.
+        self.assertIn("--paper:#F6D9DC;--ink:#24357A;--ink2:#4A5590", css)
+        self.assertIn("--accent:#A82A33", css)
         self.assertIn("button:focus-visible", css)
         self.assertIn("min-width:24px;min-height:24px", css)
 
@@ -137,3 +140,29 @@ class TestExactTextSend(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCarbonCopy(unittest.TestCase):
+    """The receipt is a carbon-copy work order: header, numbered, boxed totals, a DONE stamp."""
+    def setUp(self):
+        self.ex = load_extract()
+        self.h = mod(self.ex, "eod.render.html")
+        with open(os.path.join(HERE, "snapshots", "day.json")) as fh:
+            self.day = json.load(fh)
+
+    def test_work_order_header_and_totals_box(self):
+        page = self.h.to_html(self.day)
+        self.assertIn("WORK ORDER · E<b>O</b>D", page)
+        self.assertIn("No. " + self.day["date"][5:].replace("-", ""), page)
+        self.assertIn("<div class='totals'>", page)
+        self.assertIn("ArchivoNarrow.ttf", page)
+
+    def test_done_stamp_only_with_work(self):
+        self.assertIn(">DONE</div>", self.h.to_html(self.day))
+        empty = dict(self.day, projects=[], highlights=[], commits=[], prs=[], docs=[], meetings=[])
+        self.assertNotIn(">DONE</div>", self.h.to_html(empty))
+
+    def test_share_card_embeds_fonts_under_its_csp(self):
+        page = self.h.to_html_share(self.day)
+        self.assertIn("font-src data:", page)
+        self.assertIn("font-family:'Archivo Narrow';src:url(data:font/ttf;base64,", page)
