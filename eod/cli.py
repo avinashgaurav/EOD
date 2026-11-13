@@ -8,7 +8,7 @@ from .config import CACHE, SEND_FILE, app_path, load_ollama_model, send_labels
 from .pipeline import build
 from .polish import OLLAMA_URL, _polish_input, polish
 from .render.text import to_text, to_text_full, to_text_weekly
-from .render.html import SHARE_H, SHARE_W, to_html, to_html_full, to_html_share, to_html_weekly
+from .render.html import SHARE_H, SHARE_W, render_id, to_html, to_html_full, to_html_share, to_html_weekly
 from .render.image import html_to_png
 from .weekly import build_weekly
 from .hide import apply_hide
@@ -296,11 +296,15 @@ def main():
     # file changes nothing in the day itself, so without this check the button
     # would not appear (or go away) until some unrelated activity came in.
     send_to = send_labels()
+    # The same goes for an engine update: a page drawn by an older version is
+    # redrawn, or the new design only appears once the day's data next changes.
     if not changed:
         try:
-            with open(base + ".html") as fh:
-                changed = ("id='sendBtn'" in fh.read()) != bool(send_to)
-        except OSError:
+            with open(base + ".html", encoding="utf-8") as fh:
+                page = fh.read()
+            changed = (("id='sendBtn'" in page) != bool(send_to)
+                       or f"<meta name='eod-render' content='{render_id()}'>" not in page)
+        except (OSError, UnicodeDecodeError):
             changed = True
 
     if changed:

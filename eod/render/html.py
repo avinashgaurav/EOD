@@ -522,6 +522,17 @@ def provenance(data):
     return ""
 
 
+@functools.lru_cache(maxsize=1)
+def render_id():
+    """A fingerprint of how the receipt is drawn: this file's source, so CSS,
+    scripts and markup are all covered. Stamped into each page so a receipt
+    drawn by an older engine is redrawn after an update, even on a day whose
+    data has not changed."""
+    import hashlib
+    with open(os.path.abspath(__file__), "rb") as fh:
+        return hashlib.sha1(fh.read()).hexdigest()[:12]
+
+
 def to_html(data, send_to=()):
     """The brief card. `send_to` names the destinations in send.txt; empty
     means no Send button and no trace of it in the page."""
@@ -532,7 +543,7 @@ def to_html(data, send_to=()):
     t0, t1 = time_window(data)
     ref = "#" + data["date"].replace("-", "")
 
-    P = [f"<!doctype html><html><head><meta charset='utf-8'>"
+    P = [f"<!doctype html><html><head><meta charset='utf-8'><meta name='eod-render' content='{render_id()}'>"
          # set the animate-in class before first paint so the paper starts hidden (no flash)
          "<script>var _h=location.hash;document.documentElement.className=(_h==='#in'?'anim-in':(_h==='#quick'?'anim-quick':''))+(window.EOD_APP?' app':'');</script>"
          f"<style>{css}</style></head>"
