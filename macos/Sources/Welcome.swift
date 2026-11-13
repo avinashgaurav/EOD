@@ -7,6 +7,14 @@ enum Welcome {
     private static var window: NSWindow?
     private static var key = 0
 
+    /// The first-run screen is still up. Reopening EOD brings it forward instead
+    /// of building a receipt before the person has chosen sources and AI.
+    static func bringForwardIfOpen() -> Bool {
+        guard let w = window, w.isVisible else { return false }
+        NSApp.activate(ignoringOtherApps: true); w.makeKeyAndOrderFront(nil)
+        return true
+    }
+
     static func show(done: @escaping () -> Void) {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 600),
                          styleMask: [.titled, .closable], backing: .buffered, defer: false)

@@ -80,9 +80,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     /// Applications, Spotlight or Launchpad used to do nothing visible. Show
     /// today's receipt instead, so a second click always answers.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        guard receipt != nil else { return false }
-        curDate = Day.today()
-        show(animate: true)
+        guard receipt != nil, !Welcome.bringForwardIfOpen() else { return false }
+        NSApp.activate(ignoringOtherApps: true)
+        if !shown {                 // already on screen: leave the day being viewed alone
+            curDate = Day.today()
+            show(animate: true)
+        }
         return false
     }
 
