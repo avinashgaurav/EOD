@@ -57,13 +57,22 @@ if [ -n "${EOD_SIGN_P12:-}" ]; then
   # A throwaway keychain for this build only: the login keychain is never touched.
   # The cleanup is armed before anything secret reaches the disk.
   SIGNDIR="$(mktemp -d)"
-  cleanup_sign() { security delete-keychain "$SIGNDIR/eod-sign.keychain-db" >/dev/null 2>&1 || true; rm -rf "$SIGNDIR"; }
+  # codesign only finds identities in keychains on the search list, so the
+  # throwaway one is added for the build and the original list put back after.
+  OLD_KCS=()
+  while IFS= read -r k; do k="${k#"${k%%[![:space:]]*}"}"; k="${k#\"}"; OLD_KCS+=("${k%\"}"); done < <(security list-keychains -d user)
+  cleanup_sign() {
+    [ ${#OLD_KCS[@]} -gt 0 ] && security list-keychains -d user -s "${OLD_KCS[@]}" >/dev/null 2>&1 || true
+    security delete-keychain "$SIGNDIR/eod-sign.keychain-db" >/dev/null 2>&1 || true
+    rm -rf "$SIGNDIR"
+  }
   trap cleanup_sign EXIT
   KC="$SIGNDIR/eod-sign.keychain-db"; KCPW="$(openssl rand -hex 16)"
   P12="$SIGNDIR/eod.p12"; printf '%s' "$EOD_SIGN_P12" | base64 --decode > "$P12"
   security create-keychain -p "$KCPW" "$KC"
   security set-keychain-settings -lut 3600 "$KC"
   security unlock-keychain -p "$KCPW" "$KC"
+  security list-keychains -d user -s "$KC" "${OLD_KCS[@]}"
   security import "$P12" -k "$KC" -f pkcs12 -P "$EOD_SIGN_P12_PASSWORD" -T /usr/bin/codesign >/dev/null
   security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC" >/dev/null
   # The identity (certificate with its private key) usable for code signing.
