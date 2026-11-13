@@ -238,7 +238,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if FileManager.default.fileExists(atPath: f.path) { NSWorkspace.shared.open(f) }
         else { alert("No history yet", "Your work history appears after EOD has summarised its first day.") }
     }
-    @objc private func openData() { NSWorkspace.shared.open(Paths.support) }
+    @objc private func openData() {
+        try? FileManager.default.createDirectory(at: Paths.support, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(Paths.support)
+    }
     @objc private func toggleReminder() {
         defaults.set(!defaults.bool(forKey: "reminderOn"), forKey: "reminderOn"); scheduleReminder()
     }
@@ -404,6 +407,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 Log.write("weekly build failed (\(r.code)): \(r.err.suffix(400))")
                 self.hideDetail()
                 self.receipt.js("window.toast&&toast('Couldn’t build the weekly report. Try Refresh, or open the data folder for details.')")
+                if !self.shown { self.flash("Couldn’t build the weekly report") }   // the toast needs a visible receipt
                 return
             }
             if let m = t.rest.range(of: #"weekly-(\d{4}-\d{2}-\d{2})"#, options: .regularExpression) {
@@ -439,7 +443,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
                 Log.write("extract failed (\(r.code)): \(r.err.suffix(600))")
                 if self.shown && !cacheOnly {        // say it on the receipt (F11), with a Retry
                     self.receipt.js("window.setStatus&&setStatus('Couldn’t refresh at \(Self.hm()). ',true)")
-                }
+                } else if wasManual { self.flash("Couldn’t refresh. See app.log") }   // Refresh now from the menu
                 return
             }
             Counts.mark("firstReceipt")
@@ -531,6 +535,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             if r.code == 0, !r.out.isEmpty {
                 self.copy(r.out); self.markShared()
                 self.flash("Update copied")
+            } else if r.code != 0 {
+                Log.write("standup failed (\(r.code)): \(r.err.suffix(400))")
+                self.flash("Couldn’t read today. See Open data folder, app.log")
             } else { self.flash("No work recorded today yet") }
         }
     }

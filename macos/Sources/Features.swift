@@ -10,7 +10,8 @@ extension AppDelegate {
             if r.code == 0, !r.out.isEmpty {
                 NSPasteboard.general.clearContents(); NSPasteboard.general.setString(r.out, forType: .string)
                 self.flashMessage("Standup copied")
-            } else { self.flashMessage("Nothing for a standup yet") }
+            } else if r.code != 0 { self.flashMessage("Couldn’t build the standup. See app.log") }
+            else { self.flashMessage("Nothing for a standup yet") }
         }
     }
 
@@ -29,9 +30,10 @@ extension AppDelegate {
         a.window.initialFirstResponder = tv
         guard a.runModal() == .alertFirstButtonReturn else { return }
         let f = Paths.cacheFile(".plan-\(UUID().uuidString).txt")
-        guard (try? tv.string.write(to: f, atomically: true, encoding: .utf8)) != nil else { return }
-        Engine.run(["--date", Day.today(), "--plan-file", f.path]) { _ in
+        guard (try? tv.string.write(to: f, atomically: true, encoding: .utf8)) != nil else { flashMessage("Couldn’t save the plan"); return }
+        Engine.run(["--date", Day.today(), "--plan-file", f.path]) { r in
             try? FileManager.default.removeItem(at: f)
+            self.flashMessage(r.code == 0 ? "Plan saved" : "Couldn’t save the plan. See app.log")
             self.refreshFromSettings()
         }
     }
@@ -64,14 +66,14 @@ extension AppDelegate {
         flashMessage("Writing your summary…")
         Engine.run(["--date", end, "--brag", start, end], timeout: 300) { r in
             guard r.code == 0, let t = r.tagged, t.tag == "BRAG" else {
-                self.flashMessage("No updates in that period"); return
+                self.flashMessage(r.code == 0 ? "No updates in that period" : "Couldn’t write the summary. See app.log"); return
             }
             let dl = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
             let dest = dl.appendingPathComponent((t.rest as NSString).lastPathComponent)
             try? FileManager.default.removeItem(at: dest)
             if (try? FileManager.default.copyItem(at: URL(fileURLWithPath: t.rest), to: dest)) != nil {
                 NSWorkspace.shared.activateFileViewerSelecting([dest])
-            }
+            } else { self.flashMessage("Couldn’t save to Downloads") }
         }
     }
 
@@ -79,7 +81,7 @@ extension AppDelegate {
 
     func openHistory(month: String) {
         Engine.run(["--date", Day.today(), "--history", month]) { r in
-            guard r.code == 0, let t = r.tagged, t.tag == "HISTORY" else { return }
+            guard r.code == 0, let t = r.tagged, t.tag == "HISTORY" else { self.flashMessage("Couldn’t open history. See app.log"); return }
             self.showDetailPage(t.rest, mode: "history")
         }
     }
