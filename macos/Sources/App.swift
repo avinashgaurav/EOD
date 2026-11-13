@@ -76,6 +76,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func applicationWillTerminate(_ n: Notification) { usage.stop() }
 
+    /// EOD lives in the menu bar and has no Dock icon, so opening it again from
+    /// Applications, Spotlight or Launchpad used to do nothing visible. Show
+    /// today's receipt instead, so a second click always answers.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard receipt != nil else { return false }
+        curDate = Day.today()
+        show(animate: true)
+        return false
+    }
+
     // MARK: settings hooks
 
     private static let keyCodes: [String: Int] = ["A": kVK_ANSI_A, "B": kVK_ANSI_B, "C": kVK_ANSI_C, "D": kVK_ANSI_D,
