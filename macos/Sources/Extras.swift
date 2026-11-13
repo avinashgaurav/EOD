@@ -13,7 +13,9 @@ enum Counts {
     static func activeToday() {
         var days = Set(d.stringArray(forKey: "count.activeDays") ?? [])
         days.insert(Day.today())
-        d.set(Array(days).sorted().suffix(400), forKey: "count.activeDays")
+        // suffix() is an ArraySlice, which UserDefaults rejects with an exception that
+        // aborted show() (and every way of opening the receipt). Store a real Array.
+        d.set(Array(Array(days).sorted().suffix(400)), forKey: "count.activeDays")
     }
 
     static func summary() -> String {

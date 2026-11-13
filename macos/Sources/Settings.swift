@@ -113,6 +113,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         window.title = "EOD Settings"; window.isReleasedWhenClosed = false
         super.init()
         let tabs = NSTabView()
+        tabs.drawsBackground = false          // let the carbon sheet show through
         for (title, view) in [("General", general()), ("Sources", sources()), ("AI", ai()), ("Send", sendTab()), ("Privacy", privacy())] {
             let item = NSTabViewItem(identifier: title); item.label = title; item.view = view
             tabs.addTabViewItem(item)
