@@ -379,6 +379,22 @@ class TestButton(SendCase):
         with open(os.path.join(self.ex.CACHE, DAY + ".html")) as f:
             return f.read()
 
+    def test_a_page_from_an_older_engine_is_redrawn_on_an_unchanged_day(self):
+        """After an update the new design shows at once, not when the day next changes."""
+        self.a_day()
+        _, out, _ = self.run_cli()
+        self.assertTrue(out.startswith("CHANGED"))
+        _, out, _ = self.run_cli()
+        self.assertTrue(out.startswith("UNCHANGED"))
+        path = os.path.join(self.ex.CACHE, DAY + ".html")
+        with open(path) as f:
+            old = f.read().replace("<meta name='eod-render' content='", "<meta name='eod-render' content='old", 1)
+        with open(path, "w") as f:
+            f.write(old)
+        _, out, _ = self.run_cli()
+        self.assertTrue(out.startswith("CHANGED"), "an older engine's page must be redrawn")
+        self.assertNotIn("content='old", self.html())
+
     def test_button_follows_send_txt_even_when_the_day_is_unchanged(self):
         self.a_day()
         code, out, _ = self.run_cli()
