@@ -300,11 +300,11 @@ def main():
     # redrawn, or the new design only appears once the day's data next changes.
     if not changed:
         try:
-            with open(base + ".html") as fh:
+            with open(base + ".html", encoding="utf-8") as fh:
                 page = fh.read()
             changed = (("id='sendBtn'" in page) != bool(send_to)
                        or f"<meta name='eod-render' content='{render_id()}'>" not in page)
-        except OSError:
+        except (OSError, UnicodeDecodeError):
             changed = True
 
     if changed:

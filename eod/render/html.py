@@ -522,12 +522,15 @@ def provenance(data):
     return ""
 
 
+@functools.lru_cache(maxsize=1)
 def render_id():
-    """A fingerprint of how the receipt is drawn. Stamped into each page so a
-    receipt drawn by an older engine is redrawn after an update, even on a day
-    whose data has not changed."""
+    """A fingerprint of how the receipt is drawn: this file's source, so CSS,
+    scripts and markup are all covered. Stamped into each page so a receipt
+    drawn by an older engine is redrawn after an update, even on a day whose
+    data has not changed."""
     import hashlib
-    return hashlib.sha1((CSS + JS).encode("utf-8")).hexdigest()[:12]
+    with open(os.path.abspath(__file__), "rb") as fh:
+        return hashlib.sha1(fh.read()).hexdigest()[:12]
 
 
 def to_html(data, send_to=()):
